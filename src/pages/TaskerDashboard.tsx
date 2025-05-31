@@ -7,31 +7,33 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Wrench, Bell, User, LogOut, Star, DollarSign, CheckCircle } from "lucide-react";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
+import { useToast } from "@/hooks/use-toast";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'chat'>('available');
+  const { toast } = useToast();
 
   const mockAvailableTasks = [
     {
       id: '3',
-      title: 'Asamblare comoda HEMNES',
-      description: 'Comoda cu 3 sertare, culoare alb',
-      category: 'Comoda',
-      budget: { min: 120, max: 200 },
+      title: 'Assemble HEMNES chest of drawers',
+      description: 'Chest of drawers with 3 drawers, white colour',
+      category: 'Chest',
+      budget: { min: 80, max: 120 },
       status: 'pending' as const,
-      location: 'București, Sector 3',
+      location: 'Telford, UK',
       createdAt: new Date(),
       offers: 1
     },
     {
       id: '4',
-      title: 'Asamblare masa dining',
-      description: 'Masa extensibilă pentru 6 persoane',
-      category: 'Masa',
-      budget: { min: 180, max: 300 },
+      title: 'Assemble dining table',
+      description: 'Extendable table for 6 people',
+      category: 'Table',
+      budget: { min: 100, max: 180 },
       status: 'pending' as const,
-      location: 'București, Sector 1',
+      location: 'Birmingham, UK',
       createdAt: new Date(),
       offers: 0
     }
@@ -40,16 +42,24 @@ const TaskerDashboard = () => {
   const mockMyTasks = [
     {
       id: '1',
-      title: 'Asamblare dulap IKEA PAX',
-      description: 'Am nevoie de ajutor pentru asamblarea unui dulap PAX de la IKEA',
-      category: 'Dulap',
-      budget: { min: 150, max: 250 },
+      title: 'Assemble IKEA PAX wardrobe',
+      description: 'Need help assembling a PAX wardrobe from IKEA',
+      category: 'Wardrobe',
+      budget: { min: 100, max: 180 },
       status: 'accepted' as const,
-      location: 'București, Sector 1',
+      location: 'Birmingham, UK',
       createdAt: new Date(),
       offers: 3
     }
   ];
+
+  const handleCancelTask = (taskId: string) => {
+    toast({
+      title: "Task cancelled",
+      description: "You have cancelled this task.",
+    });
+    console.log("Tasker cancelled task:", taskId);
+  };
 
   // Check if tasker is approved
   if (!user?.isApproved) {
@@ -58,14 +68,14 @@ const TaskerDashboard = () => {
         <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="text-center">
             <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <CardTitle className="text-blue-900">Cont în așteptarea aprobării</CardTitle>
+            <CardTitle className="text-blue-900">Account pending approval</CardTitle>
             <CardDescription>
-              Contul tău de tasker este în curs de verificare. Vei primi o notificare când va fi aprobat.
+              Your tasker account is under review. You will receive a notification when it's approved.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Button onClick={logout} variant="outline" className="w-full">
-              Deconectare
+              Sign out
             </Button>
           </CardContent>
         </Card>
@@ -109,8 +119,8 @@ const TaskerDashboard = () => {
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
-                <CardTitle className="text-blue-900">Dashboard Tasker</CardTitle>
-                <CardDescription>Bine ai venit, {user?.name}!</CardDescription>
+                <CardTitle className="text-blue-900">Tasker Dashboard</CardTitle>
+                <CardDescription>Welcome, {user?.name}!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -118,14 +128,14 @@ const TaskerDashboard = () => {
                   className="w-full justify-start"
                   onClick={() => setActiveTab('available')}
                 >
-                  Task-uri disponibile
+                  Available tasks
                 </Button>
                 <Button
                   variant={activeTab === 'my-tasks' ? 'default' : 'ghost'}
                   className="w-full justify-start"
                   onClick={() => setActiveTab('my-tasks')}
                 >
-                  Task-urile mele
+                  My tasks
                 </Button>
                 <Button
                   variant={activeTab === 'chat' ? 'default' : 'ghost'}
@@ -140,7 +150,7 @@ const TaskerDashboard = () => {
             {/* Profile Stats */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Profilul meu</CardTitle>
+                <CardTitle className="text-blue-900 text-lg">My profile</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -151,23 +161,23 @@ const TaskerDashboard = () => {
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Task-uri finalizate</span>
+                  <span className="text-sm text-gray-600">Completed tasks</span>
                   <Badge className="bg-green-100 text-green-700">
                     {user?.completedTasks || 15}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Câștiguri luna aceasta</span>
+                  <span className="text-sm text-gray-600">This month earnings</span>
                   <div className="flex items-center space-x-1">
                     <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium">2,450 RON</span>
+                    <span className="text-sm font-medium">£1,450</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Status</span>
                   <div className="flex items-center space-x-1">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-600">Verificat</span>
+                    <span className="text-sm font-medium text-green-600">Verified</span>
                   </div>
                 </div>
               </CardContent>
@@ -176,8 +186,20 @@ const TaskerDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'available' && <TasksList tasks={mockAvailableTasks} userRole="tasker" />}
-            {activeTab === 'my-tasks' && <TasksList tasks={mockMyTasks} userRole="tasker" />}
+            {activeTab === 'available' && (
+              <TasksList 
+                tasks={mockAvailableTasks} 
+                userRole="tasker" 
+                onCancelTask={handleCancelTask}
+              />
+            )}
+            {activeTab === 'my-tasks' && (
+              <TasksList 
+                tasks={mockMyTasks} 
+                userRole="tasker" 
+                onCancelTask={handleCancelTask}
+              />
+            )}
             {activeTab === 'chat' && <Chat />}
           </div>
         </div>

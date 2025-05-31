@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         name: email.split('@')[0],
         role: email.includes('admin') ? 'admin' : email.includes('tasker') ? 'tasker' : 'client',
-        location: 'București, România',
+        location: 'Birmingham, UK',
         isApproved: true,
         rating: 4.8,
         completedTasks: 15
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: userData.name,
         role: userData.role,
         location: userData.location,
-        isApproved: userData.role === 'client' ? true : false, // Taskeri trebuie aprobați
+        isApproved: userData.role === 'client' ? true : false, // Taskers need approval
         rating: 0,
         completedTasks: 0
       };
