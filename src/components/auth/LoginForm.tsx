@@ -27,13 +27,13 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
     try {
       await login(email, password);
       toast({
-        title: "Login successful!",
-        description: "Welcome back to MGSDEAL.",
+        title: "Autentificare reușită!",
+        description: "Bine ai revenit în MGSDEAL.",
       });
     } catch (error) {
       toast({
-        title: "Login error",
-        description: "Incorrect email or password.",
+        title: "Eroare la autentificare",
+        description: "Email sau parolă incorectă.",
         variant: "destructive",
       });
     } finally {
@@ -50,7 +50,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
           className="mb-6 hover:bg-blue-50"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          Înapoi
         </Button>
 
         <Card className="shadow-xl border-0">
@@ -61,9 +61,9 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 MGSDEAL
               </span>
             </div>
-            <CardTitle className="text-2xl text-blue-900">Welcome back!</CardTitle>
+            <CardTitle className="text-2xl text-blue-900">Bine ai revenit!</CardTitle>
             <CardDescription>
-              Enter your details to access your account
+              Introdu datele tale pentru a accesa contul
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -73,7 +73,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="nume@exemplu.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -81,7 +81,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 />
               </div>
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Parolă</Label>
                 <Input
                   id="password"
                   type="password"
@@ -96,25 +96,25 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Sign In"}
+                {isLoading ? "Se încarcă..." : "Autentificare"}
               </Button>
             </form>
             
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
+                Nu ai un cont?{" "}
                 <button
                   onClick={onSwitchToRegister}
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Sign up
+                  Înregistrează-te
                 </button>
               </p>
             </div>
 
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-700">
-                <strong>Demo:</strong> Use admin@test.com / tasker@test.com / client@test.com with any password
+                <strong>Demo:</strong> Folosește admin@test.com / tasker@test.com / client@test.com cu orice parolă
               </p>
             </div>
           </CardContent>

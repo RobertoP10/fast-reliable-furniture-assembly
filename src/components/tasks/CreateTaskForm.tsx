@@ -18,58 +18,26 @@ const CreateTaskForm = () => {
     minBudget: "",
     maxBudget: "",
     address: "",
-    city: "",
     paymentMethod: "cash"
   });
   const { toast } = useToast();
 
-  const ukCities = [
-    "Birmingham",
-    "Telford", 
-    "Wolverhampton",
-    "Stoke on Trent",
-    "Shrewsbury"
-  ];
-
   const categories = {
-    "wardrobe": ["PAX", "HEMNES", "BRIMNES", "MALM", "Other"],
-    "desk": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Other"],
-    "bed": ["MALM", "HEMNES", "BRIMNES", "TARVA", "Other"],
-    "chest": ["HEMNES", "MALM", "RAST", "KOPPANG", "Other"],
-    "table": ["INGATORP", "BJURSTA", "LERHAMN", "MÖRBYLÅNGA", "Other"],
-    "shelf": ["BILLY", "HEMNES", "FJÄLKINGE", "IVAR", "Other"]
-  };
-
-  // Pricing guidelines based on category
-  const pricingGuidelines = {
-    "wardrobe": { min: 80, max: 250 },
-    "desk": { min: 40, max: 150 },
-    "bed": { min: 60, max: 200 },
-    "chest": { min: 50, max: 120 },
-    "table": { min: 50, max: 180 },
-    "shelf": { min: 30, max: 100 }
+    "dulap": ["PAX", "HEMNES", "BRIMNES", "MALM", "Altele"],
+    "birou": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Altele"],
+    "pat": ["MALM", "HEMNES", "BRIMNES", "TARVA", "Altele"],
+    "comoda": ["HEMNES", "MALM", "RAST", "KOPPANG", "Altele"],
+    "masa": ["INGATORP", "BJURSTA", "LERHAMN", "MÖRBYLÅNGA", "Altele"],
+    "raft": ["BILLY", "HEMNES", "FJÄLKINGE", "IVAR", "Altele"]
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.category || !formData.subcategory || !formData.city) {
+    if (!formData.category || !formData.subcategory) {
       toast({
-        title: "Error",
-        description: "Please select category, subcategory and city.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const pricing = pricingGuidelines[formData.category as keyof typeof pricingGuidelines];
-    const minBudget = parseInt(formData.minBudget);
-    const maxBudget = parseInt(formData.maxBudget);
-
-    if (minBudget < pricing.min || maxBudget > pricing.max) {
-      toast({
-        title: "Pricing Error",
-        description: `Budget must be between £${pricing.min} - £${pricing.max} for ${formData.category}.`,
+        title: "Eroare",
+        description: "Te rog să selectezi categoria și subcategoria.",
         variant: "destructive",
       });
       return;
@@ -77,8 +45,8 @@ const CreateTaskForm = () => {
 
     console.log("Creating task:", formData);
     toast({
-      title: "Task created successfully!",
-      description: "Your task has been posted and will be visible to taskers.",
+      title: "Task creat cu succes!",
+      description: "Task-ul tău a fost postat și va fi vizibil pentru taskeri.",
     });
 
     // Reset form
@@ -90,28 +58,25 @@ const CreateTaskForm = () => {
       minBudget: "",
       maxBudget: "",
       address: "",
-      city: "",
       paymentMethod: "cash"
     });
   };
 
-  const selectedPricing = formData.category ? pricingGuidelines[formData.category as keyof typeof pricingGuidelines] : null;
-
   return (
     <Card className="shadow-lg border-0">
       <CardHeader>
-        <CardTitle className="text-blue-900">Create a new task</CardTitle>
+        <CardTitle className="text-blue-900">Creează un task nou</CardTitle>
         <CardDescription>
-          Describe what you need assembled and receive offers from taskers
+          Descrie ce ai nevoie să asamblezi și primește oferte de la taskeri
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <Label htmlFor="title">Task title</Label>
+            <Label htmlFor="title">Titlul task-ului</Label>
             <Input
               id="title"
-              placeholder="e.g. Assemble IKEA PAX wardrobe"
+              placeholder="ex: Asamblare dulap IKEA PAX"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
@@ -120,10 +85,10 @@ const CreateTaskForm = () => {
           </div>
 
           <div>
-            <Label htmlFor="description">Detailed description</Label>
+            <Label htmlFor="description">Descrierea detaliată</Label>
             <Textarea
               id="description"
-              placeholder="Describe what needs to be assembled, dimensions, special requirements..."
+              placeholder="Descrie ce anume trebuie asamblat, dimensiuni, particularități..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
@@ -133,36 +98,31 @@ const CreateTaskForm = () => {
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label>Category</Label>
+              <Label>Categoria</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value, subcategory: "" })}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Selectează categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="wardrobe">Wardrobe</SelectItem>
-                  <SelectItem value="desk">Desk</SelectItem>
-                  <SelectItem value="bed">Bed</SelectItem>
-                  <SelectItem value="chest">Chest of drawers</SelectItem>
-                  <SelectItem value="table">Table</SelectItem>
-                  <SelectItem value="shelf">Shelf/Bookcase</SelectItem>
+                  <SelectItem value="dulap">Dulap</SelectItem>
+                  <SelectItem value="birou">Birou</SelectItem>
+                  <SelectItem value="pat">Pat</SelectItem>
+                  <SelectItem value="comoda">Comodă</SelectItem>
+                  <SelectItem value="masa">Masă</SelectItem>
+                  <SelectItem value="raft">Raft</SelectItem>
                 </SelectContent>
               </Select>
-              {selectedPricing && (
-                <p className="text-xs text-blue-600 mt-1">
-                  Pricing range: £{selectedPricing.min} - £{selectedPricing.max}
-                </p>
-              )}
             </div>
 
             <div>
-              <Label>Subcategory / Model</Label>
+              <Label>Subcategoria / Model</Label>
               <Select 
                 value={formData.subcategory} 
                 onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
                 disabled={!formData.category}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select model" />
+                  <SelectValue placeholder="Selectează modelul" />
                 </SelectTrigger>
                 <SelectContent>
                   {formData.category && categories[formData.category as keyof typeof categories]?.map((sub) => (
@@ -175,11 +135,11 @@ const CreateTaskForm = () => {
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="minBudget">Minimum budget (£)</Label>
+              <Label htmlFor="minBudget">Budget minim (RON)</Label>
               <Input
                 id="minBudget"
                 type="number"
-                placeholder="50"
+                placeholder="100"
                 value={formData.minBudget}
                 onChange={(e) => setFormData({ ...formData, minBudget: e.target.value })}
                 required
@@ -187,11 +147,11 @@ const CreateTaskForm = () => {
               />
             </div>
             <div>
-              <Label htmlFor="maxBudget">Maximum budget (£)</Label>
+              <Label htmlFor="maxBudget">Budget maxim (RON)</Label>
               <Input
                 id="maxBudget"
                 type="number"
-                placeholder="150"
+                placeholder="200"
                 value={formData.maxBudget}
                 onChange={(e) => setFormData({ ...formData, maxBudget: e.target.value })}
                 required
@@ -200,35 +160,20 @@ const CreateTaskForm = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label>City</Label>
-              <Select value={formData.city} onValueChange={(value) => setFormData({ ...formData, city: value })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ukCities.map((city) => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                placeholder="Street, house number..."
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
+          <div>
+            <Label htmlFor="address">Adresa</Label>
+            <Input
+              id="address"
+              placeholder="Strada, numărul, sectorul..."
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              required
+              className="mt-1"
+            />
           </div>
 
           <div>
-            <Label>Payment method</Label>
+            <Label>Metoda de plată</Label>
             <RadioGroup 
               value={formData.paymentMethod} 
               onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
@@ -240,13 +185,13 @@ const CreateTaskForm = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="bank" id="bank" />
-                <Label htmlFor="bank">Bank transfer</Label>
+                <Label htmlFor="bank">Transfer bancar</Label>
               </div>
             </RadioGroup>
           </div>
 
           <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-            Post task
+            Postează task-ul
           </Button>
         </form>
       </CardContent>

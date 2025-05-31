@@ -8,83 +8,36 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { useToast } from "@/hooks/use-toast";
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const { toast } = useToast();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const mockTasks = [
     {
       id: '1',
-      title: 'Assemble IKEA PAX wardrobe',
-      description: 'Need help assembling a PAX wardrobe from IKEA',
-      category: 'Wardrobe',
-      budget: { min: 100, max: 180 },
+      title: 'Asamblare dulap IKEA PAX',
+      description: 'Am nevoie de ajutor pentru asamblarea unui dulap PAX de la IKEA',
+      category: 'Dulap',
+      budget: { min: 150, max: 250 },
       status: 'pending' as const,
-      location: 'Birmingham, UK',
+      location: 'București, Sector 1',
       createdAt: new Date(),
-      offers: 3,
-      availableTaskers: [
-        {
-          id: 't1',
-          name: 'John Smith',
-          rating: 4.9,
-          completedTasks: 45,
-          price: 120
-        },
-        {
-          id: 't2',
-          name: 'Sarah Johnson',
-          rating: 4.7,
-          completedTasks: 32,
-          price: 150
-        },
-        {
-          id: 't3',
-          name: 'Mike Williams',
-          rating: 4.8,
-          completedTasks: 28,
-          price: 130
-        }
-      ]
+      offers: 3
     },
     {
       id: '2', 
-      title: 'Assemble office desk',
-      description: 'Office desk with drawers',
-      category: 'Desk',
-      budget: { min: 60, max: 100 },
+      title: 'Asamblare birou',
+      description: 'Birou de lucru cu sertare',
+      category: 'Birou',
+      budget: { min: 100, max: 180 },
       status: 'accepted' as const,
-      location: 'Birmingham, UK',
+      location: 'București, Sector 2',
       createdAt: new Date(),
-      offers: 1,
-      selectedTasker: {
-        id: 't1',
-        name: 'John Smith',
-        rating: 4.9,
-        completedTasks: 45,
-        price: 80
-      }
+      offers: 1
     }
   ];
-
-  const handleSelectTasker = (taskId: string, tasker: any) => {
-    toast({
-      title: "Tasker selected!",
-      description: `You have selected ${tasker.name} for this task.`,
-    });
-    console.log("Selected tasker:", tasker, "for task:", taskId);
-  };
-
-  const handleCancelTask = (taskId: string) => {
-    toast({
-      title: "Task cancelled",
-      description: "The task has been cancelled successfully.",
-    });
-    console.log("Cancelled task:", taskId);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -121,8 +74,8 @@ const ClientDashboard = () => {
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
-                <CardTitle className="text-blue-900">Client Dashboard</CardTitle>
-                <CardDescription>Welcome, {user?.name}!</CardDescription>
+                <CardTitle className="text-blue-900">Dashboard Client</CardTitle>
+                <CardDescription>Bine ai venit, {user?.name}!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -130,7 +83,7 @@ const ClientDashboard = () => {
                   className="w-full justify-start"
                   onClick={() => setActiveTab('tasks')}
                 >
-                  My tasks
+                  Task-urile mele
                 </Button>
                 <Button
                   variant={activeTab === 'create' ? 'default' : 'ghost'}
@@ -138,7 +91,7 @@ const ClientDashboard = () => {
                   onClick={() => setActiveTab('create')}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Create new task
+                  Creează task nou
                 </Button>
                 <Button
                   variant={activeTab === 'chat' ? 'default' : 'ghost'}
@@ -154,19 +107,19 @@ const ClientDashboard = () => {
             {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
+                <CardTitle className="text-blue-900 text-lg">Statistici</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Active tasks</span>
+                  <span className="text-sm text-gray-600">Task-uri active</span>
                   <Badge className="bg-blue-100 text-blue-700">2</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Completed tasks</span>
+                  <span className="text-sm text-gray-600">Task-uri finalizate</span>
                   <Badge className="bg-green-100 text-green-700">8</Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Average rating</span>
+                  <span className="text-sm text-gray-600">Rating mediu</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
                     <span className="text-sm font-medium">4.9</span>
@@ -178,14 +131,7 @@ const ClientDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'tasks' && (
-              <TasksList 
-                tasks={mockTasks} 
-                userRole="client" 
-                onSelectTasker={handleSelectTasker}
-                onCancelTask={handleCancelTask}
-              />
-            )}
+            {activeTab === 'tasks' && <TasksList tasks={mockTasks} userRole="client" />}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
           </div>
