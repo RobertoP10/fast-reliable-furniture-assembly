@@ -17,23 +17,23 @@ const ClientDashboard = () => {
   const mockTasks = [
     {
       id: '1',
-      title: 'Asamblare dulap IKEA PAX',
-      description: 'Am nevoie de ajutor pentru asamblarea unui dulap PAX de la IKEA',
-      category: 'Dulap',
+      title: 'IKEA PAX Wardrobe Assembly',
+      description: 'I need help assembling a PAX wardrobe from IKEA',
+      category: 'Wardrobe',
       budget: { min: 150, max: 250 },
       status: 'pending' as const,
-      location: 'București, Sector 1',
+      location: 'Birmingham, West Midlands',
       createdAt: new Date(),
       offers: 3
     },
     {
       id: '2', 
-      title: 'Asamblare birou',
-      description: 'Birou de lucru cu sertare',
-      category: 'Birou',
+      title: 'Desk Assembly',
+      description: 'Work desk with drawers',
+      category: 'Desk',
       budget: { min: 100, max: 180 },
       status: 'accepted' as const,
-      location: 'București, Sector 2',
+      location: 'Telford, Shropshire',
       createdAt: new Date(),
       offers: 1
     }
@@ -74,8 +74,8 @@ const ClientDashboard = () => {
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
-                <CardTitle className="text-blue-900">Dashboard Client</CardTitle>
-                <CardDescription>Bine ai venit, {user?.name}!</CardDescription>
+                <CardTitle className="text-blue-900">Client Dashboard</CardTitle>
+                <CardDescription>Welcome, {user?.name}!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -83,7 +83,7 @@ const ClientDashboard = () => {
                   className="w-full justify-start"
                   onClick={() => setActiveTab('tasks')}
                 >
-                  Task-urile mele
+                  My Tasks
                 </Button>
                 <Button
                   variant={activeTab === 'create' ? 'default' : 'ghost'}
@@ -91,7 +91,7 @@ const ClientDashboard = () => {
                   onClick={() => setActiveTab('create')}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Creează task nou
+                  Create New Task
                 </Button>
                 <Button
                   variant={activeTab === 'chat' ? 'default' : 'ghost'}
@@ -107,19 +107,19 @@ const ClientDashboard = () => {
             {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Statistici</CardTitle>
+                <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Task-uri active</span>
+                  <span className="text-sm text-gray-600">Active tasks</span>
                   <Badge className="bg-blue-100 text-blue-700">2</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Task-uri finalizate</span>
+                  <span className="text-sm text-gray-600">Completed tasks</span>
                   <Badge className="bg-green-100 text-green-700">8</Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Rating mediu</span>
+                  <span className="text-sm text-gray-600">Average rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
                     <span className="text-sm font-medium">4.9</span>

@@ -32,8 +32,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Eroare",
-        description: "Parolele nu coincid.",
+        title: "Error",
+        description: "Passwords don't match.",
         variant: "destructive",
       });
       return;
@@ -41,8 +41,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
 
     if (!formData.role) {
       toast({
-        title: "Eroare",
-        description: "Te rog să selectezi un rol.",
+        title: "Error",
+        description: "Please select a role.",
         variant: "destructive",
       });
       return;
@@ -61,19 +61,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       
       if (formData.role === 'tasker') {
         toast({
-          title: "Înregistrare reușită!",
-          description: "Contul tău de tasker va fi revizuit și aprobat în curând.",
+          title: "Registration successful!",
+          description: "Your tasker account will be reviewed and approved soon.",
         });
       } else {
         toast({
-          title: "Înregistrare reușită!",
-          description: "Bine ai venit în MGSDEAL!",
+          title: "Registration successful!",
+          description: "Welcome to MGSDEAL!",
         });
       }
     } catch (error) {
       toast({
-        title: "Eroare la înregistrare",
-        description: "Te rog să încerci din nou.",
+        title: "Registration error",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -90,7 +90,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           className="mb-6 hover:bg-blue-50"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Înapoi
+          Back
         </Button>
 
         <Card className="shadow-xl border-0">
@@ -101,19 +101,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 MGSDEAL
               </span>
             </div>
-            <CardTitle className="text-2xl text-blue-900">Creează cont nou</CardTitle>
+            <CardTitle className="text-2xl text-blue-900">Create new account</CardTitle>
             <CardDescription>
-              Alătură-te comunității MGSDEAL
+              Join the MGSDEAL community
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Nume complet</Label>
+                <Label htmlFor="name">Full name</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Nume Prenume"
+                  placeholder="First Last"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -126,7 +126,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="nume@exemplu.com"
+                  placeholder="name@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -135,24 +135,24 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="role">Tipul contului</Label>
+                <Label htmlFor="role">Account type</Label>
                 <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selectează rolul" />
+                    <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client">Client - Caut servicii de asamblare</SelectItem>
-                    <SelectItem value="tasker">Tasker - Ofer servicii de asamblare</SelectItem>
+                    <SelectItem value="client">Client - Looking for assembly services</SelectItem>
+                    <SelectItem value="tasker">Tasker - Offering assembly services</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="location">Locația</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
                   type="text"
-                  placeholder="București, România"
+                  placeholder="Birmingham, UK"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   required
@@ -161,7 +161,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="password">Parolă</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -173,7 +173,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="confirmPassword">Confirmă parola</Label>
+                <Label htmlFor="confirmPassword">Confirm password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -189,18 +189,18 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Se încarcă..." : "Creează cont"}
+                {isLoading ? "Loading..." : "Create account"}
               </Button>
             </form>
             
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Ai deja un cont?{" "}
+                Already have an account?{" "}
                 <button
                   onClick={onSwitchToLogin}
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Autentifică-te
+                  Login
                 </button>
               </p>
             </div>
@@ -208,7 +208,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             {formData.role === 'tasker' && (
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                 <p className="text-xs text-yellow-700">
-                  <strong>Notă:</strong> Conturile de tasker sunt verificate manual înainte de aprobare.
+                  <strong>Note:</strong> Tasker accounts are manually verified before approval.
                 </p>
               </div>
             )}

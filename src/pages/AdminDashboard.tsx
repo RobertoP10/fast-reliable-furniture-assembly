@@ -14,26 +14,26 @@ const AdminDashboard = () => {
   const mockPendingTaskers = [
     {
       id: '1',
-      name: 'Alexandru Popescu',
+      name: 'Alex Johnson',
       email: 'alex@email.com',
-      location: 'București, Sector 2',
+      location: 'Birmingham, West Midlands',
       registeredAt: new Date(Date.now() - 86400000),
-      experience: 'Experiență 5 ani în asamblare mobilier'
+      experience: '5 years experience in furniture assembly'
     },
     {
       id: '2',
-      name: 'Maria Ionescu',
-      email: 'maria@email.com',
-      location: 'Cluj-Napoca',
+      name: 'Sarah Smith',
+      email: 'sarah@email.com',
+      location: 'Telford, Shropshire',
       registeredAt: new Date(Date.now() - 172800000),
-      experience: 'Designer de interior cu experiență în IKEA'
+      experience: 'Interior designer with IKEA experience'
     }
   ];
 
   const mockUsers = [
     {
       id: '1',
-      name: 'Ion Client',
+      name: 'John Client',
       email: 'client@email.com',
       role: 'client',
       status: 'active',
@@ -42,8 +42,8 @@ const AdminDashboard = () => {
     },
     {
       id: '2',
-      name: 'Ana Tasker',
-      email: 'ana@email.com',
+      name: 'Anna Tasker',
+      email: 'anna@email.com',
       role: 'tasker',
       status: 'active',
       tasksCompleted: 12,
@@ -54,9 +54,9 @@ const AdminDashboard = () => {
   const mockTransactions = [
     {
       id: '1',
-      taskTitle: 'Asamblare dulap PAX',
-      client: 'Ion Client',
-      tasker: 'Ana Tasker',
+      taskTitle: 'PAX Wardrobe Assembly',
+      client: 'John Client',
+      tasker: 'Anna Tasker',
       amount: 200,
       paymentMethod: 'bank',
       status: 'pending',
@@ -64,9 +64,9 @@ const AdminDashboard = () => {
     },
     {
       id: '2',
-      taskTitle: 'Asamblare birou',
-      client: 'Maria Clientă',
-      tasker: 'Andrei Tasker',
+      taskTitle: 'Desk Assembly',
+      client: 'Mary Client',
+      tasker: 'Andrew Tasker',
       amount: 150,
       paymentMethod: 'cash',
       status: 'confirmed',
@@ -75,7 +75,7 @@ const AdminDashboard = () => {
   ];
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('ro-RO', {
+    return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -126,8 +126,8 @@ const AdminDashboard = () => {
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
-                <CardTitle className="text-blue-900">Panel Admin</CardTitle>
-                <CardDescription>Gestionează platforma</CardDescription>
+                <CardTitle className="text-blue-900">Admin Panel</CardTitle>
+                <CardDescription>Manage the platform</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -136,7 +136,7 @@ const AdminDashboard = () => {
                   onClick={() => setActiveTab('pending-taskers')}
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  Taskeri în așteptare
+                  Pending Taskers
                 </Button>
                 <Button
                   variant={activeTab === 'users' ? 'default' : 'ghost'}
@@ -144,14 +144,14 @@ const AdminDashboard = () => {
                   onClick={() => setActiveTab('users')}
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Utilizatori
+                  Users
                 </Button>
                 <Button
                   variant={activeTab === 'transactions' ? 'default' : 'ghost'}
                   className="w-full justify-start"
                   onClick={() => setActiveTab('transactions')}
                 >
-                  Tranzacții
+                  Transactions
                 </Button>
               </CardContent>
             </Card>
@@ -159,19 +159,19 @@ const AdminDashboard = () => {
             {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Statistici</CardTitle>
+                <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Taskeri în așteptare</span>
+                  <span className="text-sm text-gray-600">Pending taskers</span>
                   <Badge className="bg-yellow-100 text-yellow-700">2</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Utilizatori activi</span>
+                  <span className="text-sm text-gray-600">Active users</span>
                   <Badge className="bg-green-100 text-green-700">248</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Tranzacții pending</span>
+                  <span className="text-sm text-gray-600">Pending transactions</span>
                   <Badge className="bg-blue-100 text-blue-700">5</Badge>
                 </div>
               </CardContent>
@@ -183,20 +183,20 @@ const AdminDashboard = () => {
             {activeTab === 'pending-taskers' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">Taskeri în așteptarea aprobării</CardTitle>
+                  <CardTitle className="text-blue-900">Taskers Awaiting Approval</CardTitle>
                   <CardDescription>
-                    Revizuiește și aprobă conturile de taskeri
+                    Review and approve tasker accounts
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nume</TableHead>
+                        <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Locația</TableHead>
-                        <TableHead>Data înregistrării</TableHead>
-                        <TableHead>Acțiuni</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Registration Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -235,21 +235,21 @@ const AdminDashboard = () => {
             {activeTab === 'users' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">Toți utilizatorii</CardTitle>
+                  <CardTitle className="text-blue-900">All Users</CardTitle>
                   <CardDescription>
-                    Vizualizează și gestionează utilizatorii platformei
+                    View and manage platform users
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nume</TableHead>
+                        <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Rol</TableHead>
+                        <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Task-uri</TableHead>
-                        <TableHead>Membru din</TableHead>
+                        <TableHead>Tasks</TableHead>
+                        <TableHead>Member Since</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,7 +266,7 @@ const AdminDashboard = () => {
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-green-100 text-green-700">
-                              {user.status === 'active' ? 'Activ' : 'Inactiv'}
+                              {user.status === 'active' ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
                           <TableCell>{user.tasksCompleted}</TableCell>
@@ -282,9 +282,9 @@ const AdminDashboard = () => {
             {activeTab === 'transactions' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">Tranzacții</CardTitle>
+                  <CardTitle className="text-blue-900">Transactions</CardTitle>
                   <CardDescription>
-                    Gestionează și confirmă tranzacțiile
+                    Manage and confirm transactions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -294,10 +294,10 @@ const AdminDashboard = () => {
                         <TableHead>Task</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Tasker</TableHead>
-                        <TableHead>Suma</TableHead>
-                        <TableHead>Plată</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Payment</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Acțiuni</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -306,7 +306,7 @@ const AdminDashboard = () => {
                           <TableCell className="font-medium">{transaction.taskTitle}</TableCell>
                           <TableCell>{transaction.client}</TableCell>
                           <TableCell>{transaction.tasker}</TableCell>
-                          <TableCell>{transaction.amount} RON</TableCell>
+                          <TableCell>£{transaction.amount}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
                               {transaction.paymentMethod === 'cash' ? 'Cash' : 'Transfer'}
@@ -318,7 +318,7 @@ const AdminDashboard = () => {
                                 ? 'bg-green-100 text-green-700' 
                                 : 'bg-yellow-100 text-yellow-700'
                             }>
-                              {transaction.status === 'confirmed' ? 'Confirmat' : 'În așteptare'}
+                              {transaction.status === 'confirmed' ? 'Confirmed' : 'Pending'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -328,7 +328,7 @@ const AdminDashboard = () => {
                                 onClick={() => handleConfirmTransaction(transaction.id)}
                                 className="bg-green-600 hover:bg-green-700"
                               >
-                                Confirmă
+                                Confirm
                               </Button>
                             )}
                           </TableCell>
