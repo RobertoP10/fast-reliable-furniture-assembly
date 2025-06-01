@@ -1,74 +1,96 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Wrench, Bell, User, LogOut, Star, DollarSign, CheckCircle } from "lucide-react";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 
+interface Task {
+  id: string;
+  description: string;
+  category: string;
+  subcategory?: string;
+  price_range: string;
+  status: string;
+  location: string;
+  created_at: string;
+  image_url?: string;
+}
+
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'chat'>('available');
+  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
+  const [myTasks, setMyTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockAvailableTasks = [
-    {
-      id: '3',
-      title: 'HEMNES Chest of Drawers Assembly',
-      description: '3-drawer chest of drawers, white color',
-      category: 'Chest of Drawers',
-      budget: { min: 120, max: 200 },
-      status: 'pending' as const,
-      location: 'Wolverhampton, West Midlands',
-      createdAt: new Date(),
-      offers: 1
-    },
-    {
-      id: '4',
-      title: 'Dining Table Assembly',
-      description: 'Extendable table for 6 people',
-      category: 'Table',
-      budget: { min: 180, max: 300 },
-      status: 'pending' as const,
-      location: 'Stoke on Trent, Staffordshire',
-      createdAt: new Date(),
-      offers: 0
+  useEffect(() => {
+    if (user) {
+      fetchAvailableTasks();
+      fetchMyTasks();
     }
-  ];
+  }, [user]);
 
-  const mockMyTasks = [
-    {
-      id: '1',
-      title: 'IKEA PAX Wardrobe Assembly',
-      description: 'I need help assembling a PAX wardrobe from IKEA',
-      category: 'Wardrobe',
-      budget: { min: 150, max: 250 },
-      status: 'accepted' as const,
-      location: 'Birmingham, West Midlands',
-      createdAt: new Date(),
-      offers: 3
+  const fetchAvailableTasks = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('task_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .neq('client_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching available tasks:', error);
+        return;
+      }
+
+      setAvailableTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching available tasks:', error);
     }
-  ];
+  };
 
-  // Check if tasker is approved
-  if (!user?.isApproved) {
+  const fetchMyTasks = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch tasks where this user has offers or is assigned
+      const { data, error } = await supabase
+        .from('offers')
+        .select(`
+          *,
+          task_requests (*)
+        `)
+        .eq('tasker_id', user.id);
+
+      if (error) {
+        console.error('Error fetching my tasks:', error);
+        return;
+      }
+
+      const tasks = data?.map(offer => offer.task_requests).filter(Boolean) || [];
+      setMyTasks(tasks);
+    } catch (error) {
+      console.error('Error fetching my tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md shadow-xl border-0">
-          <CardHeader className="text-center">
-            <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <CardTitle className="text-blue-900">Account Pending Approval</CardTitle>
-            <CardDescription>
-              Your tasker account is under review. You will receive a notification when it's approved.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={logout} variant="outline" className="w-full">
-              Logout
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -147,13 +169,13 @@ const TaskerDashboard = () => {
                   <span className="text-sm text-gray-600">Rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">{user?.rating || 4.8}</span>
+                    <span className="text-sm font-medium">4.8</span>
                   </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Completed tasks</span>
                   <Badge className="bg-green-100 text-green-700">
-                    {user?.completedTasks || 15}
+                    {myTasks.filter(t => t.status === 'completed').length}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
@@ -176,8 +198,8 @@ const TaskerDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'available' && <TasksList tasks={mockAvailableTasks} userRole="tasker" />}
-            {activeTab === 'my-tasks' && <TasksList tasks={mockMyTasks} userRole="tasker" />}
+            {activeTab === 'available' && <TasksList tasks={availableTasks} userRole="tasker" />}
+            {activeTab === 'my-tasks' && <TasksList tasks={myTasks} userRole="tasker" />}
             {activeTab === 'chat' && <Chat />}
           </div>
         </div>

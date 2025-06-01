@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -7,16 +9,17 @@ export interface User {
   name: string;
   role: 'client' | 'tasker' | 'admin';
   location?: string;
-  isApproved?: boolean;
-  rating?: number;
-  completedTasks?: number;
+  approved?: boolean | null;
+  phone?: string;
+  profile_photo?: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -32,39 +35,65 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        
+        if (session?.user) {
+          // Fetch user profile data from our users table
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (userData && !error) {
+            setUser({
+              id: userData.id,
+              email: userData.email || session.user.email || '',
+              name: userData.name || '',
+              role: userData.role as 'client' | 'tasker' | 'admin',
+              location: userData.location || undefined,
+              approved: userData.approved === 'true' ? true : userData.approved === 'false' ? false : null,
+              phone: userData.phone || undefined,
+              profile_photo: userData.profile_photo || undefined,
+            });
+          } else {
+            console.error('Error fetching user data:', error);
+          }
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
     // Check for existing session
-    const storedUser = localStorage.getItem('mgsdeal_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
+      // The onAuthStateChange will handle the session
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data - in real app this would come from your backend
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        role: email.includes('admin') ? 'admin' : email.includes('tasker') ? 'tasker' : 'client',
-        location: 'București, România',
-        isApproved: true,
-        rating: 4.8,
-        completedTasks: 15
-      };
+        password,
+      });
       
-      setUser(mockUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(mockUser));
-    } catch (error) {
-      throw new Error('Login failed');
+      if (error) throw error;
+      
+      // The onAuthStateChange listener will handle setting the user
     } finally {
       setLoading(false);
     }
@@ -73,36 +102,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: Omit<User, 'id'> & { password: string }) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        location: userData.location,
-        isApproved: userData.role === 'client' ? true : false, // Taskeri trebuie aprobați
-        rating: 0,
-        completedTasks: 0
-      };
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+            location: userData.location,
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
       
-      setUser(newUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(newUser));
-    } catch (error) {
-      throw new Error('Registration failed');
+      if (error) throw error;
+      
+      // The trigger function will create the user profile automatically
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('mgsdeal_user');
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, session, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

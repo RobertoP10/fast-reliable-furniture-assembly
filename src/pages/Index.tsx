@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,27 +5,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
-const LandingPage = () => {
-  const { user } = useAuth();
+const Index = () => {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      // Redirect based on user role
+    if (!loading && user) {
+      // Redirect based on user role and approval status
+      console.log('Redirecting user:', user);
+      
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
-        navigate('/tasker-dashboard');
-      } else {
+        if (user.approved === true) {
+          navigate('/tasker-dashboard');
+        } else {
+          // This will be handled by the protected route component
+          navigate('/tasker-dashboard');
+        }
+      } else if (user.role === 'client') {
         navigate('/client-dashboard');
       }
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showLogin) {
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
@@ -204,14 +221,6 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <AuthProvider>
-      <LandingPage />
-    </AuthProvider>
   );
 };
 
