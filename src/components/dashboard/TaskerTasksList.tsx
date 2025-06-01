@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import { Calendar, MapPin, DollarSign, User } from "lucide-react";
 
 interface Task {
   id: string;
+  client_id: string;
   title: string;
   description: string;
   category: string;
@@ -17,8 +17,8 @@ interface Task {
   location: string;
   status: string;
   payment_method: string;
+  image_url: string;
   created_at: string;
-  client_id: string;
   users: {
     name: string;
   };
@@ -42,7 +42,7 @@ const TaskerTasksList = () => {
       const { data, error } = await supabase
         .from('task_requests')
         .select(`
-          *,
+          id, client_id, title, description, category, subcategory, price_range, location, status, payment_method, image_url, created_at,
           users!task_requests_client_id_fkey (
             name
           )
@@ -59,6 +59,7 @@ const TaskerTasksList = () => {
       // Map the data to match our Task interface
       const mappedTasks: Task[] = (data || []).map(task => ({
         id: task.id,
+        client_id: task.client_id,
         title: task.title || 'Untitled Task',
         description: task.description || '',
         category: task.category || '',
@@ -67,8 +68,8 @@ const TaskerTasksList = () => {
         location: task.location || '',
         status: task.status || 'pending',
         payment_method: task.payment_method || 'cash',
+        image_url: task.image_url || '',
         created_at: task.created_at || new Date().toISOString(),
-        client_id: task.client_id,
         users: task.users || { name: 'Anonymous' }
       }));
 
