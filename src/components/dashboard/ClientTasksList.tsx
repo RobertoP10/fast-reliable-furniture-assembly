@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +9,12 @@ import { Calendar, MapPin, DollarSign } from "lucide-react";
 interface Task {
   id: string;
   client_id: string;
-  title: string;
   description: string;
   category: string;
   subcategory: string;
   price_range: string;
   location: string;
   status: string;
-  payment_method: string;
   image_url: string;
   created_at: string;
 }
@@ -37,7 +36,7 @@ const ClientTasksList = () => {
     try {
       const { data, error } = await supabase
         .from('task_requests')
-        .select('id, client_id, title, description, category, subcategory, price_range, location, status, payment_method, image_url, created_at')
+        .select('id, client_id, description, category, subcategory, price_range, location, status, image_url, created_at')
         .eq('client_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -50,14 +49,12 @@ const ClientTasksList = () => {
       const mappedTasks: Task[] = (data || []).map(task => ({
         id: task.id,
         client_id: task.client_id,
-        title: task.title || 'Untitled Task',
         description: task.description || '',
         category: task.category || '',
         subcategory: task.subcategory || '',
         price_range: task.price_range || '',
         location: task.location || '',
         status: task.status || 'pending',
-        payment_method: task.payment_method || 'cash',
         image_url: task.image_url || '',
         created_at: task.created_at || new Date().toISOString()
       }));
@@ -139,7 +136,7 @@ const ClientTasksList = () => {
           {tasks.map((task) => (
             <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-3">
-                <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                <h3 className="font-semibold text-gray-900">{task.category} - {task.subcategory}</h3>
                 <Badge className={getStatusColor(task.status)}>
                   {task.status.replace('_', ' ')}
                 </Badge>
@@ -168,9 +165,6 @@ const ClientTasksList = () => {
                 </Badge>
                 <Badge variant="outline" className="text-xs">
                   {task.subcategory}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {task.payment_method}
                 </Badge>
               </div>
             </div>

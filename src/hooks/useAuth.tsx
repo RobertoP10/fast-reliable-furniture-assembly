@@ -72,7 +72,7 @@ export const useAuth = () => {
           location: data.location,
           phone: data.phone,
           profile_photo: data.profile_photo,
-          approved: data.approved
+          approved: data.approved === 'true' || data.approved === true
         });
       }
     } catch (error) {
