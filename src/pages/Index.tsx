@@ -6,27 +6,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
 const LandingPage = () => {
-  const { user } = useAuth();
+  const { user, loading, getDashboardRoute } = useAuthContext();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      // Redirect based on user role
-      if (user.role === 'admin') {
-        navigate('/admin-dashboard');
-      } else if (user.role === 'tasker') {
-        navigate('/tasker-dashboard');
-      } else {
-        navigate('/client-dashboard');
-      }
+    if (!loading && user) {
+      // Redirect based on user role and approval status
+      const dashboardRoute = getDashboardRoute(user.role, user.approved);
+      navigate(dashboardRoute);
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate, getDashboardRoute]);
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showLogin) {
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
@@ -208,11 +215,7 @@ const LandingPage = () => {
 };
 
 const Index = () => {
-  return (
-    <AuthProvider>
-      <LandingPage />
-    </AuthProvider>
-  );
+  return <LandingPage />;
 };
 
 export default Index;
