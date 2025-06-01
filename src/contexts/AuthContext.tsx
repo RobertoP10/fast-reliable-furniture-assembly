@@ -3,6 +3,7 @@ import React, { createContext, useContext } from 'react';
 import type { AuthContextType } from './auth/types';
 import { useAuthState } from './auth/useAuthState';
 import { loginUser, registerUser, logoutUser } from './auth/authService';
+import { toast } from 'sonner';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -21,8 +22,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await loginUser(email, password);
+      toast.success('Login successful!');
     } catch (error: any) {
+      console.error('Login failed:', error);
       setLoading(false);
+      toast.error(error.message || 'Login failed');
       throw new Error(error.message || 'Login failed');
     }
   };
@@ -32,17 +36,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       await registerUser(userData);
-      // Success - both auth and profile creation completed
+      toast.success('Registration successful! Welcome to MGSDEAL!');
       // The loading state will be handled by the auth state change
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);
+      
+      // Show user-friendly error messages
+      if (error.message.includes('email')) {
+        toast.error('Please check your email and click the confirmation link to complete registration');
+      } else {
+        toast.error(error.message || 'Registration failed');
+      }
       throw error;
     }
   };
 
   const logout = async () => {
-    await logoutUser();
+    try {
+      await logoutUser();
+      toast.success('Logged out successfully');
+    } catch (error: any) {
+      console.error('Logout failed:', error);
+      toast.error('Logout failed');
+    }
   };
 
   return (

@@ -14,31 +14,6 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
-const waitForSession = async (maxRetries = 10, delayMs = 1000): Promise<any> => {
-  for (let i = 0; i < maxRetries; i++) {
-    console.log(`Checking for session, attempt ${i + 1}/${maxRetries}...`);
-    
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error('Session check error:', error);
-      throw new Error(`Failed to check session: ${error.message}`);
-    }
-    
-    if (session && session.user) {
-      console.log('Valid session found:', session.user.id);
-      return session;
-    }
-    
-    if (i < maxRetries - 1) {
-      console.log(`No session yet, waiting ${delayMs}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-  
-  throw new Error('Session not established within timeout period');
-};
-
 export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
   console.log('Starting registration process...');
   
@@ -62,21 +37,24 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
 
   console.log('Auth user created successfully with ID:', authData.user.id);
   
-  // Step 2: Wait for valid session with polling
-  console.log('Waiting for valid session...');
-  let session;
-  try {
-    session = await waitForSession(10, 1000); // 10 attempts, 1 second apart
-  } catch (error) {
-    console.error('Session establishment failed:', error);
-    throw new Error('Failed to establish authenticated session. Please try logging in manually.');
+  // Step 2: Check if we have a session immediately
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError) {
+    console.error('Session error:', sessionError);
+    throw new Error('Failed to establish session after registration');
+  }
+
+  if (!session) {
+    console.log('No immediate session - user needs to confirm email');
+    throw new Error('Please check your email and click the confirmation link to complete registration');
   }
 
   console.log('Session established successfully for user ID:', session.user.id);
   
   // Step 3: Create profile in users table using the authenticated user's ID
   const userProfile = {
-    id: session.user.id, // Use session.user.id to ensure RLS compliance
+    id: session.user.id,
     name: userData.name.trim(),
     email: userData.email.trim(),
     phone: userData.phone?.trim() || null,
@@ -96,17 +74,7 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
   
   if (profileError) {
     console.error('Profile creation error:', profileError);
-    console.error('Full error details:', {
-      message: profileError.message,
-      details: profileError.details,
-      hint: profileError.hint,
-      code: profileError.code
-    });
-    
-    // Show alert to user
-    alert(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`);
-    
-    throw new Error(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`);
+    throw new Error(`Failed to create user profile: ${profileError.message}`);
   }
   
   console.log('User profile created successfully:', insertedProfile);
