@@ -14,6 +14,31 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
+const waitForSession = async (maxRetries = 10, delayMs = 1000): Promise<any> => {
+  for (let i = 0; i < maxRetries; i++) {
+    console.log(`Checking for session, attempt ${i + 1}/${maxRetries}...`);
+    
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Session check error:', error);
+      throw new Error(`Failed to check session: ${error.message}`);
+    }
+    
+    if (session && session.user) {
+      console.log('Valid session found:', session.user.id);
+      return session;
+    }
+    
+    if (i < maxRetries - 1) {
+      console.log(`No session yet, waiting ${delayMs}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  throw new Error('Session not established within timeout period');
+};
+
 export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
   console.log('Starting registration process...');
   
@@ -37,41 +62,21 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
 
   console.log('Auth user created successfully with ID:', authData.user.id);
   
-  // Step 2: Immediately log in to establish session
-  console.log('Logging in to establish session...');
-  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-    email: userData.email,
-    password: userData.password,
-  });
-  
-  if (loginError) {
-    console.error('Auto-login error:', loginError);
-    throw new Error(`Failed to establish session: ${loginError.message}`);
+  // Step 2: Wait for valid session with polling
+  console.log('Waiting for valid session...');
+  let session;
+  try {
+    session = await waitForSession(10, 1000); // 10 attempts, 1 second apart
+  } catch (error) {
+    console.error('Session establishment failed:', error);
+    throw new Error('Failed to establish authenticated session. Please try logging in manually.');
   }
 
-  if (!loginData.session || !loginData.user) {
-    throw new Error('Failed to establish authenticated session after signup');
-  }
-
-  console.log('Session established successfully for user ID:', loginData.user.id);
+  console.log('Session established successfully for user ID:', session.user.id);
   
-  // Step 3: Get the current session to ensure we have the latest session data
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError) {
-    console.error('Failed to get session:', sessionError);
-    throw new Error(`Failed to retrieve session: ${sessionError.message}`);
-  }
-
-  if (!session || !session.user) {
-    throw new Error('No valid session found after login');
-  }
-
-  console.log('Using session user ID for profile creation:', session.user.id);
-  
-  // Step 4: Create profile in users table using the authenticated user's ID
+  // Step 3: Create profile in users table using the authenticated user's ID
   const userProfile = {
-    id: session.user.id, // This ensures we use auth.uid() for RLS compliance
+    id: session.user.id, // Use session.user.id to ensure RLS compliance
     name: userData.name.trim(),
     email: userData.email.trim(),
     phone: userData.phone?.trim() || null,
@@ -98,12 +103,8 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
       code: profileError.code
     });
     
-    // Clean up auth user if profile creation fails
-    try {
-      await supabase.auth.signOut();
-    } catch (cleanupError) {
-      console.error('Failed to cleanup auth user:', cleanupError);
-    }
+    // Show alert to user
+    alert(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`);
     
     throw new Error(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`);
   }

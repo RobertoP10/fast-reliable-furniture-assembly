@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +96,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           description: "Welcome to MGSDEAL! Your account has been created successfully. Please check your email for verification.",
         });
       }
+
+      // Note: User will be automatically redirected to dashboard by the auth state change in Index.tsx
     } catch (error: any) {
       console.error('Registration form error:', error);
       
