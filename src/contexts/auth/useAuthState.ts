@@ -54,6 +54,7 @@ export const useAuthState = () => {
           .single();
         
         if (error) {
+          console.error('Error fetching user profile:', error);
           if (error.code === 'PGRST116') {
             // Profile not found, create one
             console.log('Profile not found, creating new profile...');
@@ -79,7 +80,7 @@ export const useAuthState = () => {
             }
             return null;
           } else {
-            console.error('Error fetching user profile:', error);
+            console.error('RLS or other error fetching profile:', error);
             return null;
           }
         }
@@ -89,9 +90,10 @@ export const useAuthState = () => {
           return transformUserProfile(userProfile, email);
         }
         
+        console.log('No profile data returned');
         return null;
       } catch (error) {
-        console.error('Error in fetchUserProfile:', error);
+        console.error('Exception in fetchUserProfile:', error);
         return null;
       }
     };
@@ -107,9 +109,18 @@ export const useAuthState = () => {
         
         if (session?.user) {
           console.log('User session detected, fetching/creating profile...');
+          setLoading(true); // Ensure loading state while fetching profile
+          
           const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
+          
           if (mounted) {
-            setUser(userProfile);
+            if (userProfile) {
+              console.log('Setting user profile:', userProfile);
+              setUser(userProfile);
+            } else {
+              console.error('Failed to fetch or create user profile');
+              setUser(null);
+            }
             setLoading(false);
           }
         } else {
@@ -137,9 +148,16 @@ export const useAuthState = () => {
         if (session?.user && mounted) {
           console.log('Found existing session for user:', session.user.id);
           setSession(session);
+          
           const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
           if (mounted) {
-            setUser(userProfile);
+            if (userProfile) {
+              console.log('Setting initial user profile:', userProfile);
+              setUser(userProfile);
+            } else {
+              console.error('Failed to fetch initial user profile');
+              setUser(null);
+            }
             setLoading(false);
           }
         } else {
