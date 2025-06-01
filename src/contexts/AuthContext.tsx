@@ -22,7 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await loginUser(email, password);
-      toast.success('Login successful!');
+      toast.success('Login successful! Redirecting...');
+      // Note: Redirect will be handled by Index.tsx based on auth state change
     } catch (error: any) {
       console.error('Login failed:', error);
       setLoading(false);
@@ -36,8 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       await registerUser(userData);
-      toast.success('Registration successful! Welcome to MGSDEAL!');
-      // The loading state will be handled by the auth state change
+      toast.success('Registration successful! Redirecting...');
+      // Note: Redirect will be handled by Index.tsx based on auth state change
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);

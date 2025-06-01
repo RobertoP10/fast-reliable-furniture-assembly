@@ -19,14 +19,22 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      console.log('Redirecting user based on role:', user.role);
+      console.log('User authenticated, redirecting based on role:', user.role);
+      
       // Redirect based on user role with correct paths
-      if (user.role === 'admin') {
-        navigate('/admin-dashboard');
-      } else if (user.role === 'tasker') {
-        navigate('/tasker-dashboard');
-      } else if (user.role === 'client') {
-        navigate('/client-dashboard');
+      switch (user.role) {
+        case 'admin':
+          navigate('/admin-dashboard', { replace: true });
+          break;
+        case 'tasker':
+          navigate('/tasker-dashboard', { replace: true });
+          break;
+        case 'client':
+          navigate('/client-dashboard', { replace: true });
+          break;
+        default:
+          console.warn('Unknown user role:', user.role);
+          navigate('/client-dashboard', { replace: true });
       }
     }
   }, [user, loading, navigate]);

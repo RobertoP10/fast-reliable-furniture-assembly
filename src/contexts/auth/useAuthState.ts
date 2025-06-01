@@ -13,6 +13,33 @@ export const useAuthState = () => {
   useEffect(() => {
     let mounted = true;
 
+    const fetchUserProfile = async (userId: string, email: string) => {
+      try {
+        console.log('Fetching user profile for:', userId);
+        const { data: userProfile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          return null;
+        }
+        
+        if (userProfile) {
+          console.log('User profile found:', userProfile);
+          return transformUserProfile(userProfile, email);
+        } else {
+          console.log('No user profile found for:', userId);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error in fetchUserProfile:', error);
+        return null;
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -23,35 +50,16 @@ export const useAuthState = () => {
         setSession(session);
         
         if (session?.user) {
-          try {
-            // Fetch user profile from users table
-            const { data: userProfile, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-            
-            console.log('Fetched user profile:', userProfile, error);
-            
-            if (error) {
-              console.error('Error fetching user profile:', error);
-              setUser(null);
-            } else if (userProfile) {
-              setUser(transformUserProfile(userProfile, session.user.email || ''));
-            } else {
-              console.log('No user profile found');
-              setUser(null);
-            }
-          } catch (error) {
-            console.error('Error in auth state change handler:', error);
-            setUser(null);
+          const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
+          if (mounted) {
+            setUser(userProfile);
+            setLoading(false);
           }
         } else {
-          setUser(null);
-        }
-        
-        if (mounted) {
-          setLoading(false);
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+          }
         }
       }
     );
@@ -69,10 +77,18 @@ export const useAuthState = () => {
           return;
         }
         
-        if (!session && mounted) {
-          setLoading(false);
+        if (session?.user) {
+          const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
+          if (mounted) {
+            setSession(session);
+            setUser(userProfile);
+            setLoading(false);
+          }
+        } else {
+          if (mounted) {
+            setLoading(false);
+          }
         }
-        // If there is a session, the auth state change listener will handle it
       } catch (error) {
         console.error('Error in getInitialSession:', error);
         if (mounted) {

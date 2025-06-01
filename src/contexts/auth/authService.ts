@@ -14,6 +14,28 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
+// Helper function to wait for session with retries
+const waitForSession = async (maxRetries = 10): Promise<any> => {
+  for (let i = 0; i < maxRetries; i++) {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Session check error:', error);
+      throw new Error('Failed to verify session');
+    }
+    
+    if (session) {
+      console.log('Session established successfully:', session.user.id);
+      return session;
+    }
+    
+    console.log(`Waiting for session... attempt ${i + 1}/${maxRetries}`);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+  }
+  
+  throw new Error('Session not established after maximum retries');
+};
+
 export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
   console.log('Starting registration process...');
   
@@ -37,20 +59,14 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
 
   console.log('Auth user created successfully with ID:', authData.user.id);
   
-  // Step 2: Check if we have a session immediately
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError) {
-    console.error('Session error:', sessionError);
-    throw new Error('Failed to establish session after registration');
-  }
-
-  if (!session) {
-    console.log('No immediate session - user needs to confirm email');
+  // Step 2: Wait for session to be established with retries
+  let session;
+  try {
+    session = await waitForSession(10);
+  } catch (error) {
+    console.error('Session establishment failed:', error);
     throw new Error('Please check your email and click the confirmation link to complete registration');
   }
-
-  console.log('Session established successfully for user ID:', session.user.id);
   
   // Step 3: Create profile in users table using the authenticated user's ID
   const userProfile = {
@@ -79,6 +95,8 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
   
   console.log('User profile created successfully:', insertedProfile);
   console.log('Registration completed successfully for user ID:', session.user.id);
+  
+  return session;
 };
 
 export const logoutUser = async () => {
