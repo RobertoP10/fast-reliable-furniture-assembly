@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,8 +86,7 @@ const CreateTaskForm = () => {
           description: formData.description,
           price_range: priceRange,
           location: formData.address,
-          status: 'pending',
-          created_at: new Date().toISOString()
+          status: 'pending'
         });
 
       if (error) {

@@ -205,7 +205,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           image_url?: string | null
           location?: string | null
           price_range?: string | null
