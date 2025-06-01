@@ -13,6 +13,36 @@ export const useAuthState = () => {
   useEffect(() => {
     let mounted = true;
 
+    const createUserProfile = async (userId: string, email: string): Promise<boolean> => {
+      try {
+        console.log('Creating user profile for:', userId);
+        
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            email: email,
+            name: '',
+            role: 'client', // Default to client role
+            phone: '',
+            location: '',
+            approved: 'true', // Auto-approve clients
+            created_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          console.error('Error creating user profile:', error);
+          return false;
+        }
+        
+        console.log('User profile created successfully');
+        return true;
+      } catch (error) {
+        console.error('Error in createUserProfile:', error);
+        return false;
+      }
+    };
+
     const fetchUserProfile = async (userId: string, email: string): Promise<User | null> => {
       try {
         console.log(`Fetching user profile for: ${userId}`);
@@ -24,8 +54,34 @@ export const useAuthState = () => {
           .single();
         
         if (error) {
-          console.error('Error fetching user profile:', error);
-          return null;
+          if (error.code === 'PGRST116') {
+            // Profile not found, create one
+            console.log('Profile not found, creating new profile...');
+            const created = await createUserProfile(userId, email);
+            
+            if (created) {
+              // Fetch the newly created profile
+              const { data: newProfile, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+              
+              if (fetchError) {
+                console.error('Error fetching newly created profile:', fetchError);
+                return null;
+              }
+              
+              if (newProfile) {
+                console.log('Newly created profile found:', newProfile);
+                return transformUserProfile(newProfile, email);
+              }
+            }
+            return null;
+          } else {
+            console.error('Error fetching user profile:', error);
+            return null;
+          }
         }
         
         if (userProfile) {
@@ -50,7 +106,7 @@ export const useAuthState = () => {
         setSession(session);
         
         if (session?.user) {
-          console.log('User session detected, fetching profile...');
+          console.log('User session detected, fetching/creating profile...');
           const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
           if (mounted) {
             setUser(userProfile);
@@ -102,7 +158,7 @@ export const useAuthState = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array to prevent re-running
+  }, []);
 
   const setLoadingState = (loadingState: boolean) => {
     setLoading(loadingState);
