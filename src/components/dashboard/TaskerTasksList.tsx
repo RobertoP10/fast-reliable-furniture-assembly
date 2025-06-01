@@ -5,19 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, MapPin, DollarSign, User } from "lucide-react";
+import { Calendar, MapPin, Pound, User } from "lucide-react";
 
 interface Task {
   id: string;
-  client_id: string;
+  title: string;
   description: string;
   category: string;
   subcategory: string;
   price_range: string;
   location: string;
   status: string;
-  image_url: string;
+  payment_method: string;
   created_at: string;
+  client_id: string;
   users: {
     name: string;
   };
@@ -41,7 +42,7 @@ const TaskerTasksList = () => {
       const { data, error } = await supabase
         .from('task_requests')
         .select(`
-          id, client_id, description, category, subcategory, price_range, location, status, image_url, created_at,
+          *,
           users!task_requests_client_id_fkey (
             name
           )
@@ -55,22 +56,7 @@ const TaskerTasksList = () => {
         return;
       }
 
-      // Map the data to match our Task interface
-      const mappedTasks: Task[] = (data || []).map(task => ({
-        id: task.id,
-        client_id: task.client_id,
-        description: task.description || '',
-        category: task.category || '',
-        subcategory: task.subcategory || '',
-        price_range: task.price_range || '',
-        location: task.location || '',
-        status: task.status || 'pending',
-        image_url: task.image_url || '',
-        created_at: task.created_at || new Date().toISOString(),
-        users: task.users || { name: 'Anonymous' }
-      }));
-
-      setTasks(mappedTasks);
+      setTasks(data || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
@@ -139,7 +125,7 @@ const TaskerTasksList = () => {
           {tasks.map((task) => (
             <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-3">
-                <h3 className="font-semibold text-gray-900">{task.category} - {task.subcategory}</h3>
+                <h3 className="font-semibold text-gray-900">{task.title}</h3>
                 <Badge className="bg-green-100 text-green-700">Available</Badge>
               </div>
               
@@ -159,7 +145,7 @@ const TaskerTasksList = () => {
                   <span>{task.location}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <DollarSign className="h-4 w-4" />
+                  <Pound className="h-4 w-4" />
                   <span>{task.price_range}</span>
                 </div>
               </div>
@@ -171,6 +157,9 @@ const TaskerTasksList = () => {
                   </Badge>
                   <Badge variant="outline" className="text-xs">
                     {task.subcategory}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {task.payment_method}
                   </Badge>
                 </div>
                 

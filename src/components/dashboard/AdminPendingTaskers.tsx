@@ -32,7 +32,7 @@ const AdminPendingTaskers = () => {
         .from('users')
         .select('*')
         .eq('role', 'tasker')
-        .or('approved.is.null,approved.eq.false')
+        .is('approved', null)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -40,15 +40,7 @@ const AdminPendingTaskers = () => {
         return;
       }
 
-      // Filter to only include truly pending taskers (approved is null, false, or 'false')
-      const filteredData = (data || []).filter(tasker => {
-        if (tasker.approved === null || tasker.approved === undefined) return true;
-        if (typeof tasker.approved === 'string') return tasker.approved === 'false';
-        if (typeof tasker.approved === 'boolean') return tasker.approved === false;
-        return false;
-      });
-
-      setPendingTaskers(filteredData);
+      setPendingTaskers(data || []);
     } catch (error) {
       console.error('Error fetching pending taskers:', error);
     } finally {
@@ -60,7 +52,7 @@ const AdminPendingTaskers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ approved: 'true' })
+        .update({ approved: true })
         .eq('id', taskerId);
 
       if (error) {
@@ -94,7 +86,7 @@ const AdminPendingTaskers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ approved: 'false' })
+        .update({ approved: false })
         .eq('id', taskerId);
 
       if (error) {
