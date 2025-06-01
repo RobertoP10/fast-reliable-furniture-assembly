@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .maybeSingle(); // Use maybeSingle to avoid errors when no profile exists yet
+            .maybeSingle();
           
           console.log('Fetched user profile:', userProfile, error);
           
@@ -108,12 +108,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: Omit<User, 'id'> & { password: string }) => {
     setLoading(true);
-    let authUser = null;
     
     try {
       console.log('Starting registration process...');
       
-      // First, create the auth user
+      // Step 1: Create the auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -128,34 +127,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!authData.user) {
-        throw new Error('Failed to create user account');
+        throw new Error('Failed to create user account - no user returned');
       }
 
-      console.log('Auth user created with ID:', authData.user.id);
-      authUser = authData.user;
+      console.log('Auth user created successfully with ID:', authData.user.id);
       
-      // Insert user profile into users table with the exact same ID
-      const userRecord = {
-        id: authData.user.id, // This must match auth.uid()
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone || null,
-        location: userData.location || '',
+      // Step 2: Create profile in users table with the exact same ID
+      const userProfile = {
+        id: authData.user.id, // This MUST match auth.uid() for RLS
+        name: userData.name.trim(),
+        email: userData.email.trim(),
+        phone: userData.phone?.trim() || null,
+        location: userData.location?.trim() || '',
         role: userData.role,
         approved: userData.role === 'client' ? 'true' : 'false',
         created_at: new Date().toISOString()
       };
       
-      console.log('Inserting user record with ID:', userRecord.id);
+      console.log('Inserting user profile:', userProfile);
       
-      const { data: insertedUser, error: profileError } = await supabase
+      const { data: insertedProfile, error: profileError } = await supabase
         .from('users')
-        .insert(userRecord)
+        .insert(userProfile)
         .select()
         .single();
       
       if (profileError) {
-        console.error('Profile insertion error:', profileError);
+        console.error('Profile creation error:', profileError);
         console.error('Full error details:', {
           message: profileError.message,
           details: profileError.details,
@@ -163,24 +161,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           code: profileError.code
         });
         
-        // If profile creation fails, we should clean up the auth user
-        if (authUser) {
-          console.log('Cleaning up auth user due to profile creation failure...');
-          await supabase.auth.admin.deleteUser(authUser.id).catch(err => 
-            console.error('Failed to cleanup auth user:', err)
-          );
+        // Clean up auth user if profile creation fails
+        try {
+          await supabase.auth.signOut();
+        } catch (cleanupError) {
+          console.error('Failed to cleanup auth user:', cleanupError);
         }
         
-        throw new Error(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}`);
+        throw new Error(`Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`);
       }
       
-      console.log('User profile created successfully:', insertedUser);
+      console.log('User profile created successfully:', insertedProfile);
       console.log('Registration completed successfully for user ID:', authData.user.id);
       
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);
-      throw error; // Re-throw the original error with its message
+      throw error;
     }
     // Note: Don't set loading to false here, let the auth state change handle it
   };

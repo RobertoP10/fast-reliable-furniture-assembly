@@ -31,6 +31,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validation
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -84,20 +85,22 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         phone: formData.phone.trim()
       });
       
-      // Only show success message if we get here without errors
+      // Success message - only shown if both auth and profile creation succeed
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon. Please check your email for verification.",
+          description: "Your tasker account has been created and will be reviewed for approval. Please check your email for verification.",
         });
       } else {
         toast({
           title: "Registration successful!",
-          description: "Welcome to MGSDEAL! Please check your email for verification.",
+          description: "Welcome to MGSDEAL! Your account has been created successfully. Please check your email for verification.",
         });
       }
     } catch (error: any) {
       console.error('Registration form error:', error);
+      
+      // Show the full error message for debugging
       toast({
         title: "Registration failed",
         description: error.message || "An unexpected error occurred. Please try again.",
