@@ -36,6 +36,7 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         
         if (session?.user) {
@@ -64,6 +65,17 @@ export const useAuth = () => {
       }
 
       if (data) {
+        // Handle approved field conversion properly
+        let approvedStatus = false;
+        if (data.approved === 'true' || data.approved === true) {
+          approvedStatus = true;
+        } else if (data.approved === 'false' || data.approved === false) {
+          approvedStatus = false;
+        } else {
+          // If approved is null or undefined, handle based on role
+          approvedStatus = data.role !== 'tasker';
+        }
+
         setUser({
           id: data.id,
           email: data.email,
@@ -72,7 +84,7 @@ export const useAuth = () => {
           location: data.location,
           phone: data.phone,
           profile_photo: data.profile_photo,
-          approved: data.approved === 'true' || data.approved === true
+          approved: approvedStatus
         });
       }
     } catch (error) {
@@ -86,7 +98,8 @@ export const useAuth = () => {
       email,
       password,
     });
-    setLoading(false);
+    
+    // Don't set loading to false here - let the auth state change handle it
     return { data, error };
   };
 
@@ -103,7 +116,8 @@ export const useAuth = () => {
         }
       }
     });
-    setLoading(false);
+    
+    // Don't set loading to false here - let the auth state change handle it
     return { data, error };
   };
 

@@ -32,7 +32,7 @@ const AdminPendingTaskers = () => {
         .from('users')
         .select('*')
         .eq('role', 'tasker')
-        .is('approved', null)
+        .or('approved.is.null,approved.eq.false')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -40,7 +40,14 @@ const AdminPendingTaskers = () => {
         return;
       }
 
-      setPendingTaskers(data || []);
+      // Filter to only include truly pending taskers (approved is null or false)
+      const filteredData = (data || []).filter(tasker => 
+        tasker.approved === null || 
+        tasker.approved === 'false' || 
+        tasker.approved === false
+      );
+
+      setPendingTaskers(filteredData);
     } catch (error) {
       console.error('Error fetching pending taskers:', error);
     } finally {

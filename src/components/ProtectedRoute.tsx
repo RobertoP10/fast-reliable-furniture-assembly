@@ -10,34 +10,34 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requiredRole, requireApproval = false }: ProtectedRouteProps) => {
-  const { user, loading } = useAuthContext();
+  const { user, loading, getDashboardRoute } = useAuthContext();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading) {
+      console.log('ProtectedRoute check:', { user, requiredRole, requireApproval });
+      
       if (!user) {
+        console.log('No user, redirecting to home');
         navigate('/');
         return;
       }
 
       if (requiredRole && user.role !== requiredRole) {
+        console.log('Wrong role, redirecting to appropriate dashboard');
         // Redirect to appropriate dashboard
-        if (user.role === 'admin') {
-          navigate('/admin-dashboard');
-        } else if (user.role === 'tasker') {
-          navigate(user.approved ? '/tasker-dashboard' : '/tasker-pending');
-        } else {
-          navigate('/client-dashboard');
-        }
+        const dashboardRoute = getDashboardRoute(user.role, user.approved);
+        navigate(dashboardRoute);
         return;
       }
 
       if (requireApproval && user.role === 'tasker' && !user.approved) {
+        console.log('Tasker not approved, redirecting to pending page');
         navigate('/tasker-pending');
         return;
       }
     }
-  }, [user, loading, navigate, requiredRole, requireApproval]);
+  }, [user, loading, navigate, requiredRole, requireApproval, getDashboardRoute]);
 
   if (loading) {
     return (
