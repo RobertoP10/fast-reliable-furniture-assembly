@@ -1,17 +1,20 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { TaskFormData, validateTaskForm } from "./utils/validation";
+import { submitTask } from "./services/taskService";
+import CategorySelection from "./CategorySelection";
+import BudgetFields from "./BudgetFields";
+import LocationAndPayment from "./LocationAndPayment";
 
 const CreateTaskForm = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TaskFormData>({
     title: "",
     description: "",
     category: "",
@@ -25,23 +28,6 @@ const CreateTaskForm = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const categories = {
-    "wardrobe": ["PAX", "HEMNES", "BRIMNES", "MALM", "Other"],
-    "desk": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Other"],
-    "bed": ["MALM", "HEMNES", "BRIMNES", "TARVA", "Other"],
-    "chest": ["HEMNES", "MALM", "RAST", "KOPPANG", "Other"],
-    "table": ["INGATORP", "BJURSTA", "LERHAMN", "MÖRBYLÅNGA", "Other"],
-    "shelf": ["BILLY", "HEMNES", "FJÄLKINGE", "IVAR", "Other"]
-  };
-
-  const locations = [
-    "Birmingham, West Midlands",
-    "Telford, Shropshire", 
-    "Wolverhampton, West Midlands",
-    "Stoke on Trent, Staffordshire",
-    "Shrewsbury, Shropshire"
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,19 +40,11 @@ const CreateTaskForm = () => {
       return;
     }
 
-    if (!formData.category || !formData.subcategory) {
+    const validationError = validateTaskForm(formData);
+    if (validationError) {
       toast({
         title: "Error",
-        description: "Please select category and subcategory.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.minBudget || !formData.maxBudget) {
-      toast({
-        title: "Error",
-        description: "Please enter both minimum and maximum budget.",
+        description: validationError,
         variant: "destructive",
       });
       return;
@@ -75,19 +53,7 @@ const CreateTaskForm = () => {
     setIsSubmitting(true);
 
     try {
-      const priceRange = `£${formData.minBudget} - £${formData.maxBudget}`;
-      
-      const { error } = await supabase
-        .from('task_requests')
-        .insert({
-          client_id: user.id,
-          category: formData.category,
-          subcategory: formData.subcategory,
-          description: formData.description,
-          price_range: priceRange,
-          location: formData.address,
-          status: 'pending'
-        });
+      const { error } = await submitTask(formData, user.id);
 
       if (error) {
         console.error('Error creating task:', error);
@@ -162,101 +128,11 @@ const CreateTaskForm = () => {
             />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value, subcategory: "" })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wardrobe">Wardrobe</SelectItem>
-                  <SelectItem value="desk">Desk</SelectItem>
-                  <SelectItem value="bed">Bed</SelectItem>
-                  <SelectItem value="chest">Chest of Drawers</SelectItem>
-                  <SelectItem value="table">Table</SelectItem>
-                  <SelectItem value="shelf">Shelf</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <CategorySelection formData={formData} setFormData={setFormData} />
 
-            <div>
-              <Label>Subcategory / Model</Label>
-              <Select 
-                value={formData.subcategory} 
-                onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
-                disabled={!formData.category}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.category && categories[formData.category as keyof typeof categories]?.map((sub) => (
-                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <BudgetFields formData={formData} setFormData={setFormData} />
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="minBudget">Minimum Budget (£)</Label>
-              <Input
-                id="minBudget"
-                type="number"
-                placeholder="50"
-                value={formData.minBudget}
-                onChange={(e) => setFormData({ ...formData, minBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="maxBudget">Maximum Budget (£)</Label>
-              <Input
-                id="maxBudget"
-                type="number"
-                placeholder="120"
-                value={formData.maxBudget}
-                onChange={(e) => setFormData({ ...formData, maxBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Location</Label>
-            <Select value={formData.address} onValueChange={(value) => setFormData({ ...formData, address: value })}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select your location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location} value={location}>{location}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Payment Method</Label>
-            <RadioGroup 
-              value={formData.paymentMethod} 
-              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
-              className="mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash">Cash</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="bank" id="bank" />
-                <Label htmlFor="bank">Bank Transfer</Label>
-              </div>
-            </RadioGroup>
-          </div>
+          <LocationAndPayment formData={formData} setFormData={setFormData} />
 
           <Button 
             type="submit" 
