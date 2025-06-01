@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,7 +51,7 @@ const AdminDashboard = () => {
         .from('users')
         .select('*')
         .eq('role', 'tasker')
-        .or('approved.is.null,approved.eq.NULL')
+        .is('approved', null)
         .order('created_at', { ascending: false });
 
       if (error) {

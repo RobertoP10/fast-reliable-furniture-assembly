@@ -133,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -153,26 +154,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: Omit<User, 'id'> & { password: string }) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      console.log('Attempting registration for:', userData.email);
+      
+      // First create the auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
-          data: {
-            name: userData.name,
-            role: userData.role,
-            location: userData.location,
-          },
           emailRedirectTo: `${window.location.origin}/`
         }
       });
       
-      if (error) {
-        console.error('Registration error:', error);
-        throw error;
+      if (authError) {
+        console.error('Registration auth error:', authError);
+        throw authError;
       }
-      
-      console.log('Registration successful:', data.user?.id);
-      // User profile will be fetched in the auth state change handler
+
+      if (authData.user) {
+        // Insert user data into our users table
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: userData.email,
+            name: userData.name,
+            role: userData.role,
+            location: userData.location,
+            phone: userData.phone,
+            approved: userData.role === 'tasker' ? null : 'true',
+            created_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error inserting user data:', insertError);
+          throw insertError;
+        }
+
+        console.log('Registration successful:', authData.user.id);
+      }
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;

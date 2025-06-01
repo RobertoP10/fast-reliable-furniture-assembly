@@ -50,7 +50,8 @@ const CreateTaskForm = ({ onTaskCreated }: CreateTaskFormProps) => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      console.log('Creating task with data:', formData);
+      const { data, error } = await supabase
         .from('task_requests')
         .insert({
           client_id: user.id,
@@ -59,25 +60,28 @@ const CreateTaskForm = ({ onTaskCreated }: CreateTaskFormProps) => {
           subcategory: formData.subcategory,
           price_range: `${formData.minBudget}-${formData.maxBudget}`,
           location: formData.address,
-          status: 'pending'
-        });
+          status: 'pending',
+          created_at: new Date().toISOString()
+        })
+        .select();
 
       if (error) {
         console.error('Error creating task:', error);
         toast({
           title: "Error",
-          description: "Failed to create task. Please try again.",
+          description: `Failed to create task: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
+      console.log('Task created successfully:', data);
       toast({
         title: "Task created successfully!",
         description: "Your task has been posted and will be visible to taskers.",
       });
 
-      // Reset form
+      // Reset form completely
       setFormData({
         title: "",
         description: "",
