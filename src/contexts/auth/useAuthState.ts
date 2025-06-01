@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from './types';
@@ -9,12 +9,15 @@ export const useAuthState = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
+    mounted.current = true;
 
-    const fetchUserProfile = async (userId: string, email: string, retries = 5): Promise<User | null> => {
+    const fetchUserProfile = async (userId: string, email: string, retries = 10): Promise<User | null> => {
       for (let attempt = 1; attempt <= retries; attempt++) {
+        if (!mounted.current) return null;
+        
         try {
           console.log(`Fetching user profile for: ${userId} (attempt ${attempt}/${retries})`);
           
@@ -30,7 +33,7 @@ export const useAuthState = () => {
               throw new Error(`Failed to fetch user profile: ${error.message}`);
             }
             // Wait before retrying (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            await new Promise(resolve => setTimeout(resolve, Math.min(Math.pow(2, attempt) * 1000, 5000)));
             continue;
           }
           
@@ -53,7 +56,7 @@ export const useAuthState = () => {
           if (attempt === retries) {
             throw error;
           }
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          await new Promise(resolve => setTimeout(resolve, Math.min(Math.pow(2, attempt) * 1000, 5000)));
         }
       }
       return null;
@@ -62,33 +65,37 @@ export const useAuthState = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        console.log('Auth state change event:', event, 'Session user ID:', session?.user?.id);
         
-        if (!mounted) return;
+        if (!mounted.current) return;
         
+        // Always update session state immediately
         setSession(session);
         
         if (session?.user) {
+          console.log('User session detected, fetching profile...');
           try {
             const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
-            if (mounted) {
+            if (mounted.current) {
               if (userProfile) {
+                console.log('Setting user profile:', userProfile);
                 setUser(userProfile);
               } else {
-                console.error('Failed to load user profile');
+                console.error('Failed to load user profile - profile not found');
                 setUser(null);
               }
               setLoading(false);
             }
           } catch (error) {
             console.error('Error loading user profile:', error);
-            if (mounted) {
+            if (mounted.current) {
               setUser(null);
               setLoading(false);
             }
           }
         } else {
-          if (mounted) {
+          console.log('No user session, clearing user state');
+          if (mounted.current) {
             setUser(null);
             setLoading(false);
           }
@@ -96,7 +103,7 @@ export const useAuthState = () => {
       }
     );
 
-    // Check for existing session
+    // Check for existing session only once
     const getInitialSession = async () => {
       try {
         console.log('Checking for existing session...');
@@ -104,7 +111,7 @@ export const useAuthState = () => {
         
         if (error) {
           console.error('Error getting initial session:', error);
-          if (mounted) {
+          if (mounted.current) {
             setLoading(false);
           }
           return;
@@ -114,7 +121,7 @@ export const useAuthState = () => {
           console.log('Found existing session for user:', session.user.id);
           try {
             const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
-            if (mounted) {
+            if (mounted.current) {
               setSession(session);
               if (userProfile) {
                 setUser(userProfile);
@@ -126,7 +133,7 @@ export const useAuthState = () => {
             }
           } catch (error) {
             console.error('Error loading profile for existing session:', error);
-            if (mounted) {
+            if (mounted.current) {
               setSession(session);
               setUser(null);
               setLoading(false);
@@ -134,13 +141,13 @@ export const useAuthState = () => {
           }
         } else {
           console.log('No existing session found');
-          if (mounted) {
+          if (mounted.current) {
             setLoading(false);
           }
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
-        if (mounted) {
+        if (mounted.current) {
           setLoading(false);
         }
       }
@@ -149,7 +156,7 @@ export const useAuthState = () => {
     getInitialSession();
 
     return () => {
-      mounted = false;
+      mounted.current = false;
       subscription.unsubscribe();
     };
   }, []);

@@ -22,7 +22,7 @@ const Index = () => {
     if (!loading && user) {
       console.log('User authenticated, redirecting based on role:', user.role);
       
-      // Redirect based on user role with correct paths
+      // Redirect based on user role
       const redirectPath = user.role === 'admin' 
         ? '/admin-dashboard' 
         : user.role === 'tasker' 
@@ -46,7 +46,7 @@ const Index = () => {
     );
   }
 
-  // If we have a user but we're still here (shouldn't happen), show loading
+  // If we have a user but we're still here (shouldn't happen due to useEffect), show loading
   if (user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">

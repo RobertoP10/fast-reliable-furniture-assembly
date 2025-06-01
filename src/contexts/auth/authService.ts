@@ -44,8 +44,7 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
   console.log('Auth user created successfully with ID:', authData.user.id);
   
   // The trigger will automatically create the user profile
-  // We'll rely on the auth state listener to pick up the changes
-  
+  // Return the auth data for the calling function
   return authData;
 };
 

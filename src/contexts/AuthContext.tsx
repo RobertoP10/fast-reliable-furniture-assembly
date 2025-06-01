@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await registerUser(userData);
       toast.success('Registration successful! Please check your email for confirmation.');
-      // Note: Redirect will be handled by Index.tsx based on auth state change
+      // Note: Profile creation and redirect will be handled automatically
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);
