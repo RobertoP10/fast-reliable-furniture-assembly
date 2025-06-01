@@ -10,13 +10,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && session && user) {
       console.log('Redirecting user based on role:', user.role, 'approved:', user.approved);
       
       // Role-based redirection
@@ -39,7 +39,7 @@ const Index = () => {
         console.error('Unknown user role:', user.role);
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, session, loading, navigate]);
 
   // Show loading state while checking authentication
   if (loading) {
