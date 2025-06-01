@@ -18,6 +18,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, session, loading } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute check:', { 
+    loading, 
+    session: !!session, 
+    user: user?.role, 
+    approved: user?.approved, 
+    allowedRoles, 
+    requireApproval,
+    path: location.pathname 
+  });
+
   // Show loading spinner while auth is loading
   if (loading) {
     return (
@@ -62,6 +72,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/tasker-pending" replace />;
   }
 
+  console.log('Access granted to protected route');
   return <>{children}</>;
 };
 

@@ -16,8 +16,9 @@ const Index = () => {
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
+    // Only redirect if we have both session and user data loaded
     if (!loading && session && user) {
-      console.log('Redirecting user based on role:', user.role, 'approved:', user.approved);
+      console.log('Authenticated user detected, redirecting based on role:', user.role, 'approved:', user.approved);
       
       // Role-based redirection
       if (user.role === 'admin') {
@@ -38,6 +39,8 @@ const Index = () => {
       } else {
         console.error('Unknown user role:', user.role);
       }
+    } else if (!loading && !session) {
+      console.log('No session detected, staying on home page');
     }
   }, [user, session, loading, navigate]);
 

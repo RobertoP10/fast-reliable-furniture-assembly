@@ -47,7 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
       
-      if (userData && !error) {
+      if (error) {
+        console.error('Error fetching user data:', error);
+        return null;
+      }
+
+      if (userData) {
         const userObj: User = {
           id: userData.id,
           email: userData.email || '',
@@ -61,20 +66,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('User profile loaded:', userObj);
         setUser(userObj);
         return userObj;
-      } else {
-        console.error('Error fetching user data:', error);
-        setUser(null);
-        return null;
       }
+      return null;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-      setUser(null);
       return null;
     }
   };
 
   useEffect(() => {
     let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting initial session:', error);
+          if (isMounted) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log('Initial session:', initialSession?.user?.id);
+        
+        if (isMounted) {
+          setSession(initialSession);
+          
+          if (initialSession?.user) {
+            await fetchUserProfile(initialSession.user.id);
+          }
+          
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -86,43 +119,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Fetch user profile when session is available
-          await fetchUserProfile(session.user.id);
+          // Defer the profile fetch to avoid blocking the auth state change
+          setTimeout(async () => {
+            if (isMounted) {
+              await fetchUserProfile(session.user.id);
+            }
+          }, 0);
         } else {
           setUser(null);
-        }
-        
-        if (isMounted) {
-          setLoading(false);
         }
       }
     );
 
-    // Check for existing session on mount
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        console.log('Initial session check:', session?.user?.id);
-        setSession(session);
-        
-        if (session?.user) {
-          await fetchUserProfile(session.user.id);
-        }
-        
-        if (isMounted) {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
+    // Initialize auth
     initializeAuth();
 
     return () => {
@@ -171,6 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (authData.user) {
+        console.log('Auth user created, inserting profile data...');
+        
         // Insert user data into our users table
         const { error: insertError } = await supabase
           .from('users')
@@ -190,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw insertError;
         }
 
-        console.log('Registration successful:', authData.user.id);
+        console.log('Registration successful, user data inserted');
       }
     } catch (error) {
       console.error('Registration failed:', error);
