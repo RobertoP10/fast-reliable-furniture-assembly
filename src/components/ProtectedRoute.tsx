@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Wrench } from 'lucide-react';
 
@@ -16,6 +16,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireApproval = false 
 }) => {
   const { user, session, loading } = useAuth();
+  const location = useLocation();
 
   // Show loading spinner while auth is loading
   if (loading) {
@@ -38,6 +39,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Check role permissions
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     console.log('User role not allowed:', user.role, 'allowed:', allowedRoles);
+    
+    // Redirect based on user's actual role
+    if (user.role === 'admin') {
+      return <Navigate to="/admin-dashboard" replace />;
+    } else if (user.role === 'tasker') {
+      if (user.approved === true) {
+        return <Navigate to="/tasker-dashboard" replace />;
+      } else {
+        return <Navigate to="/tasker-pending" replace />;
+      }
+    } else if (user.role === 'client') {
+      return <Navigate to="/client-dashboard" replace />;
+    }
+    
     return <Navigate to="/" replace />;
   }
 

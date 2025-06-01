@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,11 +45,12 @@ const AdminDashboard = () => {
     }
 
     try {
+      console.log('Fetching pending taskers...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('role', 'tasker')
-        .is('approved', null)
+        .or('approved.is.null,approved.eq.NULL')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -59,6 +59,7 @@ const AdminDashboard = () => {
         return;
       }
 
+      console.log('Pending taskers found:', data?.length || 0);
       setPendingTaskers(data || []);
       setError(null);
     } catch (error) {
@@ -79,6 +80,7 @@ const AdminDashboard = () => {
 
   const handleApproveTasker = async (id: string) => {
     try {
+      console.log('Approving tasker:', id);
       const { error } = await supabase
         .from('users')
         .update({ approved: 'true' })
@@ -112,6 +114,7 @@ const AdminDashboard = () => {
 
   const handleRejectTasker = async (id: string) => {
     try {
+      console.log('Rejecting tasker:', id);
       const { error } = await supabase
         .from('users')
         .update({ approved: 'false' })

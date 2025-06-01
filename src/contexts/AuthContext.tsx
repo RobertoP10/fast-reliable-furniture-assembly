@@ -40,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('Fetching user profile for:', userId);
       const { data: userData, error } = await supabase
         .from('users')
         .select('*')
@@ -57,15 +58,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: userData.phone || undefined,
           profile_photo: userData.profile_photo || undefined,
         };
-        console.log('Setting user from profile:', userObj);
+        console.log('User profile loaded:', userObj);
         setUser(userObj);
+        return userObj;
       } else {
         console.error('Error fetching user data:', error);
         setUser(null);
+        return null;
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       setUser(null);
+      return null;
     }
   };
 
@@ -82,12 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Defer the profile fetch to avoid blocking the auth state change
-          setTimeout(() => {
-            if (isMounted) {
-              fetchUserProfile(session.user.id);
-            }
-          }, 0);
+          // Fetch user profile when session is available
+          await fetchUserProfile(session.user.id);
         } else {
           setUser(null);
         }
@@ -98,19 +98,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      
-      console.log('Initial session check:', session?.user?.id);
-      setSession(session);
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setLoading(false);
+    // Check for existing session on mount
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        console.log('Initial session check:', session?.user?.id);
+        setSession(session);
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        }
+        
+        if (isMounted) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initializeAuth();
 
     return () => {
       isMounted = false;
@@ -131,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Login successful:', data.user?.id);
+      // User profile will be fetched in the auth state change handler
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -158,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Registration successful:', data.user?.id);
+      // User profile will be fetched in the auth state change handler
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;

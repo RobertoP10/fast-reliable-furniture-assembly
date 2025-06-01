@@ -17,19 +17,24 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      console.log('Redirecting user:', user);
+      console.log('Redirecting user based on role:', user.role, 'approved:', user.approved);
       
+      // Role-based redirection
       if (user.role === 'admin') {
-        navigate('/admin-dashboard');
+        console.log('Redirecting admin to admin dashboard');
+        navigate('/admin-dashboard', { replace: true });
       } else if (user.role === 'tasker') {
         // Check if tasker is approved
         if (user.approved === true) {
-          navigate('/tasker-dashboard');
+          console.log('Redirecting approved tasker to tasker dashboard');
+          navigate('/tasker-dashboard', { replace: true });
         } else {
-          navigate('/tasker-pending');
+          console.log('Redirecting unapproved tasker to pending page');
+          navigate('/tasker-pending', { replace: true });
         }
       } else if (user.role === 'client') {
-        navigate('/client-dashboard');
+        console.log('Redirecting client to client dashboard');
+        navigate('/client-dashboard', { replace: true });
       } else {
         console.error('Unknown user role:', user.role);
       }
@@ -108,7 +113,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="py-16 px-4 bg-white/50">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -154,7 +158,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How it Works */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -193,7 +196,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-16 px-4 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="container mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-6">
@@ -208,7 +210,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 px-4">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
