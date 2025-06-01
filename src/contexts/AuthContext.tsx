@@ -132,9 +132,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Auth user created successfully with ID:', authData.user.id);
       
-      // Step 2: Create profile in users table with the exact same ID
+      // Step 2: Get the current authenticated user to ensure we have auth.uid()
+      const { data: { user: currentUser }, error: getUserError } = await supabase.auth.getUser();
+      
+      if (getUserError) {
+        console.error('Failed to get current user:', getUserError);
+        throw new Error(`Failed to verify user authentication: ${getUserError.message}`);
+      }
+
+      if (!currentUser) {
+        throw new Error('User authentication verification failed');
+      }
+
+      console.log('Current authenticated user ID:', currentUser.id);
+      
+      // Step 3: Create profile in users table using the authenticated user's ID
       const userProfile = {
-        id: authData.user.id, // This MUST match auth.uid() for RLS
+        id: currentUser.id, // This ensures we use auth.uid() for RLS compliance
         name: userData.name.trim(),
         email: userData.email.trim(),
         phone: userData.phone?.trim() || null,
@@ -144,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString()
       };
       
-      console.log('Inserting user profile:', userProfile);
+      console.log('Inserting user profile with ID:', userProfile.id);
       
       const { data: insertedProfile, error: profileError } = await supabase
         .from('users')
@@ -172,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('User profile created successfully:', insertedProfile);
-      console.log('Registration completed successfully for user ID:', authData.user.id);
+      console.log('Registration completed successfully for user ID:', currentUser.id);
       
     } catch (error: any) {
       console.error('Registration failed:', error);
