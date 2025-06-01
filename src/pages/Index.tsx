@@ -22,12 +22,16 @@ const Index = () => {
     if (!loading && user) {
       console.log('User authenticated, redirecting based on role:', user.role);
       
-      // Redirect based on user role
-      const redirectPath = user.role === 'admin' 
-        ? '/admin-dashboard' 
-        : user.role === 'tasker' 
-        ? '/tasker-dashboard' 
-        : '/client-dashboard';
+      // Redirect based on user role - simplified logic
+      let redirectPath = '/client'; // Default to client
+      
+      if (user.role === 'admin') {
+        redirectPath = '/admin-dashboard';
+      } else if (user.role === 'tasker') {
+        redirectPath = '/tasker';
+      } else if (user.role === 'client') {
+        redirectPath = '/client';
+      }
       
       console.log('Redirecting to:', redirectPath);
       navigate(redirectPath, { replace: true });

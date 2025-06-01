@@ -22,7 +22,9 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/client" element={<ClientDashboard />} />
             <Route path="/client-dashboard" element={<ClientDashboard />} />
+            <Route path="/tasker" element={<TaskerDashboard />} />
             <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
