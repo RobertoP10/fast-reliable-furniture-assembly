@@ -80,7 +80,7 @@ export const useAuthState = () => {
             }
             return null;
           } else {
-            console.error('RLS or other error fetching profile:', error);
+            console.error('Database error fetching profile:', error);
             return null;
           }
         }
@@ -108,8 +108,7 @@ export const useAuthState = () => {
         setSession(session);
         
         if (session?.user) {
-          console.log('User session detected, fetching/creating profile...');
-          setLoading(true); // Ensure loading state while fetching profile
+          console.log('User session detected, fetching profile...');
           
           const userProfile = await fetchUserProfile(session.user.id, session.user.email || '');
           

@@ -23,24 +23,22 @@ const Index = () => {
       console.log('User authenticated, redirecting based on role:', user.role);
       console.log('User object:', user);
       
-      // Redirect based on user role - no dependency on profile fields
-      let redirectPath = '/client'; // Default to client
+      // Redirect based on user role - profile_photo is not required for redirection
+      let redirectPath = '/client-dashboard'; // Default to client dashboard
       
       if (user.role === 'admin') {
         redirectPath = '/admin-dashboard';
       } else if (user.role === 'tasker') {
-        redirectPath = '/tasker';
+        redirectPath = '/tasker-dashboard';
       } else {
-        // Default to client for any other role or undefined role
-        redirectPath = '/client';
+        // Default to client dashboard for any other role or undefined role
+        redirectPath = '/client-dashboard';
       }
       
       console.log('Redirecting to:', redirectPath);
       
-      // Force immediate redirect
-      setTimeout(() => {
-        navigate(redirectPath, { replace: true });
-      }, 100);
+      // Use replace to prevent going back to login screen
+      navigate(redirectPath, { replace: true });
     }
   }, [user, loading, navigate]);
 
