@@ -15,8 +15,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireApproval = false 
 }) => {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
 
+  // Show loading spinner while auth is loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
@@ -28,11 +29,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user) {
-    console.log('No user found, redirecting to home');
+  // If no session, redirect to home
+  if (!session || !user) {
+    console.log('No session or user found, redirecting to home');
     return <Navigate to="/" replace />;
   }
 
+  // Check role permissions
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     console.log('User role not allowed:', user.role, 'allowed:', allowedRoles);
     return <Navigate to="/" replace />;

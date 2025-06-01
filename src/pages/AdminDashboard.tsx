@@ -19,17 +19,32 @@ interface PendingTasker {
 }
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, session, logout, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
   const [pendingTaskers, setPendingTaskers] = useState<PendingTasker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPendingTaskers();
-  }, []);
+    // Only fetch data when we have a session and user
+    if (session && user?.id) {
+      console.log('Fetching admin data for user:', user.id);
+      fetchPendingTaskers();
+    } else if (!authLoading) {
+      // If auth is done loading but no session, there's an error
+      setError('User session not found');
+      setLoading(false);
+    }
+  }, [session, user, authLoading]);
 
   const fetchPendingTaskers = async () => {
+    if (!user?.id) {
+      setError('User ID not available');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('users')
@@ -40,12 +55,15 @@ const AdminDashboard = () => {
 
       if (error) {
         console.error('Error fetching pending taskers:', error);
+        setError('Failed to load pending taskers');
         return;
       }
 
       setPendingTaskers(data || []);
+      setError(null);
     } catch (error) {
       console.error('Error fetching pending taskers:', error);
+      setError('Failed to load pending taskers');
     } finally {
       setLoading(false);
     }
@@ -125,15 +143,33 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  // Show loading while auth or data is loading
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Error: {error}</div>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if no user (should be handled by ProtectedRoute but just in case)
+  if (!user) {
+    return null;
   }
 
   return (
@@ -151,7 +187,7 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-sm font-medium">{user.name}</span>
                 <Badge className="bg-purple-100 text-purple-700">Admin</Badge>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>
