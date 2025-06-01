@@ -18,24 +18,19 @@ const Index = () => {
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
+    // Only redirect if we have a user and we're not loading
     if (!loading && user) {
       console.log('User authenticated, redirecting based on role:', user.role);
       
       // Redirect based on user role with correct paths
-      switch (user.role) {
-        case 'admin':
-          navigate('/admin-dashboard', { replace: true });
-          break;
-        case 'tasker':
-          navigate('/tasker-dashboard', { replace: true });
-          break;
-        case 'client':
-          navigate('/client-dashboard', { replace: true });
-          break;
-        default:
-          console.warn('Unknown user role:', user.role);
-          navigate('/client-dashboard', { replace: true });
-      }
+      const redirectPath = user.role === 'admin' 
+        ? '/admin-dashboard' 
+        : user.role === 'tasker' 
+        ? '/tasker-dashboard' 
+        : '/client-dashboard';
+      
+      console.log('Redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
     }
   }, [user, loading, navigate]);
 
@@ -46,6 +41,18 @@ const Index = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If we have a user but we're still here (shouldn't happen), show loading
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting...</p>
         </div>
       </div>
     );
