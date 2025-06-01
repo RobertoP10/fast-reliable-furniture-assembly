@@ -21,25 +21,32 @@ const Index = () => {
     // Only redirect if we have a user and we're not loading
     if (!loading && user) {
       console.log('User authenticated, redirecting based on role:', user.role);
+      console.log('User object:', user);
       
-      // Redirect based on user role - simplified logic
+      // Redirect based on user role - no dependency on profile fields
       let redirectPath = '/client'; // Default to client
       
       if (user.role === 'admin') {
         redirectPath = '/admin-dashboard';
       } else if (user.role === 'tasker') {
         redirectPath = '/tasker';
-      } else if (user.role === 'client') {
+      } else {
+        // Default to client for any other role or undefined role
         redirectPath = '/client';
       }
       
       console.log('Redirecting to:', redirectPath);
-      navigate(redirectPath, { replace: true });
+      
+      // Force immediate redirect
+      setTimeout(() => {
+        navigate(redirectPath, { replace: true });
+      }, 100);
     }
   }, [user, loading, navigate]);
 
   // Show loading state while checking auth
   if (loading) {
+    console.log('Auth loading...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -50,13 +57,14 @@ const Index = () => {
     );
   }
 
-  // If we have a user but we're still here (shouldn't happen due to useEffect), show loading
+  // If we have a user but we're still here, show redirecting message
   if (user) {
+    console.log('User exists but still on index page, showing redirect message');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting...</p>
+          <p className="text-gray-600">Redirecting to dashboard...</p>
         </div>
       </div>
     );
