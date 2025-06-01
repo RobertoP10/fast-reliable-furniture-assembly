@@ -33,10 +33,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      const result = await registerUser(userData);
-      console.log('Registration successful:', result);
+      await registerUser(userData);
+      console.log('Registration successful');
       // Don't set loading to false here - let the auth state change handle it
-      return result;
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);

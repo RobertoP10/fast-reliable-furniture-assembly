@@ -47,7 +47,7 @@ const waitForSession = async (maxRetries = 10, delayMs = 1000): Promise<any> => 
   throw new Error('Session not established within timeout period');
 };
 
-export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
+export const registerUser = async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
   console.log('Starting registration process for:', userData.email);
   
   try {
@@ -98,11 +98,9 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
     
     console.log('Inserting user profile:', userProfile);
     
-    const { data: insertedProfile, error: profileError } = await supabase
+    const { error: profileError } = await supabase
       .from('users')
-      .insert(userProfile)
-      .select()
-      .single();
+      .insert(userProfile);
     
     if (profileError) {
       console.error('Profile creation error:', profileError);
@@ -114,10 +112,8 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
       throw new Error(errorMessage);
     }
     
-    console.log('User profile created successfully:', insertedProfile);
+    console.log('User profile created successfully');
     console.log('Registration completed successfully for user ID:', session.user.id);
-    
-    return { session, profile: insertedProfile };
     
   } catch (error: any) {
     console.error('Registration failed:', error);
