@@ -43,15 +43,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         
         if (session?.user) {
           // Fetch user profile from users table
-          const { data: userProfile } = await supabase
+          const { data: userProfile, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
+          
+          console.log('Fetched user profile:', userProfile, error);
           
           if (userProfile) {
             setUser({
@@ -93,16 +96,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
       
-      if (error) throw error;
-    } catch (error) {
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+    } catch (error: any) {
       setLoading(false);
-      throw new Error('Login failed');
+      throw new Error(error.message || 'Login failed');
     }
   };
 
   const register = async (userData: Omit<User, 'id'> & { password: string }) => {
     setLoading(true);
     try {
+      console.log('Starting registration process...');
+      
       // First, create the auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
@@ -112,28 +120,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Auth registration error:', authError);
+        throw authError;
+      }
+
+      console.log('Auth user created:', authData.user?.id);
       
       if (authData.user) {
-        // Insert user profile into users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            name: userData.name,
-            email: userData.email,
-            phone: userData.phone || null,
-            location: userData.location,
-            role: userData.role,
-            approved: userData.role === 'client' ? 'true' : 'false',
-            created_at: new Date().toISOString()
-          });
+        // Insert user profile into users table with matching ID
+        const userRecord = {
+          id: authData.user.id, // This is the Supabase UID
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone || null,
+          location: userData.location || '',
+          role: userData.role,
+          approved: userData.role === 'client' ? 'true' : 'false',
+          created_at: new Date().toISOString()
+        };
         
-        if (profileError) throw profileError;
+        console.log('Inserting user record:', userRecord);
+        
+        const { data: insertedUser, error: profileError } = await supabase
+          .from('users')
+          .insert(userRecord)
+          .select()
+          .single();
+        
+        if (profileError) {
+          console.error('Profile insertion error:', profileError);
+          console.error('Full error details:', {
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code
+          });
+          throw new Error(`Failed to create user profile: ${profileError.message}. Details: ${profileError.details || 'No additional details'}`);
+        }
+        
+        console.log('User profile created successfully:', insertedUser);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration failed:', error);
       setLoading(false);
-      throw new Error('Registration failed');
+      throw new Error(error.message || 'Registration failed');
     }
   };
 

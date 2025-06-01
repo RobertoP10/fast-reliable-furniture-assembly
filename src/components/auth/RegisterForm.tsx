@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +51,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
+      console.log('Submitting registration form with data:', {
+        ...formData,
+        password: '[REDACTED]'
+      });
+      
       await register({
         name: formData.name,
         email: formData.email,
@@ -72,10 +76,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           description: "Welcome to MGSDEAL! Please check your email for verification.",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration form error:', error);
       toast({
         title: "Registration error",
-        description: "Please try again.",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
