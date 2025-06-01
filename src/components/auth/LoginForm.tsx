@@ -22,22 +22,31 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) return; // Prevent duplicate submissions
+    
     setIsLoading(true);
 
     try {
+      console.log('Attempting login for:', email);
       await login(email, password);
+      
       toast({
         title: "Login successful!",
-        description: "Welcome back to MGSDEAL.",
+        description: "Welcome back to MGSDEAL. Redirecting to your dashboard...",
       });
-    } catch (error) {
+      
+      // Don't set loading to false - let redirect handle it
+    } catch (error: any) {
+      console.error('Login form error:', error);
+      
+      setIsLoading(false);
+      
       toast({
-        title: "Login error",
-        description: "Incorrect email or password.",
+        title: "Login failed",
+        description: error.message || "Incorrect email or password. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -48,6 +57,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
           variant="ghost"
           onClick={onBack}
           className="mb-6 hover:bg-blue-50"
+          disabled={isLoading}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -77,6 +87,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -88,6 +99,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -96,7 +108,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Login"}
+                {isLoading ? "Signing in..." : "Login"}
               </Button>
             </form>
             
@@ -105,7 +117,8 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 Don't have an account?{" "}
                 <button
                   onClick={onSwitchToRegister}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
+                  disabled={isLoading}
+                  className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
                 >
                   Register
                 </button>

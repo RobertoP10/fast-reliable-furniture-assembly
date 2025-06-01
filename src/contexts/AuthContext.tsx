@@ -21,7 +21,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await loginUser(email, password);
+      // Don't set loading to false here - let the auth state change handle it
     } catch (error: any) {
+      console.error('Login failed:', error);
       setLoading(false);
       throw new Error(error.message || 'Login failed');
     }
@@ -31,9 +33,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      await registerUser(userData);
-      // Success - both auth and profile creation completed
-      // The loading state will be handled by the auth state change
+      const result = await registerUser(userData);
+      console.log('Registration successful:', result);
+      // Don't set loading to false here - let the auth state change handle it
+      return result;
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);
@@ -42,7 +45,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await logoutUser();
+    setLoading(true);
+    try {
+      await logoutUser();
+    } catch (error: any) {
+      console.error('Logout failed:', error);
+      setLoading(false);
+      throw error;
+    }
   };
 
   return (
