@@ -15,7 +15,6 @@ export type Database = {
           id: string | null
           image_url: string | null
           message: string | null
-          receiver_id: string | null
           sender_id: string | null
           task_id: string | null
         }
@@ -24,7 +23,6 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           message?: string | null
-          receiver_id?: string | null
           sender_id?: string | null
           task_id?: string | null
         }
@@ -33,18 +31,10 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           message?: string | null
-          receiver_id?: string | null
           sender_id?: string | null
           task_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "messages_sender_id_fkey"
             columns: ["sender_id"]

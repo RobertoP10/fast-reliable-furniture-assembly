@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,8 +30,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isLoading) return; // Prevent duplicate submissions
-    
     // Validation
     if (formData.password !== formData.confirmPassword) {
       toast({
@@ -54,7 +51,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
 
     if (!formData.name.trim()) {
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Please enter your name.",
         variant: "destructive",
       });
@@ -88,16 +85,21 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       });
       
       // Success message - only shown if both auth and profile creation succeed
-      toast({
-        title: "Registration successful!",
-        description: `Welcome to MGSDEAL! ${formData.role === 'tasker' ? 'Your tasker account will be reviewed for approval. ' : ''}Redirecting to your dashboard...`,
-      });
+      if (formData.role === 'tasker') {
+        toast({
+          title: "Registration successful!",
+          description: "Your tasker account has been created and will be reviewed for approval. Please check your email for verification.",
+        });
+      } else {
+        toast({
+          title: "Registration successful!",
+          description: "Welcome to MGSDEAL! Your account has been created successfully. Please check your email for verification.",
+        });
+      }
 
-      // Don't set loading to false - let redirect handle it
+      // Note: User will be automatically redirected to dashboard by the auth state change in Index.tsx
     } catch (error: any) {
       console.error('Registration form error:', error);
-      
-      setIsLoading(false);
       
       // Show the full error message for debugging
       toast({
@@ -105,6 +107,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -115,7 +119,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           variant="ghost"
           onClick={onBack}
           className="mb-6 hover:bg-blue-50"
-          disabled={isLoading}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -145,7 +148,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -159,7 +161,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -172,18 +173,13 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   placeholder="+44 7123 456789"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
 
               <div>
                 <Label htmlFor="role">Account type *</Label>
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}
-                  disabled={isLoading}
-                >
+                <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -203,7 +199,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   required
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -216,7 +211,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -229,7 +223,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
-                  disabled={isLoading}
                   className="mt-1"
                 />
               </div>
@@ -248,8 +241,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 Already have an account?{" "}
                 <button
                   onClick={onSwitchToLogin}
-                  disabled={isLoading}
-                  className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+                  className="text-blue-600 hover:text-blue-800 font-medium"
                 >
                   Login
                 </button>

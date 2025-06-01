@@ -10,50 +10,23 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
 const LandingPage = () => {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    console.log('Index page - user state changed:', user?.role, loading);
-    
-    if (!loading && user) {
-      console.log('Auto-redirecting authenticated user based on role:', user.role);
+    if (user) {
       // Redirect based on user role
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
         navigate('/tasker-dashboard');
-      } else if (user.role === 'client') {
+      } else {
         navigate('/client-dashboard');
       }
     }
-  }, [user, loading, navigate]);
-
-  // Show loading spinner while checking auth state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is authenticated, show loading state while redirect happens
-  if (user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  }, [user, navigate]);
 
   if (showLogin) {
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
