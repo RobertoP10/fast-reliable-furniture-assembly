@@ -40,12 +40,13 @@ const AdminPendingTaskers = () => {
         return;
       }
 
-      // Filter to only include truly pending taskers (approved is null or false)
-      const filteredData = (data || []).filter(tasker => 
-        tasker.approved === null || 
-        tasker.approved === 'false' || 
-        tasker.approved === false
-      );
+      // Filter to only include truly pending taskers (approved is null, false, or 'false')
+      const filteredData = (data || []).filter(tasker => {
+        if (tasker.approved === null || tasker.approved === undefined) return true;
+        if (typeof tasker.approved === 'string') return tasker.approved === 'false';
+        if (typeof tasker.approved === 'boolean') return tasker.approved === false;
+        return false;
+      });
 
       setPendingTaskers(filteredData);
     } catch (error) {

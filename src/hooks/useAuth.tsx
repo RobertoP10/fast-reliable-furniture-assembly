@@ -67,10 +67,10 @@ export const useAuth = () => {
       if (data) {
         // Handle approved field conversion properly
         let approvedStatus = false;
-        if (data.approved === 'true' || data.approved === true) {
-          approvedStatus = true;
-        } else if (data.approved === 'false' || data.approved === false) {
-          approvedStatus = false;
+        if (typeof data.approved === 'string') {
+          approvedStatus = data.approved === 'true';
+        } else if (typeof data.approved === 'boolean') {
+          approvedStatus = data.approved;
         } else {
           // If approved is null or undefined, handle based on role
           approvedStatus = data.role !== 'tasker';
