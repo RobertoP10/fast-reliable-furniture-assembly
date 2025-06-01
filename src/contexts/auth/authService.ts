@@ -62,7 +62,7 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
     
     if (authError) {
       console.error('Auth registration error:', authError);
-      throw new Error(`Authentication failed: ${authError.message}${authError.hint ? `. ${authError.hint}` : ''}`);
+      throw new Error(`Authentication failed: ${authError.message}`);
     }
 
     if (!authData.user) {
@@ -110,7 +110,7 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
       // Clean up auth user if profile creation fails
       await supabase.auth.signOut();
       
-      const errorMessage = `Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`;
+      const errorMessage = `Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}`;
       throw new Error(errorMessage);
     }
     

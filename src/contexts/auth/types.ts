@@ -17,7 +17,7 @@ export interface AuthContextType {
   user: User | null;
   session: Session | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<{ session: any; profile: any }>;
   logout: () => Promise<void>;
   loading: boolean;
 }
