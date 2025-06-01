@@ -1,14 +1,11 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import TaskFormFields from "./TaskFormFields";
 
 interface CreateTaskFormProps {
   onTaskCreated?: () => void;
@@ -28,23 +25,6 @@ const CreateTaskForm = ({ onTaskCreated }: CreateTaskFormProps) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
-  const categories = {
-    "wardrobe": ["PAX", "HEMNES", "BRIMNES", "MALM", "Other"],
-    "desk": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Other"],
-    "bed": ["MALM", "HEMNES", "BRIMNES", "TARVA", "Other"],
-    "chest": ["HEMNES", "MALM", "RAST", "KOPPANG", "Other"],
-    "table": ["INGATORP", "BJURSTA", "LERHAMN", "MÖRBYLÅNGA", "Other"],
-    "shelf": ["BILLY", "HEMNES", "FJÄLKINGE", "IVAR", "Other"]
-  };
-
-  const locations = [
-    "Birmingham, West Midlands",
-    "Telford, Shropshire", 
-    "Wolverhampton, West Midlands",
-    "Stoke on Trent, Staffordshire",
-    "Shrewsbury, Shropshire"
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,126 +115,8 @@ const CreateTaskForm = ({ onTaskCreated }: CreateTaskFormProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Task Title</Label>
-            <Input
-              id="title"
-              placeholder="e.g. IKEA PAX Wardrobe Assembly"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="description">Detailed Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe what needs to be assembled, dimensions, special requirements..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="mt-1 min-h-[100px]"
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value, subcategory: "" })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wardrobe">Wardrobe</SelectItem>
-                  <SelectItem value="desk">Desk</SelectItem>
-                  <SelectItem value="bed">Bed</SelectItem>
-                  <SelectItem value="chest">Chest of Drawers</SelectItem>
-                  <SelectItem value="table">Table</SelectItem>
-                  <SelectItem value="shelf">Shelf</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Subcategory / Model</Label>
-              <Select 
-                value={formData.subcategory} 
-                onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
-                disabled={!formData.category}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.category && categories[formData.category as keyof typeof categories]?.map((sub) => (
-                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="minBudget">Minimum Budget (£)</Label>
-              <Input
-                id="minBudget"
-                type="number"
-                placeholder="50"
-                value={formData.minBudget}
-                onChange={(e) => setFormData({ ...formData, minBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="maxBudget">Maximum Budget (£)</Label>
-              <Input
-                id="maxBudget"
-                type="number"
-                placeholder="120"
-                value={formData.maxBudget}
-                onChange={(e) => setFormData({ ...formData, maxBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Location</Label>
-            <Select value={formData.address} onValueChange={(value) => setFormData({ ...formData, address: value })}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select your location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location} value={location}>{location}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Payment Method</Label>
-            <RadioGroup 
-              value={formData.paymentMethod} 
-              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
-              className="mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash">Cash</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="bank" id="bank" />
-                <Label htmlFor="bank">Bank Transfer</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
+          <TaskFormFields formData={formData} setFormData={setFormData} />
+          
           <Button 
             type="submit" 
             className="w-full bg-blue-600 hover:bg-blue-700"
