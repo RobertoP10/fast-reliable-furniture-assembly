@@ -51,24 +51,32 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
-      await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        location: formData.location
-      });
-      
-      if (formData.role === 'tasker') {
+      const { error } = await register(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.role,
+        formData.location
+      );
+
+      if (error) {
         toast({
-          title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon.",
+          title: "Registration error",
+          description: error.message || "Please try again.",
+          variant: "destructive",
         });
       } else {
-        toast({
-          title: "Registration successful!",
-          description: "Welcome to MGSDEAL!",
-        });
+        if (formData.role === 'tasker') {
+          toast({
+            title: "Registration successful!",
+            description: "Your tasker account will be reviewed and approved soon.",
+          });
+        } else {
+          toast({
+            title: "Registration successful!",
+            description: "Welcome to MGSDEAL!",
+          });
+        }
       }
     } catch (error) {
       toast({

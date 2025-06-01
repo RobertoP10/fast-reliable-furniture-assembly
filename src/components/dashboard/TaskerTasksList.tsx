@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, MapPin, Pound, User } from "lucide-react";
+import { Calendar, MapPin, DollarSign, User } from "lucide-react";
 
 interface Task {
   id: string;
@@ -56,7 +56,23 @@ const TaskerTasksList = () => {
         return;
       }
 
-      setTasks(data || []);
+      // Map the data to match our Task interface
+      const mappedTasks: Task[] = (data || []).map(task => ({
+        id: task.id,
+        title: task.title || 'Untitled Task',
+        description: task.description || '',
+        category: task.category || '',
+        subcategory: task.subcategory || '',
+        price_range: task.price_range || '',
+        location: task.location || '',
+        status: task.status || 'pending',
+        payment_method: task.payment_method || 'cash',
+        created_at: task.created_at || new Date().toISOString(),
+        client_id: task.client_id,
+        users: task.users || { name: 'Anonymous' }
+      }));
+
+      setTasks(mappedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
@@ -145,7 +161,7 @@ const TaskerTasksList = () => {
                   <span>{task.location}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <Pound className="h-4 w-4" />
+                  <DollarSign className="h-4 w-4" />
                   <span>{task.price_range}</span>
                 </div>
               </div>

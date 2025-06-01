@@ -52,7 +52,7 @@ const AdminPendingTaskers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ approved: true })
+        .update({ approved: 'true' })
         .eq('id', taskerId);
 
       if (error) {
@@ -86,7 +86,7 @@ const AdminPendingTaskers = () => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ approved: false })
+        .update({ approved: 'false' })
         .eq('id', taskerId);
 
       if (error) {

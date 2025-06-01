@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, MapPin, Pound } from "lucide-react";
+import { Calendar, MapPin, DollarSign } from "lucide-react";
 
 interface Task {
   id: string;
@@ -45,7 +45,21 @@ const ClientTasksList = () => {
         return;
       }
 
-      setTasks(data || []);
+      // Map the data to match our Task interface
+      const mappedTasks: Task[] = (data || []).map(task => ({
+        id: task.id,
+        title: task.title || 'Untitled Task',
+        description: task.description || '',
+        category: task.category || '',
+        subcategory: task.subcategory || '',
+        price_range: task.price_range || '',
+        location: task.location || '',
+        status: task.status || 'pending',
+        payment_method: task.payment_method || 'cash',
+        created_at: task.created_at || new Date().toISOString()
+      }));
+
+      setTasks(mappedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
@@ -140,7 +154,7 @@ const ClientTasksList = () => {
                   <span>{task.location}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <Pound className="h-4 w-4" />
+                  <DollarSign className="h-4 w-4" />
                   <span>{task.price_range}</span>
                 </div>
               </div>

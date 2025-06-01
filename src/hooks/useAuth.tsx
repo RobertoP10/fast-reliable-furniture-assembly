@@ -68,11 +68,11 @@ export const useAuth = () => {
           id: data.id,
           email: data.email,
           name: data.name,
-          role: data.role,
+          role: data.role as 'client' | 'tasker' | 'admin',
           location: data.location,
           phone: data.phone,
           profile_photo: data.profile_photo,
-          approved: data.approved
+          approved: data.approved === 'true' || data.approved === true
         });
       }
     } catch (error) {
