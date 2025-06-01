@@ -132,42 +132,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Auth user created successfully with ID:', authData.user.id);
       
-      // Step 2: Wait for the session to be established
-      console.log('Waiting for session to be established...');
+      // Step 2: Immediately log in to establish session
+      console.log('Logging in to establish session...');
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: userData.password,
+      });
       
-      // Poll for session with timeout
-      let sessionAttempts = 0;
-      const maxAttempts = 10;
-      let currentSession = null;
-      
-      while (sessionAttempts < maxAttempts) {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session check error:', sessionError);
-          throw new Error(`Failed to verify session: ${sessionError.message}`);
-        }
-        
-        if (session?.user?.id) {
-          currentSession = session;
-          console.log('Session established for user ID:', session.user.id);
-          break;
-        }
-        
-        sessionAttempts++;
-        console.log(`Session attempt ${sessionAttempts}/${maxAttempts}`);
-        
-        // Wait 500ms before next attempt
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (loginError) {
+        console.error('Auto-login error:', loginError);
+        throw new Error(`Failed to establish session: ${loginError.message}`);
       }
-      
-      if (!currentSession || !currentSession.user) {
-        throw new Error('Failed to establish authenticated session. Please try logging in manually.');
+
+      if (!loginData.session || !loginData.user) {
+        throw new Error('Failed to establish authenticated session after signup');
       }
+
+      console.log('Session established successfully for user ID:', loginData.user.id);
       
-      // Step 3: Create profile in users table using the authenticated user's ID
+      // Step 3: Get the current session to ensure we have the latest session data
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Failed to get session:', sessionError);
+        throw new Error(`Failed to retrieve session: ${sessionError.message}`);
+      }
+
+      if (!session || !session.user) {
+        throw new Error('No valid session found after login');
+      }
+
+      console.log('Using session user ID for profile creation:', session.user.id);
+      
+      // Step 4: Create profile in users table using the authenticated user's ID
       const userProfile = {
-        id: currentSession.user.id, // This ensures we use auth.uid() for RLS compliance
+        id: session.user.id, // This ensures we use auth.uid() for RLS compliance
         name: userData.name.trim(),
         email: userData.email.trim(),
         phone: userData.phone?.trim() || null,
@@ -205,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('User profile created successfully:', insertedProfile);
-      console.log('Registration completed successfully for user ID:', currentSession.user.id);
+      console.log('Registration completed successfully for user ID:', session.user.id);
       
     } catch (error: any) {
       console.error('Registration failed:', error);
