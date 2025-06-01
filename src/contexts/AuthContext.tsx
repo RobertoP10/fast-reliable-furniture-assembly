@@ -46,26 +46,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Fetch user profile data from our users table
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (userData && !error) {
-            setUser({
-              id: userData.id,
-              email: userData.email || session.user.email || '',
-              name: userData.name || '',
-              role: userData.role as 'client' | 'tasker' | 'admin',
-              location: userData.location || undefined,
-              approved: userData.approved === 'true' ? true : userData.approved === 'false' ? false : null,
-              phone: userData.phone || undefined,
-              profile_photo: userData.profile_photo || undefined,
-            });
-          } else {
-            console.error('Error fetching user data:', error);
+          try {
+            // Fetch user profile data from our users table
+            const { data: userData, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (userData && !error) {
+              const userObj: User = {
+                id: userData.id,
+                email: userData.email || session.user.email || '',
+                name: userData.name || '',
+                role: userData.role as 'client' | 'tasker' | 'admin',
+                location: userData.location || undefined,
+                approved: userData.approved === 'true' ? true : userData.approved === 'false' ? false : null,
+                phone: userData.phone || undefined,
+                profile_photo: userData.profile_photo || undefined,
+              };
+              console.log('Setting user:', userObj);
+              setUser(userObj);
+            } else {
+              console.error('Error fetching user data:', error);
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('Error in auth state change:', error);
+            setUser(null);
           }
         } else {
           setUser(null);
@@ -76,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
+      console.log('Initial session check:', session);
       // The onAuthStateChange will handle the session
     });
 
@@ -91,9 +99,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
       
+      console.log('Login successful:', data);
       // The onAuthStateChange listener will handle setting the user
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -115,15 +130,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
       
+      console.log('Registration successful:', data);
       // The trigger function will create the user profile automatically
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
+    console.log('Logging out...');
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

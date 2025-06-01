@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,17 +26,29 @@ const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
+      console.log('Client dashboard loading for user:', user.id);
       fetchUserTasks();
+    } else {
+      console.error('No user found in ClientDashboard');
+      setError('User session not found');
+      setLoading(false);
     }
   }, [user]);
 
   const fetchUserTasks = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('Cannot fetch tasks: no user');
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
     
     try {
+      console.log('Fetching tasks for client:', user.id);
       const { data, error } = await supabase
         .from('task_requests')
         .select('*')
@@ -46,18 +57,23 @@ const ClientDashboard = () => {
 
       if (error) {
         console.error('Error fetching tasks:', error);
+        setError('Failed to load tasks');
         return;
       }
 
+      console.log('Tasks fetched:', data);
       setTasks(data || []);
+      setError(null);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      setError('Failed to load tasks');
     } finally {
       setLoading(false);
     }
   };
 
   const handleTaskCreated = () => {
+    console.log('Task created, refreshing list');
     fetchUserTasks();
     setActiveTab('tasks');
   };
@@ -67,7 +83,18 @@ const ClientDashboard = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Error: {error}</div>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );

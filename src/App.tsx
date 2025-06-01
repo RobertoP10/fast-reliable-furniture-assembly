@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import TaskerPending from "./pages/TaskerPending";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['tasker']} requireApproval={true}>
                   <TaskerDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tasker-pending" 
+              element={
+                <ProtectedRoute allowedRoles={['tasker']}>
+                  <TaskerPending />
                 </ProtectedRoute>
               } 
             />

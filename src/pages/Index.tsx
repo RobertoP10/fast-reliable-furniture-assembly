@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,24 +17,27 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      // Redirect based on user role and approval status
       console.log('Redirecting user:', user);
       
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
-        // Navigate to tasker dashboard regardless of approval status
-        // The protected route will handle the approval status check
-        navigate('/tasker-dashboard');
+        // Check if tasker is approved
+        if (user.approved === true) {
+          navigate('/tasker-dashboard');
+        } else {
+          navigate('/tasker-pending');
+        }
       } else if (user.role === 'client') {
         navigate('/client-dashboard');
+      } else {
+        console.error('Unknown user role:', user.role);
       }
     }
   }, [user, loading, navigate]);
 
-  // Show loading state only if we're checking auth AND there might be a user to redirect
-  // This prevents the loading spinner from showing indefinitely for non-logged-in users
-  if (loading && sessionStorage.getItem('supabase.auth.token')) {
+  // Show loading state while checking authentication
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">

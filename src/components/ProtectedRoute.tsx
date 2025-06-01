@@ -2,8 +2,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Wrench } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -17,7 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireApproval = false 
 }) => {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -31,33 +29,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
+    console.log('No user found, redirecting to home');
     return <Navigate to="/" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    console.log('User role not allowed:', user.role, 'allowed:', allowedRoles);
     return <Navigate to="/" replace />;
   }
 
-  // Check if tasker needs approval
+  // Check if tasker needs approval and redirect to pending page
   if (user.role === 'tasker' && requireApproval && user.approved !== true) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md shadow-xl border-0">
-          <CardHeader className="text-center">
-            <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <CardTitle className="text-blue-900">Account Pending Approval</CardTitle>
-            <CardDescription>
-              Your tasker account is under review. You will receive a notification when it's approved.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={logout} variant="outline" className="w-full">
-              Logout
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    console.log('Tasker not approved, redirecting to pending');
+    return <Navigate to="/tasker-pending" replace />;
   }
 
   return <>{children}</>;
