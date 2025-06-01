@@ -21,7 +21,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     password: "",
     confirmPassword: "",
     role: "" as "client" | "tasker",
-    location: ""
+    location: "",
+    phone: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -56,18 +57,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         email: formData.email,
         password: formData.password,
         role: formData.role,
-        location: formData.location
+        location: formData.location,
+        phone: formData.phone
       });
       
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon.",
+          description: "Your tasker account will be reviewed and approved soon. Please check your email for verification.",
         });
       } else {
         toast({
           title: "Registration successful!",
-          description: "Welcome to MGSDEAL!",
+          description: "Welcome to MGSDEAL! Please check your email for verification.",
         });
       }
     } catch (error) {
@@ -135,6 +137,18 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
+                <Label htmlFor="phone">Phone number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+44 7123 456789"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="role">Account type</Label>
                 <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
                   <SelectTrigger className="mt-1">
@@ -189,7 +203,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Create account"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
             
