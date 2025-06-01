@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,24 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       return;
     }
 
+    if (!formData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.location.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -57,14 +76,15 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       });
       
       await register({
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
-        location: formData.location,
-        phone: formData.phone
+        location: formData.location.trim(),
+        phone: formData.phone.trim()
       });
       
+      // Only show success message if we get here without errors
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
@@ -79,8 +99,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     } catch (error: any) {
       console.error('Registration form error:', error);
       toast({
-        title: "Registration error",
-        description: error.message || "Please try again.",
+        title: "Registration failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -116,7 +136,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">Full name *</Label>
                 <Input
                   id="name"
                   type="text"
@@ -129,7 +149,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -154,7 +174,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="role">Account type</Label>
+                <Label htmlFor="role">Account type *</Label>
                 <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select role" />
@@ -167,7 +187,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">Location *</Label>
                 <Input
                   id="location"
                   type="text"
@@ -180,7 +200,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -192,7 +212,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Label htmlFor="confirmPassword">Confirm password *</Label>
                 <Input
                   id="confirmPassword"
                   type="password"

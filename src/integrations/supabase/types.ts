@@ -190,7 +190,7 @@ export type Database = {
       task_requests: {
         Row: {
           category: string | null
-          client_id: string | null
+          client_id: string
           created_at: string | null
           description: string | null
           id: string
@@ -202,7 +202,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
-          client_id?: string | null
+          client_id: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -214,7 +214,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
-          client_id?: string | null
+          client_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
