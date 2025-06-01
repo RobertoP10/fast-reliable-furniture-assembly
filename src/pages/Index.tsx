@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
-const Index = () => {
+const LandingPage = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
@@ -230,6 +231,14 @@ const Index = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <LandingPage />
+    </AuthProvider>
   );
 };
 

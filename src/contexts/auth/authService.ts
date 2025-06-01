@@ -47,7 +47,7 @@ const waitForSession = async (maxRetries = 10, delayMs = 1000): Promise<any> => 
   throw new Error('Session not established within timeout period');
 };
 
-export const registerUser = async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
+export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
   console.log('Starting registration process for:', userData.email);
   
   try {
@@ -62,7 +62,7 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
     
     if (authError) {
       console.error('Auth registration error:', authError);
-      throw new Error(`Authentication failed: ${authError.message}`);
+      throw new Error(`Authentication failed: ${authError.message}${authError.hint ? `. ${authError.hint}` : ''}`);
     }
 
     if (!authData.user) {
@@ -98,9 +98,11 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
     
     console.log('Inserting user profile:', userProfile);
     
-    const { error: profileError } = await supabase
+    const { data: insertedProfile, error: profileError } = await supabase
       .from('users')
-      .insert(userProfile);
+      .insert(userProfile)
+      .select()
+      .single();
     
     if (profileError) {
       console.error('Profile creation error:', profileError);
@@ -108,12 +110,14 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
       // Clean up auth user if profile creation fails
       await supabase.auth.signOut();
       
-      const errorMessage = `Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}`;
+      const errorMessage = `Failed to create user profile: ${profileError.message}${profileError.details ? `. Details: ${profileError.details}` : ''}${profileError.hint ? `. Hint: ${profileError.hint}` : ''}`;
       throw new Error(errorMessage);
     }
     
-    console.log('User profile created successfully');
+    console.log('User profile created successfully:', insertedProfile);
     console.log('Registration completed successfully for user ID:', session.user.id);
+    
+    return { session, profile: insertedProfile };
     
   } catch (error: any) {
     console.error('Registration failed:', error);
