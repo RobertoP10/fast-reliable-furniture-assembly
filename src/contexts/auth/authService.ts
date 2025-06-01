@@ -17,18 +17,12 @@ export const loginUser = async (email: string, password: string) => {
 export const registerUser = async (userData: Omit<User, 'id'> & { password: string }) => {
   console.log('Starting registration process...');
   
-  // Step 1: Create the auth user with metadata
+  // Step 1: Create the auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: userData.email,
     password: userData.password,
     options: {
       emailRedirectTo: `${window.location.origin}/`,
-      data: {
-        name: userData.name,
-        role: userData.role,
-        phone: userData.phone || '',
-        location: userData.location || ''
-      }
     }
   });
   
@@ -42,9 +36,34 @@ export const registerUser = async (userData: Omit<User, 'id'> & { password: stri
   }
 
   console.log('Auth user created successfully with ID:', authData.user.id);
+
+  // Step 2: Create user profile in users table
+  try {
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        phone: userData.phone || '',
+        location: userData.location || '',
+        approved: userData.role === 'client' ? 'true' : 'false', // Auto-approve clients, taskers need manual approval
+        created_at: new Date().toISOString()
+      });
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      // Don't throw here as auth user is already created
+      // The trigger should handle this, but we're being explicit
+    } else {
+      console.log('User profile created successfully');
+    }
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    // Continue - the user can still be authenticated even if profile creation fails initially
+  }
   
-  // The trigger will automatically create the user profile
-  // Return the auth data for the calling function
   return authData;
 };
 

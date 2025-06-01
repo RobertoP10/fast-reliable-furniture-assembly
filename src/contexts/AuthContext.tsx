@@ -22,8 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await loginUser(email, password);
-      toast.success('Login successful! Redirecting...');
-      // Note: Redirect will be handled by Index.tsx based on auth state change
+      toast.success('Login successful!');
+      // Auth state change will handle redirect
     } catch (error: any) {
       console.error('Login failed:', error);
       setLoading(false);
@@ -38,12 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await registerUser(userData);
       toast.success('Registration successful! Please check your email for confirmation.');
-      // Note: Profile creation and redirect will be handled automatically
+      // Auth state change will handle redirect after email confirmation
     } catch (error: any) {
       console.error('Registration failed:', error);
       setLoading(false);
       
-      // Show user-friendly error messages
       if (error.message.includes('email')) {
         toast.error('Please check your email and click the confirmation link to complete registration');
       } else {
