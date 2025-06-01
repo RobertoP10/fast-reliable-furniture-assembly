@@ -22,19 +22,18 @@ const Index = () => {
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
-        if (user.approved === true) {
-          navigate('/tasker-dashboard');
-        } else {
-          // This will be handled by the protected route component
-          navigate('/tasker-dashboard');
-        }
+        // Navigate to tasker dashboard regardless of approval status
+        // The protected route will handle the approval status check
+        navigate('/tasker-dashboard');
       } else if (user.role === 'client') {
         navigate('/client-dashboard');
       }
     }
   }, [user, loading, navigate]);
 
-  if (loading) {
+  // Show loading state only if we're checking auth AND there might be a user to redirect
+  // This prevents the loading spinner from showing indefinitely for non-logged-in users
+  if (loading && sessionStorage.getItem('supabase.auth.token')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -53,6 +52,7 @@ const Index = () => {
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
 
+  // Show the landing page for non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
