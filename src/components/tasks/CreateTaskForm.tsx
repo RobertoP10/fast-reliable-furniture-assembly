@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const CreateTaskForm = () => {
+interface CreateTaskFormProps {
+  onTaskCreated?: () => void;
+}
+
+const CreateTaskForm = ({ onTaskCreated }: CreateTaskFormProps) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -20,6 +26,7 @@ const CreateTaskForm = () => {
     address: "",
     paymentMethod: "cash"
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const categories = {
@@ -39,7 +46,7 @@ const CreateTaskForm = () => {
     "Shrewsbury, Shropshire"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.category || !formData.subcategory) {
@@ -51,23 +58,71 @@ const CreateTaskForm = () => {
       return;
     }
 
-    console.log("Creating task:", formData);
-    toast({
-      title: "Task created successfully!",
-      description: "Your task has been posted and will be visible to taskers.",
-    });
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a task.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Reset form
-    setFormData({
-      title: "",
-      description: "",
-      category: "",
-      subcategory: "",
-      minBudget: "",
-      maxBudget: "",
-      address: "",
-      paymentMethod: "cash"
-    });
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('task_requests')
+        .insert({
+          client_id: user.id,
+          description: formData.description,
+          category: formData.category,
+          subcategory: formData.subcategory,
+          price_range: `${formData.minBudget}-${formData.maxBudget}`,
+          location: formData.address,
+          status: 'pending'
+        });
+
+      if (error) {
+        console.error('Error creating task:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create task. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Task created successfully!",
+        description: "Your task has been posted and will be visible to taskers.",
+      });
+
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        subcategory: "",
+        minBudget: "",
+        maxBudget: "",
+        address: "",
+        paymentMethod: "cash"
+      });
+
+      // Call the callback if provided
+      if (onTaskCreated) {
+        onTaskCreated();
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -200,8 +255,12 @@ const CreateTaskForm = () => {
             </RadioGroup>
           </div>
 
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-            Post Task
+          <Button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating Task..." : "Post Task"}
           </Button>
         </form>
       </CardContent>
