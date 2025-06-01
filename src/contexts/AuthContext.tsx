@@ -1,9 +1,24 @@
 
-import React, { createContext, useContext } from 'react';
-import type { AuthContextType } from './auth/types';
-import { useAuthState } from './auth/useAuthState';
-import { loginUser, registerUser, logoutUser } from './auth/authService';
-import { toast } from 'sonner';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'client' | 'tasker' | 'admin';
+  location?: string;
+  isApproved?: boolean;
+  rating?: number;
+  completedTasks?: number;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -16,58 +31,79 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, session, loading, setLoading } = useAuthState();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for existing session
+    const storedUser = localStorage.getItem('mgsdeal_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await loginUser(email, password);
-      toast.success('Login successful!');
-      // Auth state change will handle redirect
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      setLoading(false);
-      toast.error(error.message || 'Login failed');
-      throw new Error(error.message || 'Login failed');
-    }
-  };
-
-  const register = async (userData: Omit<import('./auth/types').User, 'id'> & { password: string }) => {
-    setLoading(true);
-    
-    try {
-      await registerUser(userData);
-      toast.success('Registration successful! Please check your email for confirmation.');
-      // Auth state change will handle redirect after email confirmation
-    } catch (error: any) {
-      console.error('Registration failed:', error);
-      setLoading(false);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (error.message.includes('email')) {
-        toast.error('Please check your email and click the confirmation link to complete registration');
-      } else {
-        toast.error(error.message || 'Registration failed');
-      }
-      throw error;
+      // Mock user data - in real app this would come from your backend
+      const mockUser: User = {
+        id: '1',
+        email,
+        name: email.split('@')[0],
+        role: email.includes('admin') ? 'admin' : email.includes('tasker') ? 'tasker' : 'client',
+        location: 'București, România',
+        isApproved: true,
+        rating: 4.8,
+        completedTasks: 15
+      };
+      
+      setUser(mockUser);
+      localStorage.setItem('mgsdeal_user', JSON.stringify(mockUser));
+    } catch (error) {
+      throw new Error('Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
+  const register = async (userData: Omit<User, 'id'> & { password: string }) => {
+    setLoading(true);
     try {
-      await logoutUser();
-      toast.success('Logged out successfully');
-    } catch (error: any) {
-      console.error('Logout failed:', error);
-      toast.error('Logout failed');
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const newUser: User = {
+        id: Date.now().toString(),
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        location: userData.location,
+        isApproved: userData.role === 'client' ? true : false, // Taskeri trebuie aprobați
+        rating: 0,
+        completedTasks: 0
+      };
+      
+      setUser(newUser);
+      localStorage.setItem('mgsdeal_user', JSON.stringify(newUser));
+    } catch (error) {
+      throw new Error('Registration failed');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('mgsdeal_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-// Re-export types for backward compatibility
-export type { User } from './auth/types';

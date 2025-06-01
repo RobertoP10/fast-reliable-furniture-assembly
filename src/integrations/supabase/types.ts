@@ -15,7 +15,6 @@ export type Database = {
           id: string | null
           image_url: string | null
           message: string | null
-          receiver_id: string | null
           sender_id: string | null
           task_id: string | null
         }
@@ -24,7 +23,6 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           message?: string | null
-          receiver_id?: string | null
           sender_id?: string | null
           task_id?: string | null
         }
@@ -33,18 +31,10 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           message?: string | null
-          receiver_id?: string | null
           sender_id?: string | null
           task_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "messages_sender_id_fkey"
             columns: ["sender_id"]
@@ -200,7 +190,7 @@ export type Database = {
       task_requests: {
         Row: {
           category: string | null
-          client_id: string
+          client_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -212,10 +202,10 @@ export type Database = {
         }
         Insert: {
           category?: string | null
-          client_id: string
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
-          id?: string
+          id: string
           image_url?: string | null
           location?: string | null
           price_range?: string | null
@@ -224,7 +214,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
-          client_id?: string
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
