@@ -14,7 +14,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
+  const [hasAttemptedRedirect, setHasAttemptedRedirect] = useState(false);
 
   useEffect(() => {
     console.log('🏠 Index page - Auth state:', { 
@@ -22,31 +22,41 @@ const Index = () => {
       loading, 
       role: user?.role, 
       approved: user?.approved,
-      redirectAttempted
+      hasAttemptedRedirect
     });
     
     // Only redirect if we have a user, not loading, and haven't already attempted redirect
-    if (!loading && user && !redirectAttempted) {
-      console.log('🔄 User detected in Index, redirecting...', user.role, user.approved);
-      setRedirectAttempted(true);
+    if (!loading && user && !hasAttemptedRedirect) {
+      console.log('🔄 User detected in Index, preparing redirect...', user.role, user.approved);
+      setHasAttemptedRedirect(true);
       
-      // Redirect based on user role and approval status
-      if (user.role === 'admin') {
-        navigate('/admin-dashboard');
-      } else if (user.role === 'tasker') {
-        if (user.approved) {
-          navigate('/tasker-dashboard');
+      // Small delay to ensure state is stable before redirect
+      setTimeout(() => {
+        console.log('🔄 Executing redirect for user:', user.role);
+        if (user.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (user.role === 'tasker') {
+          if (user.approved) {
+            navigate('/tasker-dashboard');
+          } else {
+            navigate('/tasker-pending');
+          }
         } else {
-          navigate('/tasker-pending');
+          navigate('/client-dashboard');
         }
-      } else {
-        navigate('/client-dashboard');
-      }
+      }, 100);
     }
-  }, [user, loading, navigate, redirectAttempted]);
+  }, [user, loading, navigate, hasAttemptedRedirect]);
 
-  // Show loading only for a reasonable time, then show content
-  if (loading && !redirectAttempted) {
+  // Reset redirect attempt when user changes
+  useEffect(() => {
+    if (!user) {
+      setHasAttemptedRedirect(false);
+    }
+  }, [user]);
+
+  // Show loading only initially or when explicitly loading
+  if (loading && !user && !hasAttemptedRedirect) {
     console.log('⏳ Index page showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">

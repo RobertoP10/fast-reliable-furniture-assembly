@@ -41,7 +41,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authInitialized, setAuthInitialized] = useState(false);
   const navigate = useNavigate();
 
   // Function to redirect user based on role and approval status
@@ -61,23 +60,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Function to fetch user profile with timeout and proper error handling
+  // Function to fetch user profile
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
     try {
       console.log(`🔍 Fetching user profile for: ${authUser.id}`);
       
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
-      );
-
-      const fetchPromise = supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single();
-
-      const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('❌ Error fetching user profile:', error);
@@ -147,69 +139,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let mounted = true;
-    let authSubscription: any = null;
+    console.log('🚀 Initializing authentication...');
 
-    // Initialize auth state
-    const initializeAuth = async () => {
-      try {
-        console.log('🚀 Initializing authentication...');
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state changed:', event, session?.user?.id || 'no user');
+      
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('🔑 User signed in, fetching profile...');
         
-        // Set up auth state listener first
-        authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔄 Auth state changed:', event, session?.user?.id || 'no user');
-          
-          if (!mounted) return;
-
-          if (event === 'SIGNED_IN' && session?.user) {
-            console.log('🔑 User signed in, fetching profile...');
-            setLoading(true);
+        try {
+          const userProfile = await fetchUserProfile(session.user);
+          if (mounted) {
+            setUser(userProfile);
+            setLoading(false);
             
-            try {
-              const userProfile = await fetchUserProfile(session.user);
-              if (mounted) {
-                setUser(userProfile);
-                setLoading(false);
-                
-                // Only redirect if we're on the home page
-                if (userProfile && window.location.pathname === '/') {
-                  redirectUser(userProfile);
-                }
-              }
-            } catch (error) {
-              console.error('❌ Error handling sign in:', error);
-              if (mounted) {
-                setUser(null);
-                setLoading(false);
-              }
-            }
-          } else if (event === 'SIGNED_OUT') {
-            console.log('👋 User signed out');
-            if (mounted) {
-              setUser(null);
-              setLoading(false);
-              navigate('/');
-            }
-          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-            console.log('🔄 Token refreshed');
-            // Don't fetch profile again on token refresh if we already have a user
-            if (!user && mounted) {
-              try {
-                const userProfile = await fetchUserProfile(session.user);
-                if (mounted) {
-                  setUser(userProfile);
-                  setLoading(false);
-                }
-              } catch (error) {
-                console.error('❌ Error handling token refresh:', error);
-                if (mounted) {
-                  setLoading(false);
-                }
-              }
+            // Only redirect if we're on the home page
+            if (userProfile && window.location.pathname === '/') {
+              redirectUser(userProfile);
             }
           }
-        });
+        } catch (error) {
+          console.error('❌ Error handling sign in:', error);
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+          navigate('/');
+        }
+      }
+    });
 
-        // Get initial session
+    // Get initial session
+    const initializeSession = async () => {
+      try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -217,26 +188,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setUser(null);
             setLoading(false);
-            setAuthInitialized(true);
           }
           return;
         }
 
-        if (session?.user) {
+        if (session?.user && mounted) {
           console.log('✅ Initial session found, fetching profile...');
           try {
             const userProfile = await fetchUserProfile(session.user);
             if (mounted) {
               setUser(userProfile);
               setLoading(false);
-              setAuthInitialized(true);
             }
           } catch (error) {
             console.error('❌ Error fetching initial profile:', error);
             if (mounted) {
               setUser(null);
               setLoading(false);
-              setAuthInitialized(true);
             }
           }
         } else {
@@ -244,27 +212,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setUser(null);
             setLoading(false);
-            setAuthInitialized(true);
           }
         }
       } catch (error) {
-        console.error('❌ Error in initializeAuth:', error);
+        console.error('❌ Error in initializeSession:', error);
         if (mounted) {
           setUser(null);
           setLoading(false);
-          setAuthInitialized(true);
         }
       }
     };
 
-    initializeAuth();
+    initializeSession();
 
     return () => {
       console.log('🧹 Cleaning up auth context...');
       mounted = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, [navigate]);
 
@@ -285,22 +249,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        console.log('✅ Login successful, fetching profile...');
-        const userProfile = await fetchUserProfile(data.user);
-        if (userProfile) {
-          setUser(userProfile);
-          redirectUser(userProfile);
-        } else {
-          console.error('❌ Failed to fetch user profile after login');
-          throw new Error('Failed to load user profile');
-        }
+        console.log('✅ Login successful for user:', data.user.id);
+        // Don't fetch profile here, let the auth state change handler do it
       }
     } catch (error) {
       console.error('❌ Login error:', error);
       setLoading(false);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -309,12 +264,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      // Sign up with autoConfirm disabled for instant registration
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
-          emailRedirectTo: undefined,
           data: {
             name: userData.name,
             role: userData.role,
@@ -343,7 +296,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: userData.role,
             location: userData.location,
             phone: userData.phone,
-            approved: userData.role === 'client' ? true : false, // Clients auto-approved, taskers need approval
+            approved: userData.role === 'client' ? true : false,
           })
           .select()
           .single();
@@ -369,6 +322,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           console.log('✅ User profile created successfully:', userProfile);
           setUser(userProfile);
+          setLoading(false);
           redirectUser(userProfile);
         }
       }
@@ -376,8 +330,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('❌ Registration error:', error);
       setLoading(false);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -11,6 +11,8 @@ type OfferInsert = Database['public']['Tables']['offers']['Insert'];
 
 // Fetch all tasks based on user role
 export const fetchTasks = async (userRole: string, userId?: string): Promise<TaskRequest[]> => {
+  console.log('🔍 Fetching tasks for:', userRole, 'userId:', userId);
+  
   let query = supabase.from('task_requests').select('*');
 
   if (userRole === 'client' && userId) {
@@ -24,15 +26,18 @@ export const fetchTasks = async (userRole: string, userId?: string): Promise<Tas
   const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching tasks:', error);
+    console.error('❌ Error fetching tasks:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ Tasks fetched successfully:', data?.length || 0, 'tasks');
   return data || [];
 };
 
 // Fetch offers for a specific task
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
+  console.log('🔍 Fetching offers for task:', taskId);
+  
   const { data, error } = await supabase
     .from('offers')
     .select(`
@@ -43,15 +48,18 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching offers:', error);
+    console.error('❌ Error fetching offers:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ Offers fetched successfully:', data?.length || 0, 'offers');
   return data || [];
 };
 
 // Fetch user's offers
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
+  console.log('🔍 Fetching offers for user:', userId);
+  
   const { data, error } = await supabase
     .from('offers')
     .select(`
@@ -62,10 +70,11 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching user offers:', error);
+    console.error('❌ Error fetching user offers:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ User offers fetched successfully:', data?.length || 0, 'offers');
   return data || [];
 };
 
@@ -81,6 +90,8 @@ export const createTask = async (taskData: {
   payment_method: PaymentMethod;
   client_id: string;
 }): Promise<TaskRequest> => {
+  console.log('📝 Creating new task:', taskData.title);
+  
   const { data, error } = await supabase
     .from('task_requests')
     .insert({
@@ -98,24 +109,29 @@ export const createTask = async (taskData: {
     .single();
 
   if (error) {
-    console.error('Error creating task:', error);
+    console.error('❌ Error creating task:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ Task created successfully:', data.id);
   return data;
 };
 
 // Update task status
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<void> => {
+  console.log('📝 Updating task status:', taskId, 'to', status);
+  
   const { error } = await supabase
     .from('task_requests')
     .update({ status })
     .eq('id', taskId);
 
   if (error) {
-    console.error('Error updating task status:', error);
+    console.error('❌ Error updating task status:', error);
     throw new Error(error.message);
   }
+
+  console.log('✅ Task status updated successfully');
 };
 
 // Create an offer
@@ -125,6 +141,8 @@ export const createOffer = async (offerData: {
   price: number;
   message: string;
 }): Promise<Offer> => {
+  console.log('📝 Creating new offer:', offerData.task_id);
+  
   const { data, error } = await supabase
     .from('offers')
     .insert({
@@ -137,28 +155,35 @@ export const createOffer = async (offerData: {
     .single();
 
   if (error) {
-    console.error('Error creating offer:', error);
+    console.error('❌ Error creating offer:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ Offer created successfully:', data.id);
   return data;
 };
 
 // Accept an offer
 export const acceptOffer = async (offerId: string): Promise<void> => {
+  console.log('📝 Accepting offer:', offerId);
+  
   const { error } = await supabase
     .from('offers')
     .update({ is_accepted: true })
     .eq('id', offerId);
 
   if (error) {
-    console.error('Error accepting offer:', error);
+    console.error('❌ Error accepting offer:', error);
     throw new Error(error.message);
   }
+
+  console.log('✅ Offer accepted successfully');
 };
 
 // Fetch pending taskers for admin approval
 export const fetchPendingTaskers = async () => {
+  console.log('🔍 Fetching pending taskers for admin review');
+  
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -166,22 +191,27 @@ export const fetchPendingTaskers = async () => {
     .eq('approved', false);
 
   if (error) {
-    console.error('Error fetching pending taskers:', error);
+    console.error('❌ Error fetching pending taskers:', error);
     throw new Error(error.message);
   }
 
+  console.log('✅ Pending taskers fetched successfully:', data?.length || 0, 'pending');
   return data || [];
 };
 
 // Accept a tasker
 export const acceptTasker = async (taskerId: string): Promise<void> => {
+  console.log('📝 Accepting tasker:', taskerId);
+  
   const { error } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId);
 
   if (error) {
-    console.error('Error accepting tasker:', error);
+    console.error('❌ Error accepting tasker:', error);
     throw new Error(error.message);
   }
+
+  console.log('✅ Tasker accepted successfully');
 };
