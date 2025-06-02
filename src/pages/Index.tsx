@@ -14,7 +14,6 @@ const Index = () => {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [hasAttemptedRedirect, setHasAttemptedRedirect] = useState(false);
 
   useEffect(() => {
     console.log('🏠 Index page - Auth state:', { 
@@ -22,47 +21,32 @@ const Index = () => {
       loading, 
       role: user?.role, 
       approved: user?.approved,
-      hasAttemptedRedirect
+      currentPath: window.location.pathname
     });
-    
-    // Only redirect if we have a user, not loading, and haven't already attempted redirect
-    if (!loading && user && !hasAttemptedRedirect) {
-      console.log('🔄 User detected in Index, preparing redirect...', user.role, user.approved);
-      setHasAttemptedRedirect(true);
-      
-      // Small delay to ensure state is stable before redirect
-      setTimeout(() => {
-        console.log('🔄 Executing redirect for user:', user.role);
-        if (user.role === 'admin') {
-          navigate('/admin-dashboard');
-        } else if (user.role === 'tasker') {
-          if (user.approved) {
-            navigate('/tasker-dashboard');
-          } else {
-            navigate('/tasker-pending');
-          }
-        } else {
-          navigate('/client-dashboard');
-        }
-      }, 100);
-    }
-  }, [user, loading, navigate, hasAttemptedRedirect]);
+  }, [user, loading]);
 
-  // Reset redirect attempt when user changes
-  useEffect(() => {
-    if (!user) {
-      setHasAttemptedRedirect(false);
-    }
-  }, [user]);
-
-  // Show loading only initially or when explicitly loading
-  if (loading && !user && !hasAttemptedRedirect) {
+  // Show loading only when initially loading and no user yet
+  if (loading && !user) {
     console.log('⏳ Index page showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, they should be redirected by AuthContext
+  // But if they're still here, it means redirection is in progress or failed
+  if (user && !loading) {
+    console.log('👤 Authenticated user on home page, redirection should happen soon...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
         </div>
       </div>
     );
@@ -76,7 +60,7 @@ const Index = () => {
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
 
-  console.log('🏠 Index page rendering main content');
+  console.log('🏠 Index page rendering main content for unauthenticated user');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -241,7 +225,7 @@ const Index = () => {
             © 2025 MGSDEAL. All rights reserved.
           </p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 };

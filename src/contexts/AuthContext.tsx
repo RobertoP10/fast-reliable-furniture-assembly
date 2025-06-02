@@ -44,23 +44,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   // Function to redirect user based on role and approval status
-  const redirectUser = (userProfile: User) => {
-    console.log('🔄 Redirecting user:', userProfile.role, 'approved:', userProfile.approved);
+  const redirectUser = (userProfile: User, currentPath: string) => {
+    console.log('🔄 Redirecting user:', userProfile.role, 'approved:', userProfile.approved, 'currentPath:', currentPath);
+    
+    // Only redirect if we're on the home page to avoid infinite redirects
+    if (currentPath !== '/') {
+      console.log('ℹ️ Not redirecting - user not on home page');
+      return;
+    }
     
     if (userProfile.role === 'admin') {
-      navigate('/admin-dashboard');
+      navigate('/admin-dashboard', { replace: true });
     } else if (userProfile.role === 'tasker') {
       if (userProfile.approved) {
-        navigate('/tasker-dashboard');
+        navigate('/tasker-dashboard', { replace: true });
       } else {
-        navigate('/tasker-pending');
+        navigate('/tasker-pending', { replace: true });
       }
     } else {
-      navigate('/client-dashboard');
+      navigate('/client-dashboard', { replace: true });
     }
   };
 
-  // Function to fetch user profile
+  // Function to fetch user profile with better error handling
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
     try {
       console.log(`🔍 Fetching user profile for: ${authUser.id}`);
@@ -152,14 +158,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         try {
           const userProfile = await fetchUserProfile(session.user);
-          if (mounted) {
+          if (mounted && userProfile) {
             setUser(userProfile);
             setLoading(false);
             
-            // Only redirect if we're on the home page
-            if (userProfile && window.location.pathname === '/') {
-              redirectUser(userProfile);
-            }
+            // Get current path and redirect if on home page
+            const currentPath = window.location.pathname;
+            setTimeout(() => {
+              redirectUser(userProfile, currentPath);
+            }, 100);
+          } else if (mounted) {
+            setUser(null);
+            setLoading(false);
           }
         } catch (error) {
           console.error('❌ Error handling sign in:', error);
@@ -173,7 +183,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (mounted) {
           setUser(null);
           setLoading(false);
-          navigate('/');
+          navigate('/', { replace: true });
+        }
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        console.log('🔄 Token refreshed for user:', session.user.id);
+        // Don't fetch profile again on token refresh, just update loading state
+        if (mounted && !user) {
+          setLoading(false);
         }
       }
     });
@@ -286,44 +302,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log('✅ Registration successful, creating user profile...');
         
-        // Create user profile immediately
-        const { data: profileData, error: profileError } = await supabase
+        // Create user profile immediately with better debugging
+        const profileData = {
+          id: data.user.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          location: userData.location,
+          phone: userData.phone,
+          approved: userData.role === 'client' ? true : false,
+        };
+
+        console.log('📝 Creating profile with data:', profileData);
+
+        const { data: newProfile, error: profileError } = await supabase
           .from('users')
-          .insert({
-            id: data.user.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role,
-            location: userData.location,
-            phone: userData.phone,
-            approved: userData.role === 'client' ? true : false,
-          })
+          .insert(profileData)
           .select()
           .single();
 
         if (profileError) {
           console.error('❌ Error creating user profile:', profileError);
           setLoading(false);
-          throw new Error('Failed to create user profile');
+          throw new Error('Failed to create user profile: ' + profileError.message);
         }
 
-        if (profileData) {
+        if (newProfile) {
+          console.log('✅ User profile created successfully:', newProfile);
           const userProfile: User = {
-            id: profileData.id,
-            email: profileData.email,
-            name: profileData.name,
-            role: profileData.role,
-            location: profileData.location || undefined,
-            phone: profileData.phone || undefined,
-            approved: profileData.approved,
-            rating: profileData.rating || undefined,
-            total_reviews: profileData.total_reviews || undefined,
+            id: newProfile.id,
+            email: newProfile.email,
+            name: newProfile.name,
+            role: newProfile.role,
+            location: newProfile.location || undefined,
+            phone: newProfile.phone || undefined,
+            approved: newProfile.approved,
+            rating: newProfile.rating || undefined,
+            total_reviews: newProfile.total_reviews || undefined,
           };
           
-          console.log('✅ User profile created successfully:', userProfile);
           setUser(userProfile);
           setLoading(false);
-          redirectUser(userProfile);
+          
+          // Redirect immediately for registration
+          const currentPath = window.location.pathname;
+          setTimeout(() => {
+            redirectUser(userProfile, currentPath);
+          }, 100);
         }
       }
     } catch (error) {
@@ -340,7 +365,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
       setLoading(false);
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('❌ Logout error:', error);
       setLoading(false);

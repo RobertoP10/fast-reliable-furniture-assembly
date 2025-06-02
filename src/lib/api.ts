@@ -11,7 +11,7 @@ type OfferInsert = Database['public']['Tables']['offers']['Insert'];
 
 // Fetch all tasks based on user role
 export const fetchTasks = async (userRole: string, userId?: string): Promise<TaskRequest[]> => {
-  console.log('🔍 Fetching tasks for:', userRole, 'userId:', userId);
+  console.log('🔍 [API] Fetching tasks for:', userRole, 'userId:', userId);
   
   let query = supabase.from('task_requests').select('*');
 
@@ -26,17 +26,17 @@ export const fetchTasks = async (userRole: string, userId?: string): Promise<Tas
   const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Error fetching tasks:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error fetching tasks:', error);
+    throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  console.log('✅ Tasks fetched successfully:', data?.length || 0, 'tasks');
+  console.log('✅ [API] Tasks fetched successfully:', data?.length || 0, 'tasks');
   return data || [];
 };
 
 // Fetch offers for a specific task
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
-  console.log('🔍 Fetching offers for task:', taskId);
+  console.log('🔍 [API] Fetching offers for task:', taskId);
   
   const { data, error } = await supabase
     .from('offers')
@@ -48,17 +48,17 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Error fetching offers:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error fetching offers:', error);
+    throw new Error(`Failed to fetch offers: ${error.message}`);
   }
 
-  console.log('✅ Offers fetched successfully:', data?.length || 0, 'offers');
+  console.log('✅ [API] Offers fetched successfully:', data?.length || 0, 'offers');
   return data || [];
 };
 
 // Fetch user's offers
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  console.log('🔍 Fetching offers for user:', userId);
+  console.log('🔍 [API] Fetching offers for user:', userId);
   
   const { data, error } = await supabase
     .from('offers')
@@ -70,11 +70,11 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Error fetching user offers:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error fetching user offers:', error);
+    throw new Error(`Failed to fetch user offers: ${error.message}`);
   }
 
-  console.log('✅ User offers fetched successfully:', data?.length || 0, 'offers');
+  console.log('✅ [API] User offers fetched successfully:', data?.length || 0, 'offers');
   return data || [];
 };
 
@@ -90,7 +90,7 @@ export const createTask = async (taskData: {
   payment_method: PaymentMethod;
   client_id: string;
 }): Promise<TaskRequest> => {
-  console.log('📝 Creating new task:', taskData.title);
+  console.log('📝 [API] Creating new task:', taskData.title, 'for client:', taskData.client_id);
   
   const { data, error } = await supabase
     .from('task_requests')
@@ -109,17 +109,17 @@ export const createTask = async (taskData: {
     .single();
 
   if (error) {
-    console.error('❌ Error creating task:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error creating task:', error);
+    throw new Error(`Failed to create task: ${error.message}`);
   }
 
-  console.log('✅ Task created successfully:', data.id);
+  console.log('✅ [API] Task created successfully with ID:', data.id);
   return data;
 };
 
 // Update task status
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<void> => {
-  console.log('📝 Updating task status:', taskId, 'to', status);
+  console.log('📝 [API] Updating task status:', taskId, 'to', status);
   
   const { error } = await supabase
     .from('task_requests')
@@ -127,11 +127,11 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
     .eq('id', taskId);
 
   if (error) {
-    console.error('❌ Error updating task status:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error updating task status:', error);
+    throw new Error(`Failed to update task status: ${error.message}`);
   }
 
-  console.log('✅ Task status updated successfully');
+  console.log('✅ [API] Task status updated successfully');
 };
 
 // Create an offer
@@ -141,7 +141,7 @@ export const createOffer = async (offerData: {
   price: number;
   message: string;
 }): Promise<Offer> => {
-  console.log('📝 Creating new offer:', offerData.task_id);
+  console.log('📝 [API] Creating new offer for task:', offerData.task_id, 'by tasker:', offerData.tasker_id);
   
   const { data, error } = await supabase
     .from('offers')
@@ -155,17 +155,17 @@ export const createOffer = async (offerData: {
     .single();
 
   if (error) {
-    console.error('❌ Error creating offer:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error creating offer:', error);
+    throw new Error(`Failed to create offer: ${error.message}`);
   }
 
-  console.log('✅ Offer created successfully:', data.id);
+  console.log('✅ [API] Offer created successfully with ID:', data.id);
   return data;
 };
 
 // Accept an offer
 export const acceptOffer = async (offerId: string): Promise<void> => {
-  console.log('📝 Accepting offer:', offerId);
+  console.log('📝 [API] Accepting offer:', offerId);
   
   const { error } = await supabase
     .from('offers')
@@ -173,16 +173,16 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
     .eq('id', offerId);
 
   if (error) {
-    console.error('❌ Error accepting offer:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error accepting offer:', error);
+    throw new Error(`Failed to accept offer: ${error.message}`);
   }
 
-  console.log('✅ Offer accepted successfully');
+  console.log('✅ [API] Offer accepted successfully');
 };
 
 // Fetch pending taskers for admin approval
 export const fetchPendingTaskers = async () => {
-  console.log('🔍 Fetching pending taskers for admin review');
+  console.log('🔍 [API] Fetching pending taskers for admin review');
   
   const { data, error } = await supabase
     .from('users')
@@ -191,17 +191,17 @@ export const fetchPendingTaskers = async () => {
     .eq('approved', false);
 
   if (error) {
-    console.error('❌ Error fetching pending taskers:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error fetching pending taskers:', error);
+    throw new Error(`Failed to fetch pending taskers: ${error.message}`);
   }
 
-  console.log('✅ Pending taskers fetched successfully:', data?.length || 0, 'pending');
+  console.log('✅ [API] Pending taskers fetched successfully:', data?.length || 0, 'pending');
   return data || [];
 };
 
 // Accept a tasker
 export const acceptTasker = async (taskerId: string): Promise<void> => {
-  console.log('📝 Accepting tasker:', taskerId);
+  console.log('📝 [API] Accepting tasker:', taskerId);
   
   const { error } = await supabase
     .from('users')
@@ -209,9 +209,48 @@ export const acceptTasker = async (taskerId: string): Promise<void> => {
     .eq('id', taskerId);
 
   if (error) {
-    console.error('❌ Error accepting tasker:', error);
-    throw new Error(error.message);
+    console.error('❌ [API] Error accepting tasker:', error);
+    throw new Error(`Failed to accept tasker: ${error.message}`);
   }
 
-  console.log('✅ Tasker accepted successfully');
+  console.log('✅ [API] Tasker accepted successfully');
+};
+
+// Check user session and profile consistency
+export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
+  try {
+    console.log('🔍 [API] Validating user session and profile...');
+    
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('❌ [API] Session error:', sessionError);
+      return null;
+    }
+
+    if (!session?.user) {
+      console.log('ℹ️ [API] No active session');
+      return null;
+    }
+
+    console.log('✅ [API] Session found for user:', session.user.id);
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileError) {
+      console.error('❌ [API] Profile fetch error:', profileError);
+      return { session, profile: null };
+    }
+
+    console.log('✅ [API] Profile found:', profile.role, 'approved:', profile.approved);
+    return { session, profile };
+    
+  } catch (error) {
+    console.error('❌ [API] Exception in validateUserSession:', error);
+    return null;
+  }
 };
