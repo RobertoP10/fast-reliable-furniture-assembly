@@ -48,8 +48,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🔄 [AUTH] Redirecting user based on role:', {
       role: userProfile.role, 
       approved: userProfile.approved, 
-      userId: userProfile.id
+      userId: userProfile.id,
+      currentPath: window.location.pathname
     });
+    
+    // Only redirect if we're on the home page to avoid redirecting from other pages
+    if (window.location.pathname !== '/') {
+      console.log('ℹ️ [AUTH] Not on home page, skipping redirect');
+      return;
+    }
     
     if (userProfile.role === 'admin') {
       console.log('👨‍💼 [AUTH] Redirecting admin to admin dashboard');
@@ -83,9 +90,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('❌ [AUTH] Error fetching user profile:', error);
         
         // If profile doesn't exist and this is a fresh signup, wait a bit and retry
-        if (error.code === 'PGRST116' && retryCount < 3) {
+        if (error.code === 'PGRST116' && retryCount < 5) {
           console.log('⏳ [AUTH] Profile not found, waiting for trigger... retry', retryCount + 1);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
           return fetchUserProfile(authUser, retryCount + 1);
         }
         
@@ -144,36 +151,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔑 [AUTH] User authenticated, fetching profile...');
         setLoading(true);
         
-        try {
-          const userProfile = await fetchUserProfile(session.user);
-          if (mounted) {
-            if (userProfile) {
-              console.log('✅ [AUTH] Setting user profile in state');
-              setUser(userProfile);
-              setLoading(false);
-              
-              // Only redirect if we're on the home page
-              if (window.location.pathname === '/') {
+        // Use setTimeout to avoid blocking auth state change
+        setTimeout(async () => {
+          if (!mounted) return;
+          
+          try {
+            const userProfile = await fetchUserProfile(session.user);
+            if (mounted) {
+              if (userProfile) {
+                console.log('✅ [AUTH] Setting user profile in state');
+                setUser(userProfile);
+                setLoading(false);
+                
+                // Redirect after setting user and loading false
                 setTimeout(() => {
                   if (mounted) {
                     redirectUser(userProfile);
                   }
                 }, 100);
+              } else {
+                console.error('❌ [AUTH] Failed to fetch user profile - forcing logout');
+                setUser(null);
+                setLoading(false);
+                await supabase.auth.signOut();
               }
-            } else {
-              console.error('❌ [AUTH] Failed to fetch user profile - forcing logout');
+            }
+          } catch (error) {
+            console.error('❌ [AUTH] Error handling authentication:', error);
+            if (mounted) {
               setUser(null);
               setLoading(false);
-              await supabase.auth.signOut();
             }
           }
-        } catch (error) {
-          console.error('❌ [AUTH] Error handling authentication:', error);
-          if (mounted) {
-            setUser(null);
-            setLoading(false);
-          }
-        }
+        }, 0);
       } else if (event === 'SIGNED_OUT' || !session) {
         console.log('👋 [AUTH] User signed out or no session');
         if (mounted) {
@@ -217,13 +227,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setLoading(false);
                 
                 // Check if we should redirect from home page
-                if (window.location.pathname === '/') {
-                  setTimeout(() => {
-                    if (mounted) {
-                      redirectUser(userProfile);
-                    }
-                  }, 100);
-                }
+                setTimeout(() => {
+                  if (mounted) {
+                    redirectUser(userProfile);
+                  }
+                }, 100);
               } else {
                 console.error('❌ [AUTH] Failed to load initial profile');
                 setUser(null);
@@ -283,7 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userId: data.user.id,
           sessionExists: !!data.session
         });
-        // Auth state change handler will handle the rest
+        // Auth state change handler will handle the rest including redirection
       }
     } catch (error) {
       console.error('❌ [AUTH] Login error:', error);
