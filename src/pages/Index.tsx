@@ -14,7 +14,6 @@ const Index = () => {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     console.log('🏠 [INDEX] Component mounted/updated - Auth state:', { 
@@ -26,58 +25,40 @@ const Index = () => {
       timestamp: new Date().toISOString()
     });
 
-    // Mark initial load as complete after a short delay
-    if (!initialLoadComplete && !loading) {
-      const timer = setTimeout(() => {
-        setInitialLoadComplete(true);
-        console.log('✅ [INDEX] Initial load marked as complete');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-
-    // Additional debugging for redirect scenarios
-    if (user && !loading) {
-      console.log('🔍 [INDEX] User authenticated but still on home page:', {
+    // If user is authenticated and we're on home page, redirect them
+    if (user && !loading && window.location.pathname === '/') {
+      console.log('🔍 [INDEX] User authenticated on home page, triggering redirect:', {
         userId: user.id,
         role: user.role,
-        approved: user.approved,
-        shouldRedirect: window.location.pathname === '/'
+        approved: user.approved
       });
+      
+      setTimeout(() => {
+        if (user.role === 'admin') {
+          navigate('/admin-dashboard', { replace: true });
+        } else if (user.role === 'tasker') {
+          navigate(user.approved ? '/tasker-dashboard' : '/tasker-pending', { replace: true });
+        } else {
+          navigate('/client-dashboard', { replace: true });
+        }
+      }, 100);
     }
-  }, [user, loading, initialLoadComplete]);
+  }, [user, loading, navigate]);
 
-  // Enhanced loading state with timeout detection
-  useEffect(() => {
-    if (loading) {
-      console.log('⏳ [INDEX] Loading state detected, starting timeout monitor...');
-      const timeout = setTimeout(() => {
-        console.warn('⚠️ [INDEX] Loading state has been active for more than 10 seconds!');
-      }, 10000);
-
-      return () => {
-        clearTimeout(timeout);
-      };
-    }
-  }, [loading]);
-
-  // Show loading only when initially loading and no user yet, but not indefinitely
-  if (loading && !user && !initialLoadComplete) {
-    console.log('⏳ [INDEX] Showing loading state - no user yet');
+  // Show loading only when initially loading
+  if (loading && !user) {
+    console.log('⏳ [INDEX] Showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading authentication...</p>
-          <p className="mt-2 text-xs text-gray-500">
-            Debug: Loading={loading.toString()}, User={user?.id || 'none'}, InitialComplete={initialLoadComplete.toString()}
-          </p>
         </div>
       </div>
     );
   }
 
-  // If user is authenticated, they should be redirected by AuthContext
-  // But if they're still here, it means redirection is in progress or failed
+  // If user is authenticated but still here, show redirect message
   if (user && !loading) {
     console.log('👤 [INDEX] Authenticated user on home page - showing redirect message');
     return (
@@ -86,24 +67,8 @@ const Index = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Redirecting to your dashboard...</p>
           <p className="mt-2 text-xs text-gray-500">
-            Debug: User={user.id}, Role={user.role}, Approved={user.approved.toString()}
+            User: {user.id} | Role: {user.role} | Approved: {user.approved.toString()}
           </p>
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => {
-              console.log('🔄 [INDEX] Manual redirect triggered');
-              if (user.role === 'admin') {
-                navigate('/admin-dashboard', { replace: true });
-              } else if (user.role === 'tasker') {
-                navigate(user.approved ? '/tasker-dashboard' : '/tasker-pending', { replace: true });
-              } else {
-                navigate('/client-dashboard', { replace: true });
-              }
-            }}
-          >
-            Continue to Dashboard
-          </Button>
         </div>
       </div>
     );

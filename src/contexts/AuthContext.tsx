@@ -79,29 +79,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Function to fetch user profile with enhanced error handling and timeout
+  // Function to fetch user profile with better error handling
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
-    const TIMEOUT_DURATION = 8000; // 8 seconds timeout
-    
     try {
       console.log(`🔍 [AUTH] Fetching user profile for: ${authUser.id}`);
       
-      // Create a timeout promise
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Profile fetch timeout'));
-        }, TIMEOUT_DURATION);
-      });
-
-      // Create the actual fetch promise
-      const fetchPromise = supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single();
-
-      // Race between timeout and actual fetch
-      const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) {
         console.error('❌ [AUTH] Error fetching user profile:', error);
@@ -110,25 +97,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error.code === 'PGRST116') {
           console.log('📝 [AUTH] Profile not found, creating default profile...');
           
-          const createPromise = supabase
+          const newProfileData = {
+            id: authUser.id,
+            email: authUser.email || '',
+            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+            role: (authUser.user_metadata?.role as UserRole) || 'client',
+            location: authUser.user_metadata?.location || null,
+            phone: authUser.user_metadata?.phone || null,
+            approved: (authUser.user_metadata?.role === 'tasker') ? false : true
+          };
+
+          console.log('📝 [AUTH] Creating profile with data:', newProfileData);
+
+          const { data: newProfile, error: insertError } = await supabase
             .from('users')
-            .insert({
-              id: authUser.id,
-              email: authUser.email || '',
-              name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-              role: 'client' as UserRole,
-              approved: true
-            })
+            .insert(newProfileData)
             .select()
             .single();
-
-          const createTimeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
-              reject(new Error('Profile creation timeout'));
-            }, TIMEOUT_DURATION);
-          });
-
-          const { data: newProfile, error: insertError } = await Promise.race([createPromise, createTimeoutPromise]);
 
           if (insertError) {
             console.error('❌ [AUTH] Error creating user profile:', insertError);
@@ -180,13 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     } catch (error: any) {
       console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
-      
-      // For timeout errors, we'll proceed without profile to prevent infinite loading
-      if (error.message === 'Profile fetch timeout' || error.message === 'Profile creation timeout') {
-        console.warn('⏱️ [AUTH] Profile fetch timed out, proceeding without profile');
-        return null;
-      }
-      
       throw error;
     }
   };
@@ -228,11 +206,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 redirectUser(userProfile, currentPath);
               }, 100);
             } else {
-              console.log('❌ [AUTH] Failed to fetch user profile, clearing auth state');
+              console.log('❌ [AUTH] Failed to fetch user profile');
               setUser(null);
               setLoading(false);
-              // Sign out the user if we can't get their profile
-              await supabase.auth.signOut();
             }
           }
         } catch (error) {
@@ -240,8 +216,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setUser(null);
             setLoading(false);
-            // On error, sign out to prevent infinite loading
-            await supabase.auth.signOut();
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -275,19 +249,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Get initial session with timeout
+    // Get initial session
     const initializeSession = async () => {
       try {
         console.log('🔍 [AUTH] Getting initial session...');
         
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error('Session fetch timeout'));
-          }, 5000);
-        });
-
-        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+        const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('❌ [AUTH] Error getting session:', error);
@@ -314,7 +281,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               } else {
                 console.log('❌ [AUTH] Failed to load initial profile');
                 setUser(null);
-                await supabase.auth.signOut();
               }
               setLoading(false);
             }
@@ -323,7 +289,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (mounted) {
               setUser(null);
               setLoading(false);
-              await supabase.auth.signOut();
             }
           }
         } else {
@@ -350,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('⚠️ [AUTH] Maximum loading timeout reached, forcing loading to false');
         setLoading(false);
       }
-    }, 15000); // 15 seconds max loading time
+    }, 10000); // 10 seconds max loading time
 
     return () => {
       console.log('🧹 [AUTH] Cleaning up auth context...');
@@ -382,7 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionExists: !!data.session,
           accessToken: data.session.access_token ? 'present' : 'missing'
         });
-        // Don't fetch profile here, let the auth state change handler do it
+        // Don't set loading to false here, let the auth state change handler do it
       }
     } catch (error) {
       console.error('❌ [AUTH] Login error:', error);
@@ -416,56 +381,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        console.log('✅ [AUTH] Registration successful, creating user profile...');
+        console.log('✅ [AUTH] Registration successful for user:', data.user.id);
+        console.log('🔍 [AUTH] User metadata:', data.user.user_metadata);
         
-        // Create user profile immediately with better debugging
-        const profileData = {
-          id: data.user.id,
-          email: userData.email,
-          name: userData.name,
-          role: userData.role,
-          location: userData.location,
-          phone: userData.phone,
-          approved: userData.role === 'client' ? true : false,
-        };
-
-        console.log('📝 [AUTH] Creating profile with data:', profileData);
-
-        const { data: newProfile, error: profileError } = await supabase
-          .from('users')
-          .insert(profileData)
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('❌ [AUTH] Error creating user profile:', profileError);
-          setLoading(false);
-          throw new Error('Failed to create user profile: ' + profileError.message);
-        }
-
-        if (newProfile) {
-          console.log('✅ [AUTH] User profile created successfully:', newProfile);
-          const userProfile: User = {
-            id: newProfile.id,
-            email: newProfile.email,
-            name: newProfile.name,
-            role: newProfile.role,
-            location: newProfile.location || undefined,
-            phone: newProfile.phone || undefined,
-            approved: newProfile.approved,
-            rating: newProfile.rating || undefined,
-            total_reviews: newProfile.total_reviews || undefined,
-          };
-          
-          setUser(userProfile);
-          setLoading(false);
-          
-          // Redirect immediately for registration
-          const currentPath = window.location.pathname;
-          setTimeout(() => {
-            redirectUser(userProfile, currentPath);
-          }, 100);
-        }
+        // The auth state change handler will handle profile creation and redirection
+        // Don't set loading to false here, let the handler do it
       }
     } catch (error) {
       console.error('❌ [AUTH] Registration error:', error);

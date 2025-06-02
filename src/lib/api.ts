@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -11,7 +12,7 @@ type OfferInsert = Database['public']['Tables']['offers']['Insert'];
 // Enhanced session validation with detailed logging
 export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
   try {
-    console.log('🔍 [API] Starting comprehensive session validation...');
+    console.log('🔍 [API] Starting session validation...');
     
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
@@ -28,10 +29,7 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
     console.log('✅ [API] Session validation successful:', {
       userId: session.user.id,
       email: session.user.email,
-      accessToken: session.access_token ? 'present' : 'missing',
-      refreshToken: session.refresh_token ? 'present' : 'missing',
-      expiresAt: session.expires_at,
-      expiresIn: session.expires_in
+      accessToken: session.access_token ? 'present' : 'missing'
     });
 
     const { data: profile, error: profileError } = await supabase
