@@ -225,7 +225,7 @@ const Index = () => {
             © 2025 MGSDEAL. All rights reserved.
           </p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
