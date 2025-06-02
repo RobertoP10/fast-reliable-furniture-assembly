@@ -30,6 +30,15 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.location) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -39,10 +48,10 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       return;
     }
 
-    if (!formData.role) {
+    if (formData.password.length < 6) {
       toast({
         title: "Error",
-        description: "Please select a role.",
+        description: "Password must be at least 6 characters long.",
         variant: "destructive",
       });
       return;
@@ -51,6 +60,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting registration...', formData.role);
       await register({
         name: formData.name,
         email: formData.email,
@@ -70,10 +80,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           description: "Welcome to MGSDEAL!",
         });
       }
-    } catch (error) {
+      // Redirect will be handled by the AuthContext
+    } catch (error: any) {
+      console.error('Registration failed:', error);
       toast({
         title: "Registration error",
-        description: "Please try again.",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -88,6 +100,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           variant="ghost"
           onClick={onBack}
           className="mb-6 hover:bg-blue-50"
+          disabled={isLoading}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -103,7 +116,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             </div>
             <CardTitle className="text-2xl text-blue-900">Create new account</CardTitle>
             <CardDescription>
-              Join the MGSDEAL community
+              Join the MGSDEAL community - instant access!
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -118,6 +131,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
               
@@ -131,12 +145,17 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
 
               <div>
                 <Label htmlFor="role">Account type</Label>
-                <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}
+                  disabled={isLoading}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -157,6 +176,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
               
@@ -165,10 +185,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="Minimum 6 characters"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
               
@@ -177,10 +199,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 <Input
                   id="confirmPassword"
                   type="password"
+                  placeholder="Repeat your password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -189,7 +213,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Create account"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
             
@@ -199,19 +223,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 <button
                   onClick={onSwitchToLogin}
                   className="text-blue-600 hover:text-blue-800 font-medium"
+                  disabled={isLoading}
                 >
                   Login
                 </button>
               </p>
             </div>
 
-            {formData.role === 'tasker' && (
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p className="text-xs text-yellow-700">
-                  <strong>Note:</strong> Tasker accounts are manually verified before approval.
-                </p>
-              </div>
-            )}
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-xs text-green-700">
+                <strong>Instant Access:</strong> No email confirmation required - you'll be logged in immediately!
+                {formData.role === 'tasker' && " Tasker accounts require admin approval before you can start bidding."}
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

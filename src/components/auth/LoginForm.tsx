@@ -22,18 +22,31 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      console.log('Attempting login...');
       await login(email, password);
       toast({
         title: "Login successful!",
         description: "Welcome back to MGSDEAL.",
       });
-    } catch (error) {
+      // Redirect will be handled by the AuthContext
+    } catch (error: any) {
+      console.error('Login failed:', error);
       toast({
         title: "Login error",
-        description: "Incorrect email or password.",
+        description: error.message || "Incorrect email or password.",
         variant: "destructive",
       });
     } finally {
@@ -78,6 +91,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
               <div>
@@ -89,6 +103,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
               <Button
@@ -96,7 +111,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Login"}
+                {isLoading ? "Signing in..." : "Login"}
               </Button>
             </form>
             
@@ -106,6 +121,7 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
                 <button
                   onClick={onSwitchToRegister}
                   className="text-blue-600 hover:text-blue-800 font-medium"
+                  disabled={isLoading}
                 >
                   Register
                 </button>
