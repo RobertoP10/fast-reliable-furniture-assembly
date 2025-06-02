@@ -179,7 +179,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         event,
         userId: session?.user?.id || 'no user',
         sessionExists: !!session,
-        accessToken: session?.access_token ? 'present' : 'missing'
+        accessToken: session?.access_token ? 'present' : 'missing',
+        userMetadata: session?.user?.user_metadata || 'none'
       });
       
       if (!mounted) {
@@ -187,64 +188,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('🔑 [AUTH] User signed in, fetching profile...');
+      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        console.log('🔑 [AUTH] User authenticated, fetching profile...');
         setLoading(true);
         
         try {
           const userProfile = await fetchUserProfile(session.user);
-          if (mounted) {
-            if (userProfile) {
-              console.log('✅ [AUTH] Setting user profile in state');
-              setUser(userProfile);
-              setLoading(false);
-              
-              // Get current path and redirect if on home page
-              const currentPath = window.location.pathname;
-              console.log('📍 [AUTH] Current path:', currentPath);
-              setTimeout(() => {
-                redirectUser(userProfile, currentPath);
-              }, 100);
-            } else {
-              console.log('❌ [AUTH] Failed to fetch user profile');
-              setUser(null);
-              setLoading(false);
-            }
+          if (mounted && userProfile) {
+            console.log('✅ [AUTH] Setting user profile in state');
+            setUser(userProfile);
+            setLoading(false);
+            
+            // Get current path and redirect if on home page
+            const currentPath = window.location.pathname;
+            console.log('📍 [AUTH] Current path:', currentPath);
+            setTimeout(() => {
+              redirectUser(userProfile, currentPath);
+            }, 100);
+          } else if (mounted) {
+            console.log('❌ [AUTH] Failed to fetch user profile');
+            setUser(null);
+            setLoading(false);
           }
         } catch (error) {
-          console.error('❌ [AUTH] Error handling sign in:', error);
+          console.error('❌ [AUTH] Error handling authentication:', error);
           if (mounted) {
             setUser(null);
             setLoading(false);
           }
         }
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👋 [AUTH] User signed out');
+      } else if (event === 'SIGNED_OUT' || !session) {
+        console.log('👋 [AUTH] User signed out or no session');
         if (mounted) {
           setUser(null);
           setLoading(false);
-          navigate('/', { replace: true });
-        }
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('🔄 [AUTH] Token refreshed for user:', session.user.id);
-        // Don't fetch profile again on token refresh if we already have a user
-        if (mounted && !user) {
-          console.log('🔄 [AUTH] Token refreshed but no user in state, fetching profile...');
-          try {
-            const userProfile = await fetchUserProfile(session.user);
-            if (userProfile) {
-              setUser(userProfile);
-            }
-          } catch (error) {
-            console.error('❌ [AUTH] Error fetching profile on token refresh:', error);
+          if (event === 'SIGNED_OUT') {
+            navigate('/', { replace: true });
           }
-          setLoading(false);
-        }
-      } else if (!session) {
-        console.log('📭 [AUTH] No session, user logged out');
-        if (mounted) {
-          setUser(null);
-          setLoading(false);
         }
       }
     });
@@ -269,7 +249,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('✅ [AUTH] Initial session found:', {
             userId: session.user.id,
             email: session.user.email,
-            accessToken: session.access_token ? 'present' : 'missing'
+            accessToken: session.access_token ? 'present' : 'missing',
+            userMetadata: session.user.user_metadata || 'none'
           });
           
           try {
@@ -309,18 +290,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeSession();
 
-    // Set a maximum loading timeout as a safety net
-    const maxLoadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('⚠️ [AUTH] Maximum loading timeout reached, forcing loading to false');
-        setLoading(false);
-      }
-    }, 10000); // 10 seconds max loading time
-
     return () => {
       console.log('🧹 [AUTH] Cleaning up auth context...');
       mounted = false;
-      clearTimeout(maxLoadingTimeout);
       subscription.unsubscribe();
     };
   }, [navigate]);
@@ -347,7 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionExists: !!data.session,
           accessToken: data.session.access_token ? 'present' : 'missing'
         });
-        // Don't set loading to false here, let the auth state change handler do it
+        // Auth state change handler will handle the rest
       }
     } catch (error) {
       console.error('❌ [AUTH] Login error:', error);
@@ -370,7 +342,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: userData.role,
             location: userData.location,
             phone: userData.phone,
-          }
+          },
+          emailRedirectTo: window.location.origin
         }
       });
 
@@ -383,9 +356,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         console.log('✅ [AUTH] Registration successful for user:', data.user.id);
         console.log('🔍 [AUTH] User metadata:', data.user.user_metadata);
+        console.log('🔍 [AUTH] User session:', data.session ? 'present' : 'not present');
         
-        // The auth state change handler will handle profile creation and redirection
-        // Don't set loading to false here, let the handler do it
+        // If session exists, user is automatically logged in (no email confirmation needed)
+        if (data.session) {
+          console.log('✅ [AUTH] User automatically logged in after registration');
+          // Auth state change handler will handle profile creation and redirection
+        } else {
+          console.log('ℹ️ [AUTH] User created but needs email confirmation');
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error('❌ [AUTH] Registration error:', error);

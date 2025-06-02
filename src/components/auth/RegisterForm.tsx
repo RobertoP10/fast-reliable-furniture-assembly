@@ -60,7 +60,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
-      console.log('Attempting registration...', formData.role);
+      console.log('📝 [REGISTER] Attempting registration...', formData.role);
       await register({
         name: formData.name,
         email: formData.email,
@@ -69,20 +69,15 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         location: formData.location
       });
       
-      if (formData.role === 'tasker') {
-        toast({
-          title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon.",
-        });
-      } else {
-        toast({
-          title: "Registration successful!",
-          description: "Welcome to MGSDEAL!",
-        });
-      }
+      toast({
+        title: "Registration successful!",
+        description: formData.role === 'tasker' 
+          ? "Your tasker account will be reviewed and approved soon."
+          : "Welcome to MGSDEAL!",
+      });
       // Redirect will be handled by the AuthContext
     } catch (error: any) {
-      console.error('Registration failed:', error);
+      console.error('❌ [REGISTER] Registration failed:', error);
       toast({
         title: "Registration error",
         description: error.message || "Please try again.",
