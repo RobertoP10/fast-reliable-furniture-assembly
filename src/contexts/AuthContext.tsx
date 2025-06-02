@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -7,15 +9,16 @@ export interface User {
   name: string;
   role: 'client' | 'tasker' | 'admin';
   location?: string;
-  isApproved?: boolean;
-  rating?: number;
-  completedTasks?: number;
+  approved?: boolean;
+  phone?: string;
+  profile_photo?: string;
+  created_at?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  register: (userData: { email: string; password: string; name: string; role: 'client' | 'tasker'; location?: string; phone?: string }) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -35,70 +38,117 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('mgsdeal_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await fetchUserProfile(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserProfile = async (authUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        setUser(null);
+      } else if (profile) {
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          location: profile.location,
+          approved: profile.approved,
+          phone: profile.phone,
+          profile_photo: profile.profile_photo,
+          created_at: profile.created_at
+        });
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data - in real app this would come from your backend
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        role: email.includes('admin') ? 'admin' : email.includes('tasker') ? 'tasker' : 'client',
-        location: 'București, România',
-        isApproved: true,
-        rating: 4.8,
-        completedTasks: 15
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(mockUser));
-    } catch (error) {
-      throw new Error('Login failed');
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        await fetchUserProfile(data.user);
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      throw new Error(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (userData: Omit<User, 'id'> & { password: string }) => {
+  const register = async (userData: { email: string; password: string; name: string; role: 'client' | 'tasker'; location?: string; phone?: string }) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        location: userData.location,
-        isApproved: userData.role === 'client' ? true : false, // Taskeri trebuie aprobați
-        rating: 0,
-        completedTasks: 0
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(newUser));
-    } catch (error) {
-      throw new Error('Registration failed');
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+            location: userData.location,
+            phone: userData.phone,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        await fetchUserProfile(data.user);
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      throw new Error(error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('mgsdeal_user');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
