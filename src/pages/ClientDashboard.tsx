@@ -1,104 +1,43 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-react";
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 
-interface Task {
-  id: string;
-  description: string;
-  category: string;
-  subcategory?: string;
-  price_range: string;
-  status: string;
-  location: string;
-  created_at: string;
-  image_url?: string;
-}
-
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      console.log('Client dashboard loading for user:', user.id);
-      fetchUserTasks();
-    } else {
-      console.error('No user found in ClientDashboard');
-      setError('User session not found');
-      setLoading(false);
+  const mockTasks = [
+    {
+      id: '1',
+      title: 'IKEA PAX Wardrobe Assembly',
+      description: 'I need help assembling a PAX wardrobe from IKEA',
+      category: 'Wardrobe',
+      budget: { min: 150, max: 250 },
+      status: 'pending' as const,
+      location: 'Birmingham, West Midlands',
+      createdAt: new Date(),
+      offers: 3
+    },
+    {
+      id: '2', 
+      title: 'Desk Assembly',
+      description: 'Work desk with drawers',
+      category: 'Desk',
+      budget: { min: 100, max: 180 },
+      status: 'accepted' as const,
+      location: 'Telford, Shropshire',
+      createdAt: new Date(),
+      offers: 1
     }
-  }, [user]);
-
-  const fetchUserTasks = async () => {
-    if (!user) {
-      console.error('Cannot fetch tasks: no user');
-      setError('User not authenticated');
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      console.log('Fetching tasks for client:', user.id);
-      const { data, error } = await supabase
-        .from('task_requests')
-        .select('*')
-        .eq('client_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching tasks:', error);
-        setError('Failed to load tasks');
-        return;
-      }
-
-      console.log('Tasks fetched:', data);
-      setTasks(data || []);
-      setError(null);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      setError('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTaskCreated = () => {
-    console.log('Task created, refreshing list');
-    fetchUserTasks();
-    setActiveTab('tasks');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">Error: {error}</div>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -173,15 +112,11 @@ const ClientDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active tasks</span>
-                  <Badge className="bg-blue-100 text-blue-700">
-                    {tasks.filter(t => t.status === 'pending' || t.status === 'accepted').length}
-                  </Badge>
+                  <Badge className="bg-blue-100 text-blue-700">2</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Completed tasks</span>
-                  <Badge className="bg-green-100 text-green-700">
-                    {tasks.filter(t => t.status === 'completed').length}
-                  </Badge>
+                  <Badge className="bg-green-100 text-green-700">8</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Average rating</span>
@@ -196,8 +131,8 @@ const ClientDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'tasks' && <TasksList tasks={tasks} userRole="client" />}
-            {activeTab === 'create' && <CreateTaskForm onTaskCreated={handleTaskCreated} />}
+            {activeTab === 'tasks' && <TasksList tasks={mockTasks} userRole="client" />}
+            {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
           </div>
         </div>

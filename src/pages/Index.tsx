@@ -6,55 +6,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
-const Index = () => {
-  const { user, session, loading } = useAuth();
+const LandingPage = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    // Only redirect if we have both session and user data loaded
-    if (!loading && session && user) {
-      console.log('Authenticated user detected, redirecting based on role:', user.role, 'approved:', user.approved);
-      
-      // Role-based redirection
+    if (user) {
+      // Redirect based on user role
       if (user.role === 'admin') {
-        console.log('Redirecting admin to admin dashboard');
-        navigate('/admin-dashboard', { replace: true });
+        navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
-        // Check if tasker is approved
-        if (user.approved === true) {
-          console.log('Redirecting approved tasker to tasker dashboard');
-          navigate('/tasker-dashboard', { replace: true });
-        } else {
-          console.log('Redirecting unapproved tasker to pending page');
-          navigate('/tasker-pending', { replace: true });
-        }
-      } else if (user.role === 'client') {
-        console.log('Redirecting client to client dashboard');
-        navigate('/client-dashboard', { replace: true });
+        navigate('/tasker-dashboard');
       } else {
-        console.error('Unknown user role:', user.role);
+        navigate('/client-dashboard');
       }
-    } else if (!loading && !session) {
-      console.log('No session detected, staying on home page');
     }
-  }, [user, session, loading, navigate]);
-
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  }, [user, navigate]);
 
   if (showLogin) {
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
@@ -64,7 +36,6 @@ const Index = () => {
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
 
-  // Show the landing page for non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
@@ -116,6 +87,7 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Features Section */}
       <section className="py-16 px-4 bg-white/50">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -161,6 +133,7 @@ const Index = () => {
         </div>
       </section>
 
+      {/* How it Works */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -199,6 +172,7 @@ const Index = () => {
         </div>
       </section>
 
+      {/* CTA Section */}
       <section className="py-16 px-4 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="container mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-6">
@@ -213,6 +187,7 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 px-4">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
@@ -229,6 +204,14 @@ const Index = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <LandingPage />
+    </AuthProvider>
   );
 };
 

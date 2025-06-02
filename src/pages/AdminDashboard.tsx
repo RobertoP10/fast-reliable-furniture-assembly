@@ -1,180 +1,98 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Wrench, Users, CheckCircle, X, Eye, User, LogOut } from "lucide-react";
 
-interface PendingTasker {
-  id: string;
-  name: string;
-  email: string;
-  location: string;
-  created_at: string;
-  approved: string | null;
-}
-
 const AdminDashboard = () => {
-  const { user, session, logout, loading: authLoading } = useAuth();
-  const { toast } = useToast();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
-  const [pendingTaskers, setPendingTaskers] = useState<PendingTasker[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Only fetch data when we have a session and user
-    if (session && user?.id) {
-      console.log('Fetching admin data for user:', user.id);
-      fetchPendingTaskers();
-    } else if (!authLoading) {
-      // If auth is done loading but no session, there's an error
-      setError('User session not found');
-      setLoading(false);
+  const mockPendingTaskers = [
+    {
+      id: '1',
+      name: 'Alex Johnson',
+      email: 'alex@email.com',
+      location: 'Birmingham, West Midlands',
+      registeredAt: new Date(Date.now() - 86400000),
+      experience: '5 years experience in furniture assembly'
+    },
+    {
+      id: '2',
+      name: 'Sarah Smith',
+      email: 'sarah@email.com',
+      location: 'Telford, Shropshire',
+      registeredAt: new Date(Date.now() - 172800000),
+      experience: 'Interior designer with IKEA experience'
     }
-  }, [session, user, authLoading]);
+  ];
 
-  const fetchPendingTaskers = async () => {
-    if (!user?.id) {
-      setError('User ID not available');
-      setLoading(false);
-      return;
+  const mockUsers = [
+    {
+      id: '1',
+      name: 'John Client',
+      email: 'client@email.com',
+      role: 'client',
+      status: 'active',
+      tasksCompleted: 5,
+      joinedAt: new Date(Date.now() - 2592000000)
+    },
+    {
+      id: '2',
+      name: 'Anna Tasker',
+      email: 'anna@email.com',
+      role: 'tasker',
+      status: 'active',
+      tasksCompleted: 12,
+      joinedAt: new Date(Date.now() - 5184000000)
     }
+  ];
 
-    try {
-      console.log('Fetching pending taskers...');
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'tasker')
-        .is('approved', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching pending taskers:', error);
-        setError('Failed to load pending taskers');
-        return;
-      }
-
-      console.log('Pending taskers found:', data?.length || 0);
-      setPendingTaskers(data || []);
-      setError(null);
-    } catch (error) {
-      console.error('Error fetching pending taskers:', error);
-      setError('Failed to load pending taskers');
-    } finally {
-      setLoading(false);
+  const mockTransactions = [
+    {
+      id: '1',
+      taskTitle: 'PAX Wardrobe Assembly',
+      client: 'John Client',
+      tasker: 'Anna Tasker',
+      amount: 200,
+      paymentMethod: 'bank',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 86400000)
+    },
+    {
+      id: '2',
+      taskTitle: 'Desk Assembly',
+      client: 'Mary Client',
+      tasker: 'Andrew Tasker',
+      amount: 150,
+      paymentMethod: 'cash',
+      status: 'confirmed',
+      createdAt: new Date(Date.now() - 172800000)
     }
-  };
+  ];
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    }).format(new Date(date));
+    }).format(date);
   };
 
-  const handleApproveTasker = async (id: string) => {
-    try {
-      console.log('Approving tasker:', id);
-      const { error } = await supabase
-        .from('users')
-        .update({ approved: 'true' })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error approving tasker:', error);
-        toast({
-          title: "Error",
-          description: "Failed to approve tasker.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Success",
-        description: "Tasker approved successfully.",
-      });
-
-      fetchPendingTaskers();
-    } catch (error) {
-      console.error('Error approving tasker:', error);
-      toast({
-        title: "Error",
-        description: "Failed to approve tasker.",
-        variant: "destructive",
-      });
-    }
+  const handleApproveTasker = (id: string) => {
+    console.log('Approving tasker:', id);
   };
 
-  const handleRejectTasker = async (id: string) => {
-    try {
-      console.log('Rejecting tasker:', id);
-      const { error } = await supabase
-        .from('users')
-        .update({ approved: 'false' })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error rejecting tasker:', error);
-        toast({
-          title: "Error",
-          description: "Failed to reject tasker.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Success",
-        description: "Tasker rejected successfully.",
-      });
-
-      fetchPendingTaskers();
-    } catch (error) {
-      console.error('Error rejecting tasker:', error);
-      toast({
-        title: "Error",
-        description: "Failed to reject tasker.",
-        variant: "destructive",
-      });
-    }
+  const handleRejectTasker = (id: string) => {
+    console.log('Rejecting tasker:', id);
   };
 
-  // Show loading while auth or data is loading
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <Wrench className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">Error: {error}</div>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render if no user (should be handled by ProtectedRoute but just in case)
-  if (!user) {
-    return null;
-  }
+  const handleConfirmTransaction = (id: string) => {
+    console.log('Confirming transaction:', id);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -191,7 +109,7 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user.name}</span>
+                <span className="text-sm font-medium">{user?.name}</span>
                 <Badge className="bg-purple-100 text-purple-700">Admin</Badge>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>
@@ -246,7 +164,7 @@ const AdminDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending taskers</span>
-                  <Badge className="bg-yellow-100 text-yellow-700">{pendingTaskers.length}</Badge>
+                  <Badge className="bg-yellow-100 text-yellow-700">2</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active users</span>
@@ -271,51 +189,45 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {pendingTaskers.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No pending taskers to review.</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Location</TableHead>
-                          <TableHead>Registration Date</TableHead>
-                          <TableHead>Actions</TableHead>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Registration Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mockPendingTaskers.map((tasker) => (
+                        <TableRow key={tasker.id}>
+                          <TableCell className="font-medium">{tasker.name}</TableCell>
+                          <TableCell>{tasker.email}</TableCell>
+                          <TableCell>{tasker.location}</TableCell>
+                          <TableCell>{formatDate(tasker.registeredAt)}</TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveTasker(tasker.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRejectTasker(tasker.id)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingTaskers.map((tasker) => (
-                          <TableRow key={tasker.id}>
-                            <TableCell className="font-medium">{tasker.name}</TableCell>
-                            <TableCell>{tasker.email}</TableCell>
-                            <TableCell>{tasker.location}</TableCell>
-                            <TableCell>{formatDate(tasker.created_at)}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApproveTasker(tasker.id)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleRejectTasker(tasker.id)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
@@ -329,7 +241,40 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-500">User management coming soon...</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tasks</TableHead>
+                        <TableHead>Member Since</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mockUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              user.role === 'client' ? 'text-blue-700' : 'text-green-700'
+                            }>
+                              {user.role === 'client' ? 'Client' : 'Tasker'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-green-100 text-green-700">
+                              {user.status === 'active' ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{user.tasksCompleted}</TableCell>
+                          <TableCell>{formatDate(user.joinedAt)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
@@ -343,7 +288,54 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-500">Transaction management coming soon...</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Task</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Tasker</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Payment</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mockTransactions.map((transaction) => (
+                        <TableRow key={transaction.id}>
+                          <TableCell className="font-medium">{transaction.taskTitle}</TableCell>
+                          <TableCell>{transaction.client}</TableCell>
+                          <TableCell>{transaction.tasker}</TableCell>
+                          <TableCell>£{transaction.amount}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {transaction.paymentMethod === 'cash' ? 'Cash' : 'Transfer'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={
+                              transaction.status === 'confirmed' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-yellow-100 text-yellow-700'
+                            }>
+                              {transaction.status === 'confirmed' ? 'Confirmed' : 'Pending'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {transaction.status === 'pending' && transaction.paymentMethod === 'bank' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleConfirmTransaction(transaction.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Confirm
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
