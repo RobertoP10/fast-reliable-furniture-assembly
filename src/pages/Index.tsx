@@ -140,7 +140,7 @@ const Index = () => {
                       <h3 className="text-2xl font-bold text-blue-900">Welcome Back</h3>
                       <p className="text-gray-600">Sign in to your account</p>
                     </div>
-                    <LoginForm onBack={() => {}} onSwitchToRegister={() => {}} />
+                    <LoginForm />
                   </TabsContent>
                   
                   <TabsContent value="register" className="space-y-4">
@@ -148,7 +148,7 @@ const Index = () => {
                       <h3 className="text-2xl font-bold text-blue-900">Join MGSDEAL</h3>
                       <p className="text-gray-600">Create your account today</p>
                     </div>
-                    <RegisterForm onBack={() => {}} onSwitchToLogin={() => {}} />
+                    <RegisterForm />
                   </TabsContent>
                 </Tabs>
               </CardContent>
