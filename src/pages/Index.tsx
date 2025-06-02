@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
+import { Users, Shield, Star, CheckCircle, MessageSquare, Loader2 } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -25,34 +25,21 @@ const Index = () => {
       timestamp: new Date().toISOString()
     });
 
-    // If user is authenticated and we're on home page, redirect them
+    // If user is authenticated and we're on home page, they should be redirected by AuthContext
     if (user && !loading && window.location.pathname === '/') {
-      console.log('🔍 [INDEX] User authenticated on home page, triggering redirect:', {
-        userId: user.id,
-        role: user.role,
-        approved: user.approved
-      });
-      
-      setTimeout(() => {
-        if (user.role === 'admin') {
-          navigate('/admin-dashboard', { replace: true });
-        } else if (user.role === 'tasker') {
-          navigate(user.approved ? '/tasker-dashboard' : '/tasker-pending', { replace: true });
-        } else {
-          navigate('/client-dashboard', { replace: true });
-        }
-      }, 100);
+      console.log('🔍 [INDEX] User authenticated on home page - AuthContext should handle redirect');
     }
   }, [user, loading, navigate]);
 
-  // Show loading only when initially loading
-  if (loading && !user) {
+  // Show loading spinner while authenticating
+  if (loading) {
     console.log('⏳ [INDEX] Showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading authentication...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-600 font-medium">Loading your account...</p>
+          <p className="mt-2 text-sm text-gray-500">Please wait while we verify your session</p>
         </div>
       </div>
     );
@@ -64,8 +51,8 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to your dashboard...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-600 font-medium">Redirecting to your dashboard...</p>
           <p className="mt-2 text-xs text-gray-500">
             User: {user.id} | Role: {user.role} | Approved: {user.approved.toString()}
           </p>
