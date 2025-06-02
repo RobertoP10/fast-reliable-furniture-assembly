@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +42,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
+
+  // Function to create a fallback profile if trigger fails
+  const createFallbackProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+    console.log('🆘 [AUTH] Creating fallback profile for user:', authUser.id);
+    
+    try {
+      const userRole = (authUser.user_metadata?.role as UserRole) || 'client';
+      const approved = userRole === 'client' || userRole === 'admin';
+      
+      const fallbackProfile = {
+        id: authUser.id,
+        email: authUser.email!,
+        name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
+        role: userRole,
+        location: authUser.user_metadata?.location || null,
+        phone: authUser.user_metadata?.phone || null,
+        approved: approved,
+        rating: 0,
+        total_reviews: 0
+      };
+
+      const { data, error } = await supabase
+        .from('users')
+        .insert([fallbackProfile])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ [AUTH] Failed to create fallback profile:', error);
+        return null;
+      }
+
+      console.log('✅ [AUTH] Fallback profile created successfully:', data);
+      
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        location: data.location || undefined,
+        phone: data.phone || undefined,
+        approved: data.approved,
+        rating: data.rating || undefined,
+        total_reviews: data.total_reviews || undefined,
+      };
+    } catch (error) {
+      console.error('❌ [AUTH] Exception creating fallback profile:', error);
+      return null;
+    }
+  };
 
   // Function to redirect user based on role and approval status
   const redirectUser = (userProfile: User, currentPath: string) => {
@@ -89,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Function to fetch user profile with retry logic
+  // Function to fetch user profile with retry logic and fallback creation
   const fetchUserProfileWithRetry = async (authUser: SupabaseUser, maxRetries = 5): Promise<User | null> => {
     let retryCount = 0;
     
@@ -131,6 +180,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (retryCount < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
             continue;
+          } else {
+            // Last attempt failed, try to create fallback profile
+            console.log('🆘 [AUTH] Max retries reached, attempting fallback profile creation');
+            return await createFallbackProfile(authUser);
           }
         } else if (error) {
           console.error('❌ [AUTH] Error fetching user profile:', error);
@@ -143,12 +196,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (retryCount < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
           continue;
+        } else {
+          // Last attempt failed, try to create fallback profile
+          console.log('🆘 [AUTH] Max retries reached due to exception, attempting fallback profile creation');
+          return await createFallbackProfile(authUser);
         }
-        throw error;
       }
     }
 
-    console.error('❌ [AUTH] Failed to fetch profile after all retries');
+    console.error('❌ [AUTH] Failed to fetch or create profile after all retries');
     return null;
   };
 
@@ -173,32 +229,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-        console.log('🔑 [AUTH] User authenticated, fetching profile with retry...');
+        console.log('🔑 [AUTH] User authenticated, fetching profile with retry and fallback...');
         setLoading(true);
         setIsRedirecting(false);
         
         try {
           const userProfile = await fetchUserProfileWithRetry(session.user);
-          if (mounted && userProfile) {
-            console.log('✅ [AUTH] Setting user profile in state');
-            setUser(userProfile);
-            setLoading(false);
-            
-            // Get current path and redirect if on home page
-            const currentPath = window.location.pathname;
-            console.log('📍 [AUTH] Current path:', currentPath);
-            
-            // Delay redirect slightly to ensure state is set
-            setTimeout(() => {
-              if (mounted) {
-                redirectUser(userProfile, currentPath);
-              }
-            }, 100);
-          } else if (mounted) {
-            console.log('❌ [AUTH] Failed to fetch user profile after retries');
-            setUser(null);
-            setLoading(false);
-            setIsRedirecting(false);
+          if (mounted) {
+            if (userProfile) {
+              console.log('✅ [AUTH] Setting user profile in state');
+              setUser(userProfile);
+              setLoading(false);
+              
+              // Get current path and redirect if on home page
+              const currentPath = window.location.pathname;
+              console.log('📍 [AUTH] Current path:', currentPath);
+              
+              // Delay redirect slightly to ensure state is set
+              setTimeout(() => {
+                if (mounted) {
+                  redirectUser(userProfile, currentPath);
+                }
+              }, 100);
+            } else {
+              console.error('❌ [AUTH] Failed to fetch or create user profile - forcing logout');
+              setUser(null);
+              setLoading(false);
+              setIsRedirecting(false);
+              // Force logout if we can't get or create a profile
+              await supabase.auth.signOut();
+            }
           }
         } catch (error) {
           console.error('❌ [AUTH] Error handling authentication:', error);
@@ -265,10 +325,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   }, 100);
                 }
               } else {
-                console.log('❌ [AUTH] Failed to load initial profile');
+                console.error('❌ [AUTH] Failed to load or create initial profile - forcing logout');
                 setUser(null);
                 setLoading(false);
                 setIsRedirecting(false);
+                await supabase.auth.signOut();
               }
             }
           } catch (error) {
