@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut } from "lucide-react";
+import { Wrench, Users, CheckCircle, X, Eye, User as UserIcon, LogOut } from "lucide-react";
 import type { User, Transaction } from "@/types/database";
 
 interface PendingTasker extends User {
@@ -234,7 +234,7 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-gray-600" />
+                <UserIcon className="h-4 w-4 text-gray-600" />
                 <span className="text-sm font-medium">{user?.name}</span>
                 <Badge className="bg-purple-100 text-purple-700">Admin</Badge>
               </div>
