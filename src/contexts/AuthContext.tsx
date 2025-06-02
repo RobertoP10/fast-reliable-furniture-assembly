@@ -14,7 +14,7 @@ interface AuthContextType {
     role: UserRole; 
     location?: string; 
     phone?: string;
-  }) => Promise<void>;
+  }) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
   loading: boolean;
 }
@@ -69,7 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        // If profile doesn't exist yet, wait a bit and try again
         if (error.code === 'PGRST116') {
           console.log('Profile not found, retrying in 2 seconds...');
           setTimeout(() => fetchUserProfile(authUser), 2000);
@@ -126,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting registration for:', userData.email, 'with role:', userData.role);
       
-      // First, sign up the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -147,24 +145,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Auth registration successful:', data);
 
-      // The user profile will be created automatically by the trigger
       if (data.user) {
         console.log('User created with ID:', data.user.id);
         
-        // Wait for the trigger to create the profile
-        setTimeout(async () => {
-          try {
-            await fetchUserProfile(data.user);
-          } catch (profileError) {
-            console.error('Error fetching profile after registration:', profileError);
-            // Don't throw here as the user is already registered
-          }
-        }, 1000);
+        // Wait for the trigger to create the profile and then fetch it
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await fetchUserProfile(data.user);
+        
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        return { success: true, user: userProfile as User };
       }
+
+      return { success: true };
     } catch (error: any) {
       console.error('Registration error:', error);
       
-      // Provide more specific error messages
       if (error.message?.includes('User already registered')) {
         throw new Error('An account with this email already exists. Please try logging in instead.');
       } else if (error.message?.includes('Invalid email')) {

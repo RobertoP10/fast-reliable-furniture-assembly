@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +87,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
-      await register({
+      const result = await register({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
@@ -93,7 +95,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         location: formData.location.trim()
       });
       
-      console.log('Registration completed successfully');
+      console.log('Registration completed successfully', result);
       
       if (formData.role === 'tasker') {
         toast({
@@ -105,6 +107,17 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           title: "Registration successful!",
           description: "Welcome to MGSDEAL! You can now start posting tasks.",
         });
+      }
+
+      // Redirect to appropriate dashboard based on role
+      if (result.user) {
+        if (result.user.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (result.user.role === 'tasker') {
+          navigate('/tasker-dashboard');
+        } else {
+          navigate('/client-dashboard');
+        }
       }
     } catch (error: any) {
       console.error('Registration failed:', error);
