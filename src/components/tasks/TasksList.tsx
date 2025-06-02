@@ -12,9 +12,10 @@ type TaskRequest = Database['public']['Tables']['task_requests']['Row'];
 
 interface TasksListProps {
   userRole: 'client' | 'tasker';
+  tasks?: TaskRequest[];
 }
 
-const TasksList = ({ userRole }: TasksListProps) => {
+const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,12 @@ const TasksList = ({ userRole }: TasksListProps) => {
   useEffect(() => {
     const loadTasks = async () => {
       if (!user) return;
+      
+      if (propTasks) {
+        setTasks(propTasks);
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -35,7 +42,7 @@ const TasksList = ({ userRole }: TasksListProps) => {
     };
 
     loadTasks();
-  }, [user, userRole]);
+  }, [user, userRole, propTasks]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {

@@ -159,9 +159,9 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
 
 // Fetch pending taskers for admin approval
 export const fetchPendingTaskers = async () => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('users')
-    .update({ status: 'approved' })
+    .select('*')
     .eq('role', 'tasker')
     .eq('approved', false);
 
@@ -169,6 +169,8 @@ export const fetchPendingTaskers = async () => {
     console.error('Error fetching pending taskers:', error);
     throw new Error(error.message);
   }
+
+  return data || [];
 };
 
 // Accept a tasker

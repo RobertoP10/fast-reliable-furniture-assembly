@@ -12,32 +12,6 @@ import Chat from "@/components/chat/Chat";
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-
-  const mockTasks = [
-    {
-      id: '1',
-      title: 'IKEA PAX Wardrobe Assembly',
-      description: 'I need help assembling a PAX wardrobe from IKEA',
-      category: 'Wardrobe',
-      budget: { min: 150, max: 250 },
-      status: 'pending' as const,
-      location: 'Birmingham, West Midlands',
-      createdAt: new Date(),
-      offers: 3
-    },
-    {
-      id: '2', 
-      title: 'Desk Assembly',
-      description: 'Work desk with drawers',
-      category: 'Desk',
-      budget: { min: 100, max: 180 },
-      status: 'accepted' as const,
-      location: 'Telford, Shropshire',
-      createdAt: new Date(),
-      offers: 1
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -112,17 +86,17 @@ const ClientDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active tasks</span>
-                  <Badge className="bg-blue-100 text-blue-700">2</Badge>
+                  <Badge className="bg-blue-100 text-blue-700">-</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Completed tasks</span>
-                  <Badge className="bg-green-100 text-green-700">8</Badge>
+                  <Badge className="bg-green-100 text-green-700">-</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Average rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">4.9</span>
+                    <span className="text-sm font-medium">{user?.rating || 0}</span>
                   </div>
                 </div>
               </CardContent>
@@ -131,7 +105,7 @@ const ClientDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'tasks' && <TasksList tasks={mockTasks} userRole="client" />}
+            {activeTab === 'tasks' && <TasksList userRole="client" />}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
           </div>
