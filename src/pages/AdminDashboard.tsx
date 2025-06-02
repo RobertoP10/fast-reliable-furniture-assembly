@@ -151,7 +151,7 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-sm font-medium">{user?.full_name}</span>
                 <Badge className="bg-purple-100 text-purple-700">Admin</Badge>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>

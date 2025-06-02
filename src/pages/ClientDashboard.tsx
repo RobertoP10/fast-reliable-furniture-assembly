@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +31,7 @@ const ClientDashboard = () => {
               </Button>
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-sm font-medium">{user?.full_name}</span>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>
                 <LogOut className="h-4 w-4" />
@@ -49,7 +48,7 @@ const ClientDashboard = () => {
             <Card className="shadow-lg border-0">
               <CardHeader>
                 <CardTitle className="text-blue-900">Client Dashboard</CardTitle>
-                <CardDescription>Welcome, {user?.name}!</CardDescription>
+                <CardDescription>Welcome, {user?.full_name}!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -96,7 +95,7 @@ const ClientDashboard = () => {
                   <span className="text-sm text-gray-600">Average rating</span>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">{user?.rating || 0}</span>
+                    <span className="text-sm font-medium">0</span>
                   </div>
                 </div>
               </CardContent>
