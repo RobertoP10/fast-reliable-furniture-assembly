@@ -16,23 +16,51 @@ const Index = () => {
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
-    console.log('🏠 Index page - Auth state:', { 
-      user: user?.id, 
+    console.log('🏠 [INDEX] Component mounted/updated - Auth state:', { 
+      user: user?.id || 'none', 
       loading, 
-      role: user?.role, 
-      approved: user?.approved,
-      currentPath: window.location.pathname
+      role: user?.role || 'none', 
+      approved: user?.approved || false,
+      currentPath: window.location.pathname,
+      timestamp: new Date().toISOString()
     });
+
+    // Additional debugging for redirect scenarios
+    if (user && !loading) {
+      console.log('🔍 [INDEX] User authenticated but still on home page:', {
+        userId: user.id,
+        role: user.role,
+        approved: user.approved,
+        shouldRedirect: window.location.pathname === '/'
+      });
+    }
   }, [user, loading]);
+
+  // Enhanced loading state with timeout detection
+  useEffect(() => {
+    if (loading) {
+      console.log('⏳ [INDEX] Loading state detected, starting timeout monitor...');
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ [INDEX] Loading state has been active for more than 10 seconds!');
+      }, 10000);
+
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [loading]);
 
   // Show loading only when initially loading and no user yet
   if (loading && !user) {
-    console.log('⏳ Index page showing loading state');
+    console.log('⏳ [INDEX] Showing loading state - no user yet');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">Loading authentication...</p>
+          <p className="mt-2 text-xs text-gray-500">
+            Debug: Loading={loading.toString()}, User={user?.id || 'none'}
+          </p>
         </div>
       </div>
     );
@@ -41,26 +69,47 @@ const Index = () => {
   // If user is authenticated, they should be redirected by AuthContext
   // But if they're still here, it means redirection is in progress or failed
   if (user && !loading) {
-    console.log('👤 Authenticated user on home page, redirection should happen soon...');
+    console.log('👤 [INDEX] Authenticated user on home page - showing redirect message');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
+          <p className="mt-4 text-gray-600">Redirecting to your dashboard...</p>
+          <p className="mt-2 text-xs text-gray-500">
+            Debug: User={user.id}, Role={user.role}, Approved={user.approved.toString()}
+          </p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => {
+              console.log('🔄 [INDEX] Manual redirect triggered');
+              if (user.role === 'admin') {
+                navigate('/admin-dashboard', { replace: true });
+              } else if (user.role === 'tasker') {
+                navigate(user.approved ? '/tasker-dashboard' : '/tasker-pending', { replace: true });
+              } else {
+                navigate('/client-dashboard', { replace: true });
+              }
+            }}
+          >
+            Continue to Dashboard
+          </Button>
         </div>
       </div>
     );
   }
 
   if (showLogin) {
+    console.log('🔐 [INDEX] Showing login form');
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
   }
 
   if (showRegister) {
+    console.log('📝 [INDEX] Showing register form');
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
 
-  console.log('🏠 Index page rendering main content for unauthenticated user');
+  console.log('🏠 [INDEX] Rendering main content for unauthenticated user');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">

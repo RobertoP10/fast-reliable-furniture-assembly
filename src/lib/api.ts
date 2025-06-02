@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -9,29 +8,86 @@ type PaymentMethod = Database['public']['Enums']['payment_method'];
 type Offer = Database['public']['Tables']['offers']['Row'];
 type OfferInsert = Database['public']['Tables']['offers']['Insert'];
 
+// Enhanced session validation with detailed logging
+export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
+  try {
+    console.log('🔍 [API] Starting comprehensive session validation...');
+    
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('❌ [API] Session validation error:', sessionError);
+      return null;
+    }
+
+    if (!session?.user) {
+      console.log('ℹ️ [API] No active session found');
+      return null;
+    }
+
+    console.log('✅ [API] Session validation successful:', {
+      userId: session.user.id,
+      email: session.user.email,
+      accessToken: session.access_token ? 'present' : 'missing',
+      refreshToken: session.refresh_token ? 'present' : 'missing',
+      expiresAt: session.expires_at,
+      expiresIn: session.expires_in
+    });
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileError) {
+      console.error('❌ [API] Profile fetch error:', profileError);
+      return { session, profile: null };
+    }
+
+    console.log('✅ [API] Profile validation successful:', {
+      userId: profile?.id,
+      role: profile?.role,
+      approved: profile?.approved,
+      email: profile?.email
+    });
+    
+    return { session, profile };
+    
+  } catch (error) {
+    console.error('❌ [API] Exception in validateUserSession:', error);
+    return null;
+  }
+};
+
 // Fetch all tasks based on user role
 export const fetchTasks = async (userRole: string, userId?: string): Promise<TaskRequest[]> => {
   console.log('🔍 [API] Fetching tasks for:', userRole, 'userId:', userId);
   
-  let query = supabase.from('task_requests').select('*');
+  try {
+    let query = supabase.from('task_requests').select('*');
 
-  if (userRole === 'client' && userId) {
-    // Clients see their own tasks
-    query = query.eq('client_id', userId);
-  } else if (userRole === 'tasker') {
-    // Taskers see pending tasks and tasks they have offers on
-    query = query.or(`status.eq.pending,and(status.neq.pending,id.in.(select task_id from offers where tasker_id.eq.${userId}))`);
+    if (userRole === 'client' && userId) {
+      // Clients see their own tasks
+      query = query.eq('client_id', userId);
+    } else if (userRole === 'tasker') {
+      // Taskers see pending tasks and tasks they have offers on
+      query = query.or(`status.eq.pending,and(status.neq.pending,id.in.(select task_id from offers where tasker_id.eq.${userId}))`);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ [API] Error fetching tasks:', error);
+      throw new Error(`Failed to fetch tasks: ${error.message}`);
+    }
+
+    console.log('✅ [API] Tasks fetched successfully:', data?.length || 0, 'tasks');
+    return data || [];
+  } catch (error) {
+    console.error('❌ [API] Exception in fetchTasks:', error);
+    throw error;
   }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('❌ [API] Error fetching tasks:', error);
-    throw new Error(`Failed to fetch tasks: ${error.message}`);
-  }
-
-  console.log('✅ [API] Tasks fetched successfully:', data?.length || 0, 'tasks');
-  return data || [];
 };
 
 // Fetch offers for a specific task
@@ -214,43 +270,4 @@ export const acceptTasker = async (taskerId: string): Promise<void> => {
   }
 
   console.log('✅ [API] Tasker accepted successfully');
-};
-
-// Check user session and profile consistency
-export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
-  try {
-    console.log('🔍 [API] Validating user session and profile...');
-    
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('❌ [API] Session error:', sessionError);
-      return null;
-    }
-
-    if (!session?.user) {
-      console.log('ℹ️ [API] No active session');
-      return null;
-    }
-
-    console.log('✅ [API] Session found for user:', session.user.id);
-
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profileError) {
-      console.error('❌ [API] Profile fetch error:', profileError);
-      return { session, profile: null };
-    }
-
-    console.log('✅ [API] Profile found:', profile.role, 'approved:', profile.approved);
-    return { session, profile };
-    
-  } catch (error) {
-    console.error('❌ [API] Exception in validateUserSession:', error);
-    return null;
-  }
 };
