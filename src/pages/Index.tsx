@@ -14,12 +14,22 @@ const Index = () => {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   useEffect(() => {
-    console.log('🏠 Index page - Auth state:', { user: user?.id, loading, role: user?.role, approved: user?.approved });
+    console.log('🏠 Index page - Auth state:', { 
+      user: user?.id, 
+      loading, 
+      role: user?.role, 
+      approved: user?.approved,
+      redirectAttempted
+    });
     
-    if (!loading && user) {
+    // Only redirect if we have a user, not loading, and haven't already attempted redirect
+    if (!loading && user && !redirectAttempted) {
       console.log('🔄 User detected in Index, redirecting...', user.role, user.approved);
+      setRedirectAttempted(true);
+      
       // Redirect based on user role and approval status
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
@@ -33,10 +43,10 @@ const Index = () => {
         navigate('/client-dashboard');
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, redirectAttempted]);
 
-  // Show loading while checking authentication
-  if (loading) {
+  // Show loading only for a reasonable time, then show content
+  if (loading && !redirectAttempted) {
     console.log('⏳ Index page showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
@@ -155,7 +165,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How it Works */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -194,7 +203,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-16 px-4 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="container mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-6">
@@ -209,7 +217,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 px-4">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
