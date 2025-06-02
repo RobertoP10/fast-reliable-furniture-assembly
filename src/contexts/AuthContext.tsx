@@ -2,23 +2,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'client' | 'tasker' | 'admin';
-  location?: string;
-  approved?: boolean;
-  phone?: string;
-  profile_photo?: string;
-  created_at?: string;
-}
+import type { User, UserRole } from '@/types/database';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: { email: string; password: string; name: string; role: 'client' | 'tasker'; location?: string; phone?: string }) => Promise<void>;
+  register: (userData: { 
+    email: string; 
+    password: string; 
+    name: string; 
+    role: UserRole; 
+    location?: string; 
+    phone?: string;
+  }) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -72,17 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching user profile:', error);
         setUser(null);
       } else if (profile) {
-        setUser({
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          role: profile.role,
-          location: profile.location,
-          approved: profile.approved,
-          phone: profile.phone,
-          profile_photo: profile.profile_photo,
-          created_at: profile.created_at
-        });
+        setUser(profile as User);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
@@ -113,7 +99,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userData: { email: string; password: string; name: string; role: 'client' | 'tasker'; location?: string; phone?: string }) => {
+  const register = async (userData: { 
+    email: string; 
+    password: string; 
+    name: string; 
+    role: UserRole; 
+    location?: string; 
+    phone?: string;
+  }) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({

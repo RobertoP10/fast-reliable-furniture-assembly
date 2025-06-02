@@ -5,30 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, DollarSign, MessageSquare, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  subcategory?: string;
-  price_range_min?: number;
-  price_range_max?: number;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
-  location: string;
-  created_at: string;
-  client_id: string;
-  offers_count?: number; // Changed from offers array to simple count
-}
+import { taskAPI } from "@/lib/api";
+import type { TaskRequest } from "@/types/database";
 
 interface TasksListProps {
   userRole: 'client' | 'tasker';
 }
 
 const TasksList = ({ userRole }: TasksListProps) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,32 +27,16 @@ const TasksList = ({ userRole }: TasksListProps) => {
     if (!user) return;
 
     try {
-      let query = supabase
-        .from('task_requests')
-        .select(`
-          *,
-          offers!inner(count)
-        `);
-
+      let data: TaskRequest[];
+      
       if (userRole === 'client') {
-        // Clients see their own tasks
-        query = query.eq('client_id', user.id);
+        data = await taskAPI.getMyTasks();
       } else {
-        // Taskers see pending tasks
-        query = query.eq('status', 'pending');
+        // For taskers, show available tasks
+        data = await taskAPI.getAvailableTasks();
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Transform the data to match our interface
-      const transformedTasks = (data || []).map(task => ({
-        ...task,
-        offers_count: task.offers?.[0]?.count || 0
-      }));
-
-      setTasks(transformedTasks);
+      setTasks(data);
     } catch (error: any) {
       console.error('Error fetching tasks:', error);
       toast({
@@ -105,6 +75,14 @@ const TasksList = ({ userRole }: TasksListProps) => {
   const formatPrice = (priceInPence?: number) => {
     if (!priceInPence) return '0';
     return (priceInPence / 100).toFixed(0);
+  };
+
+  const getOffersCount = (task: TaskRequest): number => {
+    if (Array.isArray(task.offers)) {
+      return task.offers.length;
+    }
+    // Handle the case where offers is a count object from aggregation
+    return (task.offers as any)?.[0]?.count || 0;
   };
 
   if (loading) {
@@ -150,73 +128,77 @@ const TasksList = ({ userRole }: TasksListProps) => {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {tasks.map((task) => (
-            <Card key={task.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      {task.description}
-                    </CardDescription>
+          {tasks.map((task) => {
+            const offersCount = getOffersCount(task);
+            
+            return (
+              <Card key={task.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
+                      <CardDescription className="text-gray-600">
+                        {task.description}
+                      </CardDescription>
+                    </div>
+                    {getStatusBadge(task.status)}
                   </div>
-                  {getStatusBadge(task.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-4 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <DollarSign className="h-4 w-4" />
-                    <span>
-                      £{formatPrice(task.price_range_min)} - £{formatPrice(task.price_range_max)}
-                    </span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-4 mb-4">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <DollarSign className="h-4 w-4" />
+                      <span>
+                        £{formatPrice(task.price_range_min)} - £{formatPrice(task.price_range_max)}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span>{task.location}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatDate(task.created_at)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    <span>{task.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Clock className="h-4 w-4" />
-                    <span>{formatDate(task.created_at)}</span>
-                  </div>
-                </div>
 
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="outline" className="text-blue-700">
-                      {task.category}
-                      {task.subcategory && ` - ${task.subcategory}`}
-                    </Badge>
-                    {task.offers_count && task.offers_count > 0 && (
-                      <div className="flex items-center space-x-1 text-sm text-gray-600">
-                        <Users className="h-4 w-4" />
-                        <span>{task.offers_count} offers</span>
-                      </div>
-                    )}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                      <Badge variant="outline" className="text-blue-700">
+                        {task.category}
+                        {task.subcategory && ` - ${task.subcategory}`}
+                      </Badge>
+                      {offersCount > 0 && (
+                        <div className="flex items-center space-x-1 text-sm text-gray-600">
+                          <Users className="h-4 w-4" />
+                          <span>{offersCount} offers</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {userRole === 'tasker' && task.status === 'pending' && (
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                          Send Offer
+                        </Button>
+                      )}
+                      {userRole === 'client' && (task.status === 'accepted' || task.status === 'completed') && (
+                        <Button size="sm" variant="outline">
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          Chat
+                        </Button>
+                      )}
+                      {userRole === 'client' && task.status === 'pending' && offersCount > 0 && (
+                        <Button size="sm" variant="outline">
+                          View Offers ({offersCount})
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="flex space-x-2">
-                    {userRole === 'tasker' && task.status === 'pending' && (
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                        Send Offer
-                      </Button>
-                    )}
-                    {userRole === 'client' && (task.status === 'accepted' || task.status === 'completed') && (
-                      <Button size="sm" variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Chat
-                      </Button>
-                    )}
-                    {userRole === 'client' && task.status === 'pending' && task.offers_count && task.offers_count > 0 && (
-                      <Button size="sm" variant="outline">
-                        View Offers ({task.offers_count})
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

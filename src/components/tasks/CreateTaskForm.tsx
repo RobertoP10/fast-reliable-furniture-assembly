@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { taskAPI } from "@/lib/api";
 
 const CreateTaskForm = () => {
   const [formData, setFormData] = useState({
@@ -67,23 +67,16 @@ const CreateTaskForm = () => {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('task_requests')
-        .insert({
-          client_id: user.id,
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          subcategory: formData.subcategory,
-          price_range_min: parseInt(formData.minBudget) * 100, // Convert to pence
-          price_range_max: parseInt(formData.maxBudget) * 100, // Convert to pence
-          location: formData.location,
-          payment_method: formData.paymentMethod as 'cash' | 'card' | 'bank_transfer'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      await taskAPI.createTask({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        subcategory: formData.subcategory,
+        price_range_min: parseInt(formData.minBudget) * 100, // Convert to pence
+        price_range_max: parseInt(formData.maxBudget) * 100, // Convert to pence
+        location: formData.location,
+        payment_method: formData.paymentMethod
+      });
 
       toast({
         title: "Task created successfully!",
