@@ -1,34 +1,70 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { fetchPendingTaskers, acceptTasker } from "@/lib/api";
 import { Wrench, Users, CheckCircle, X, Eye, User, LogOut } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
+  const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const mockPendingTaskers = [
-    {
-      id: '1',
-      name: 'Alex Johnson',
-      email: 'alex@email.com',
-      location: 'Birmingham, West Midlands',
-      registeredAt: new Date(Date.now() - 86400000),
-      experience: '5 years experience in furniture assembly'
-    },
-    {
-      id: '2',
-      name: 'Sarah Smith',
-      email: 'sarah@email.com',
-      location: 'Telford, Shropshire',
-      registeredAt: new Date(Date.now() - 172800000),
-      experience: 'Interior designer with IKEA experience'
+  // Fetch pending taskers
+  useEffect(() => {
+    const loadPendingTaskers = async () => {
+      if (activeTab === 'pending-taskers') {
+        setLoading(true);
+        try {
+          const taskers = await fetchPendingTaskers();
+          setPendingTaskers(taskers);
+        } catch (error) {
+          console.error('Error fetching pending taskers:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load pending taskers.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPendingTaskers();
+  }, [activeTab, toast]);
+
+  const handleApproveTasker = async (taskerId: string) => {
+    try {
+      await acceptTasker(taskerId);
+      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      toast({
+        title: "Tasker Approved",
+        description: "The tasker has been successfully approved.",
+      });
+    } catch (error) {
+      console.error('Error approving tasker:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve tasker.",
+        variant: "destructive",
+      });
     }
-  ];
+  };
+
+  const handleRejectTasker = (id: string) => {
+    console.log('Rejecting tasker:', id);
+    // TODO: Implement reject functionality
+    toast({
+      title: "Feature Coming Soon",
+      description: "Reject functionality will be implemented soon.",
+    });
+  };
 
   const mockUsers = [
     {
@@ -80,14 +116,6 @@ const AdminDashboard = () => {
       month: 'short',
       year: 'numeric'
     }).format(date);
-  };
-
-  const handleApproveTasker = (id: string) => {
-    console.log('Approving tasker:', id);
-  };
-
-  const handleRejectTasker = (id: string) => {
-    console.log('Rejecting tasker:', id);
   };
 
   const handleConfirmTransaction = (id: string) => {
@@ -164,7 +192,7 @@ const AdminDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending taskers</span>
-                  <Badge className="bg-yellow-100 text-yellow-700">2</Badge>
+                  <Badge className="bg-yellow-100 text-yellow-700">{pendingTaskers.length}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active users</span>
@@ -189,45 +217,53 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Registration Date</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockPendingTaskers.map((tasker) => (
-                        <TableRow key={tasker.id}>
-                          <TableCell className="font-medium">{tasker.name}</TableCell>
-                          <TableCell>{tasker.email}</TableCell>
-                          <TableCell>{tasker.location}</TableCell>
-                          <TableCell>{formatDate(tasker.registeredAt)}</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApproveTasker(tasker.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleRejectTasker(tasker.id)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  {loading ? (
+                    <div className="text-center py-8">Loading pending taskers...</div>
+                  ) : pendingTaskers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No pending taskers to review
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Registration Date</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingTaskers.map((tasker) => (
+                          <TableRow key={tasker.id}>
+                            <TableCell className="font-medium">{tasker.name}</TableCell>
+                            <TableCell>{tasker.email}</TableCell>
+                            <TableCell>{tasker.location || 'Not specified'}</TableCell>
+                            <TableCell>{formatDate(new Date(tasker.created_at))}</TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveTasker(tasker.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleRejectTasker(tasker.id)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             )}

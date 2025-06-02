@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -40,6 +41,22 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // Function to redirect user based on role and approval status
+  const redirectUser = (userProfile: User) => {
+    if (userProfile.role === 'admin') {
+      navigate('/admin-dashboard');
+    } else if (userProfile.role === 'tasker') {
+      if (userProfile.approved) {
+        navigate('/tasker-dashboard');
+      } else {
+        navigate('/tasker-pending');
+      }
+    } else {
+      navigate('/client-dashboard');
+    }
+  };
 
   // Function to fetch user profile from database
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
@@ -89,6 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (session?.user) {
           const userProfile = await fetchUserProfile(session.user);
           setUser(userProfile);
+          if (userProfile) {
+            redirectUser(userProfile);
+          }
         } else {
           setUser(null);
         }
@@ -109,8 +129,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_IN' && session?.user) {
         const userProfile = await fetchUserProfile(session.user);
         setUser(userProfile);
+        if (userProfile) {
+          redirectUser(userProfile);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        navigate('/');
       }
       
       setLoading(false);
@@ -119,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -136,6 +160,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         const userProfile = await fetchUserProfile(data.user);
         setUser(userProfile);
+        if (userProfile) {
+          redirectUser(userProfile);
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -148,10 +175,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: Omit<User, 'id' | 'approved' | 'rating' | 'total_reviews'> & { password: string }) => {
     setLoading(true);
     try {
+      // Register user without email confirmation
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
+          emailRedirectTo: undefined, // No email confirmation needed
           data: {
             name: userData.name,
             role: userData.role,
@@ -166,12 +195,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        // The user profile will be created automatically by the trigger
-        // Wait a moment for the trigger to complete
+        // Wait a moment for the trigger to create the user profile
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const userProfile = await fetchUserProfile(data.user);
         setUser(userProfile);
+        if (userProfile) {
+          redirectUser(userProfile);
+        }
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -185,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await supabase.auth.signOut();
       setUser(null);
+      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
     }

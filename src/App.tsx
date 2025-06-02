@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
+import TaskerPending from "./pages/TaskerPending";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/client-dashboard" element={<ClientDashboard />} />
             <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
+            <Route path="/tasker-pending" element={<TaskerPending />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
