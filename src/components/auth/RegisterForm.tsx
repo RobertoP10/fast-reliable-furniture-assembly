@@ -85,9 +85,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       // Redirect will be handled by the AuthContext
     } catch (error: any) {
       console.error('❌ [REGISTER] Registration failed:', error);
+      
+      let errorMessage = error.message || "Please try again.";
+      
+      // Handle specific error cases
+      if (error.message.includes('User already registered')) {
+        errorMessage = "An account with this email already exists. Please try logging in instead.";
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = "There was an issue with email verification. Please try again or contact support.";
+      }
+      
       toast({
         title: "Registration error",
-        description: error.message || "Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

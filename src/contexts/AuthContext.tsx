@@ -93,45 +93,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('❌ [AUTH] Error fetching user profile:', error);
         
-        // If profile doesn't exist, create one from user metadata
+        // If profile doesn't exist, the trigger should have created it
+        // Wait a moment and try again
         if (error.code === 'PGRST116') {
-          console.log('📝 [AUTH] Profile not found, creating from auth user metadata...');
+          console.log('⏳ [AUTH] Profile not found, waiting for trigger...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
-          const newProfileData = {
-            id: authUser.id,
-            email: authUser.email || '',
-            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-            role: (authUser.user_metadata?.role as UserRole) || 'client',
-            location: authUser.user_metadata?.location || null,
-            phone: authUser.user_metadata?.phone || null,
-            approved: (authUser.user_metadata?.role === 'tasker') ? false : true
-          };
-
-          console.log('📝 [AUTH] Creating profile with data:', newProfileData);
-
-          const { data: newProfile, error: insertError } = await supabase
+          const { data: retryProfile, error: retryError } = await supabase
             .from('users')
-            .insert(newProfileData)
-            .select()
+            .select('*')
+            .eq('id', authUser.id)
             .single();
 
-          if (insertError) {
-            console.error('❌ [AUTH] Error creating user profile:', insertError);
-            throw new Error('Failed to create profile');
-          }
+          if (retryError) {
+            console.error('❌ [AUTH] Retry failed, creating profile manually:', retryError);
+            
+            const newProfileData = {
+              id: authUser.id,
+              email: authUser.email || '',
+              name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+              role: (authUser.user_metadata?.role as UserRole) || 'client',
+              location: authUser.user_metadata?.location || null,
+              phone: authUser.user_metadata?.phone || null,
+              approved: (authUser.user_metadata?.role === 'tasker') ? false : true
+            };
 
-          if (newProfile) {
-            console.log('✅ [AUTH] Profile created successfully:', newProfile);
+            const { data: newProfile, error: insertError } = await supabase
+              .from('users')
+              .insert(newProfileData)
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('❌ [AUTH] Error creating user profile:', insertError);
+              throw new Error('Failed to create profile');
+            }
+
+            if (newProfile) {
+              const userProfile: User = {
+                id: newProfile.id,
+                email: newProfile.email,
+                name: newProfile.name,
+                role: newProfile.role,
+                location: newProfile.location || undefined,
+                phone: newProfile.phone || undefined,
+                approved: newProfile.approved,
+                rating: newProfile.rating || undefined,
+                total_reviews: newProfile.total_reviews || undefined,
+              };
+              return userProfile;
+            }
+          } else if (retryProfile) {
             const userProfile: User = {
-              id: newProfile.id,
-              email: newProfile.email,
-              name: newProfile.name,
-              role: newProfile.role,
-              location: newProfile.location || undefined,
-              phone: newProfile.phone || undefined,
-              approved: newProfile.approved,
-              rating: newProfile.rating || undefined,
-              total_reviews: newProfile.total_reviews || undefined,
+              id: retryProfile.id,
+              email: retryProfile.email,
+              name: retryProfile.name,
+              role: retryProfile.role,
+              location: retryProfile.location || undefined,
+              phone: retryProfile.phone || undefined,
+              approved: retryProfile.approved,
+              rating: retryProfile.rating || undefined,
+              total_reviews: retryProfile.total_reviews || undefined,
             };
             return userProfile;
           }
@@ -181,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionExists: !!session,
         accessToken: session?.access_token ? 'present' : 'missing',
         userMetadata: session?.user?.user_metadata || 'none',
-        confirmed: session?.user?.email_confirmed_at ? 'confirmed' : 'not confirmed'
+        emailConfirmed: session?.user?.email_confirmed_at ? 'confirmed' : 'not confirmed'
       });
       
       if (!mounted) {
@@ -252,7 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: session.user.email,
             accessToken: session.access_token ? 'present' : 'missing',
             userMetadata: session.user.user_metadata || 'none',
-            confirmed: session.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
+            emailConfirmed: session.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
           });
           
           try {
@@ -312,6 +334,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('❌ [AUTH] Login error:', error);
         setLoading(false);
+        
+        // Handle unverified email error specifically
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Your email has not been verified. Please check your inbox or register again.');
+        }
+        
         throw new Error(error.message);
       }
 
@@ -320,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userId: data.user.id,
           sessionExists: !!data.session,
           accessToken: data.session.access_token ? 'present' : 'missing',
-          confirmed: data.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
+          emailConfirmed: data.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
         });
         // Auth state change handler will handle the rest
       }
@@ -336,7 +364,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      // Sign up with instant access (no email confirmation)
+      // Sign up with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,

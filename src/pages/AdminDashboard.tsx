@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchPendingTaskers, acceptTasker } from "@/lib/api";
+import { fetchPendingTaskers, approveTasker, rejectTasker } from "@/lib/adminApi";
 import { Wrench, Users, CheckCircle, X, Eye, User, LogOut } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -21,10 +22,12 @@ const AdminDashboard = () => {
       if (activeTab === 'pending-taskers') {
         setLoading(true);
         try {
+          console.log('🔄 [ADMIN] Loading pending taskers...');
           const taskers = await fetchPendingTaskers();
           setPendingTaskers(taskers);
+          console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
         } catch (error) {
-          console.error('Error fetching pending taskers:', error);
+          console.error('❌ [ADMIN] Error fetching pending taskers:', error);
           toast({
             title: "Error",
             description: "Failed to load pending taskers.",
@@ -41,29 +44,40 @@ const AdminDashboard = () => {
 
   const handleApproveTasker = async (taskerId: string) => {
     try {
-      await acceptTasker(taskerId);
+      console.log('✅ [ADMIN] Approving tasker:', taskerId);
+      await approveTasker(taskerId);
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
       toast({
         title: "Tasker Approved",
-        description: "The tasker has been successfully approved.",
+        description: "The tasker has been successfully approved and can now start bidding on tasks.",
       });
     } catch (error) {
-      console.error('Error approving tasker:', error);
+      console.error('❌ [ADMIN] Error approving tasker:', error);
       toast({
         title: "Error",
-        description: "Failed to approve tasker.",
+        description: "Failed to approve tasker. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleRejectTasker = (id: string) => {
-    console.log('Rejecting tasker:', id);
-    // TODO: Implement reject functionality
-    toast({
-      title: "Feature Coming Soon",
-      description: "Reject functionality will be implemented soon.",
-    });
+  const handleRejectTasker = async (taskerId: string) => {
+    try {
+      console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
+      await rejectTasker(taskerId);
+      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      toast({
+        title: "Tasker Rejected",
+        description: "The tasker application has been rejected and the account has been removed.",
+      });
+    } catch (error) {
+      console.error('❌ [ADMIN] Error rejecting tasker:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject tasker. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const mockUsers = [
@@ -213,15 +227,20 @@ const AdminDashboard = () => {
                 <CardHeader>
                   <CardTitle className="text-blue-900">Taskers Awaiting Approval</CardTitle>
                   <CardDescription>
-                    Review and approve tasker accounts
+                    Review and approve tasker accounts to allow them to start bidding on tasks
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
-                    <div className="text-center py-8">Loading pending taskers...</div>
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Loading pending taskers...</p>
+                    </div>
                   ) : pendingTaskers.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      No pending taskers to review
+                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No pending taskers</p>
+                      <p className="text-sm">All tasker applications have been processed.</p>
                     </div>
                   ) : (
                     <Table>
@@ -247,6 +266,7 @@ const AdminDashboard = () => {
                                   size="sm"
                                   onClick={() => handleApproveTasker(tasker.id)}
                                   className="bg-green-600 hover:bg-green-700"
+                                  title="Approve tasker"
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
@@ -254,6 +274,7 @@ const AdminDashboard = () => {
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => handleRejectTasker(tasker.id)}
+                                  title="Reject tasker"
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
