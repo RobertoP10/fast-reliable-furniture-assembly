@@ -8,8 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { createTask } from "@/lib/api";
+import type { Database } from '@/integrations/supabase/types';
+
+type PaymentMethod = Database['public']['Enums']['payment_method'];
 
 const CreateTaskForm = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -18,8 +24,9 @@ const CreateTaskForm = () => {
     minBudget: "",
     maxBudget: "",
     address: "",
-    paymentMethod: "cash"
+    paymentMethod: "cash" as PaymentMethod
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const categories = {
@@ -39,9 +46,18 @@ const CreateTaskForm = () => {
     "Shrewsbury, Shropshire"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.category || !formData.subcategory) {
       toast({
         title: "Error",
@@ -51,23 +67,47 @@ const CreateTaskForm = () => {
       return;
     }
 
-    console.log("Creating task:", formData);
-    toast({
-      title: "Task created successfully!",
-      description: "Your task has been posted and will be visible to taskers.",
-    });
+    setIsSubmitting(true);
 
-    // Reset form
-    setFormData({
-      title: "",
-      description: "",
-      category: "",
-      subcategory: "",
-      minBudget: "",
-      maxBudget: "",
-      address: "",
-      paymentMethod: "cash"
-    });
+    try {
+      await createTask({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        subcategory: formData.subcategory,
+        price_range_min: Number(formData.minBudget),
+        price_range_max: Number(formData.maxBudget),
+        location: formData.address,
+        payment_method: formData.paymentMethod,
+        client_id: user.id,
+      });
+
+      toast({
+        title: "Task created successfully!",
+        description: "Your task has been posted and will be visible to taskers.",
+      });
+
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        subcategory: "",
+        minBudget: "",
+        maxBudget: "",
+        address: "",
+        paymentMethod: "cash"
+      });
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -186,7 +226,7 @@ const CreateTaskForm = () => {
             <Label>Payment Method</Label>
             <RadioGroup 
               value={formData.paymentMethod} 
-              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+              onValueChange={(value: PaymentMethod) => setFormData({ ...formData, paymentMethod: value })}
               className="mt-2"
             >
               <div className="flex items-center space-x-2">
@@ -194,14 +234,18 @@ const CreateTaskForm = () => {
                 <Label htmlFor="cash">Cash</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="bank" id="bank" />
+                <RadioGroupItem value="bank_transfer" id="bank" />
                 <Label htmlFor="bank">Bank Transfer</Label>
               </div>
             </RadioGroup>
           </div>
 
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-            Post Task
+          <Button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Post Task"}
           </Button>
         </form>
       </CardContent>

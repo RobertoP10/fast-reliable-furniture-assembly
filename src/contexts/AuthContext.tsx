@@ -1,21 +1,28 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+
+type UserRole = Database['public']['Enums']['user_role'];
+type DbUser = Database['public']['Tables']['users']['Row'];
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'client' | 'tasker' | 'admin';
+  role: UserRole;
   location?: string;
-  isApproved?: boolean;
+  phone?: string;
+  approved: boolean;
   rating?: number;
-  completedTasks?: number;
+  total_reviews?: number;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  register: (userData: Omit<User, 'id' | 'approved' | 'rating' | 'total_reviews'> & { password: string }) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -34,71 +41,153 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('mgsdeal_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  // Function to fetch user profile from database
+  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      if (profile) {
+        return {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          location: profile.location || undefined,
+          phone: profile.phone || undefined,
+          approved: profile.approved,
+          rating: profile.rating || undefined,
+          total_reviews: profile.total_reviews || undefined,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      setLoading(true);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setUser(null);
+        } else if (session?.user) {
+          const userProfile = await fetchUserProfile(session.user);
+          setUser(userProfile);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userProfile = await fetchUserProfile(session.user);
+        setUser(userProfile);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+      
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data - in real app this would come from your backend
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        role: email.includes('admin') ? 'admin' : email.includes('tasker') ? 'tasker' : 'client',
-        location: 'București, România',
-        isApproved: true,
-        rating: 4.8,
-        completedTasks: 15
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(mockUser));
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.user) {
+        const userProfile = await fetchUserProfile(data.user);
+        setUser(userProfile);
+      }
     } catch (error) {
-      throw new Error('Login failed');
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (userData: Omit<User, 'id'> & { password: string }) => {
+  const register = async (userData: Omit<User, 'id' | 'approved' | 'rating' | 'total_reviews'> & { password: string }) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        location: userData.location,
-        isApproved: userData.role === 'client' ? true : false, // Taskeri trebuie aprobați
-        rating: 0,
-        completedTasks: 0
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('mgsdeal_user', JSON.stringify(newUser));
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+            location: userData.location,
+            phone: userData.phone,
+          }
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.user) {
+        // The user profile will be created automatically by the trigger
+        // Wait a moment for the trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const userProfile = await fetchUserProfile(data.user);
+        setUser(userProfile);
+      }
     } catch (error) {
-      throw new Error('Registration failed');
+      console.error('Registration error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('mgsdeal_user');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (

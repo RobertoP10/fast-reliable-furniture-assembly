@@ -1,40 +1,57 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, DollarSign, MessageSquare, Users } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchTasks } from "@/lib/api";
+import type { Database } from '@/integrations/supabase/types';
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  budget: { min: number; max: number };
-  status: 'pending' | 'accepted' | 'completed' | 'closed';
-  location: string;
-  createdAt: Date;
-  offers?: number;
-}
+type TaskRequest = Database['public']['Tables']['task_requests']['Row'];
 
 interface TasksListProps {
-  tasks: Task[];
   userRole: 'client' | 'tasker';
 }
 
-const TasksList = ({ tasks, userRole }: TasksListProps) => {
+const TasksList = ({ userRole }: TasksListProps) => {
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<TaskRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const taskData = await fetchTasks(userRole, user.id);
+        setTasks(taskData);
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTasks();
+  }, [user, userRole]);
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: "Pending", className: "bg-yellow-100 text-yellow-700" },
       accepted: { label: "Accepted", className: "bg-blue-100 text-blue-700" },
+      in_progress: { label: "In Progress", className: "bg-purple-100 text-purple-700" },
       completed: { label: "Completed", className: "bg-green-100 text-green-700" },
-      closed: { label: "Closed", className: "bg-gray-100 text-gray-700" }
+      cancelled: { label: "Cancelled", className: "bg-gray-100 text-gray-700" }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -42,6 +59,23 @@ const TasksList = ({ tasks, userRole }: TasksListProps) => {
       minute: '2-digit'
     }).format(date);
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-blue-900">
+            {userRole === 'client' ? 'My Tasks' : 'Available Tasks'}
+          </h2>
+        </div>
+        <Card className="shadow-lg border-0">
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-500">Loading tasks...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +120,7 @@ const TasksList = ({ tasks, userRole }: TasksListProps) => {
                 <div className="grid md:grid-cols-3 gap-4 mb-4">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <DollarSign className="h-4 w-4" />
-                    <span>£{task.budget.min} - £{task.budget.max}</span>
+                    <span>£{task.price_range_min} - £{task.price_range_max}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <MapPin className="h-4 w-4" />
@@ -94,7 +128,7 @@ const TasksList = ({ tasks, userRole }: TasksListProps) => {
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Clock className="h-4 w-4" />
-                    <span>{formatDate(task.createdAt)}</span>
+                    <span>{formatDate(task.created_at)}</span>
                   </div>
                 </div>
 
@@ -103,12 +137,6 @@ const TasksList = ({ tasks, userRole }: TasksListProps) => {
                     <Badge variant="outline" className="text-blue-700">
                       {task.category}
                     </Badge>
-                    {task.offers && task.offers > 0 && (
-                      <div className="flex items-center space-x-1 text-sm text-gray-600">
-                        <Users className="h-4 w-4" />
-                        <span>{task.offers} offers</span>
-                      </div>
-                    )}
                   </div>
                   
                   <div className="flex space-x-2">
@@ -125,7 +153,7 @@ const TasksList = ({ tasks, userRole }: TasksListProps) => {
                     )}
                     {userRole === 'client' && task.status === 'pending' && (
                       <Button size="sm" variant="outline">
-                        View Offers ({task.offers})
+                        View Offers
                       </Button>
                     )}
                   </div>
