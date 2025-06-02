@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { TaskRequest, Offer, Message, User } from "@/types/database";
+import type { TaskRequest, Offer, Message, User, PartialUser, PaymentMethod, TaskStatus } from "@/types/database";
 
 // Task API functions
 export const taskAPI = {
@@ -11,13 +11,19 @@ export const taskAPI = {
       .select(`
         *,
         client:users!client_id(id, name, location),
-        offers(count)
+        offers_count:offers(count)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Transform the data to match our interface
+    return (data || []).map(task => ({
+      ...task,
+      client: task.client as PartialUser,
+      offers_count: task.offers_count?.[0]?.count || 0
+    }));
   },
 
   // Get user's own tasks (for clients)
@@ -39,7 +45,14 @@ export const taskAPI = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    return (data || []).map(task => ({
+      ...task,
+      offers: (task.offers || []).map((offer: any) => ({
+        ...offer,
+        tasker: offer.tasker as PartialUser
+      }))
+    }));
   },
 
   // Get tasks where user has made offers (for taskers)
@@ -60,7 +73,12 @@ export const taskAPI = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    return (data || []).map(task => ({
+      ...task,
+      client: task.client as PartialUser,
+      offers: task.offers || []
+    }));
   },
 
   // Create a new task
@@ -81,7 +99,14 @@ export const taskAPI = {
       .from('task_requests')
       .insert({
         client_id: user.id,
-        ...taskData
+        title: taskData.title,
+        description: taskData.description,
+        category: taskData.category,
+        subcategory: taskData.subcategory,
+        price_range_min: taskData.price_range_min,
+        price_range_max: taskData.price_range_max,
+        location: taskData.location,
+        payment_method: taskData.payment_method as PaymentMethod
       })
       .select()
       .single();
@@ -94,7 +119,7 @@ export const taskAPI = {
   async updateTaskStatus(taskId: string, status: string): Promise<void> {
     const { error } = await supabase
       .from('task_requests')
-      .update({ status })
+      .update({ status: status as TaskStatus })
       .eq('id', taskId);
 
     if (error) throw error;
@@ -116,7 +141,9 @@ export const offerAPI = {
       .from('offers')
       .insert({
         tasker_id: user.id,
-        ...offerData
+        task_id: offerData.task_id,
+        price: offerData.price,
+        message: offerData.message
       })
       .select(`
         *,
@@ -125,7 +152,11 @@ export const offerAPI = {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    return {
+      ...data,
+      tasker: data.tasker as PartialUser
+    };
   },
 
   // Get offers for a task
@@ -140,7 +171,11 @@ export const offerAPI = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    return (data || []).map(offer => ({
+      ...offer,
+      tasker: offer.tasker as PartialUser
+    }));
   },
 
   // Accept an offer
@@ -188,7 +223,12 @@ export const messageAPI = {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    
+    return (data || []).map(message => ({
+      ...message,
+      sender: message.sender as PartialUser,
+      receiver: message.receiver as PartialUser
+    }));
   },
 
   // Send a message
@@ -205,7 +245,10 @@ export const messageAPI = {
       .from('messages')
       .insert({
         sender_id: user.id,
-        ...messageData
+        task_id: messageData.task_id,
+        receiver_id: messageData.receiver_id,
+        message: messageData.message,
+        image_url: messageData.image_url
       })
       .select(`
         *,
@@ -215,7 +258,12 @@ export const messageAPI = {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    return {
+      ...data,
+      sender: data.sender as PartialUser,
+      receiver: data.receiver as PartialUser
+    };
   }
 };
 

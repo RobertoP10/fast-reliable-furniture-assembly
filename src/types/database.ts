@@ -19,6 +19,14 @@ export interface User {
   updated_at: string;
 }
 
+// Partial user type for relations that don't need full user data
+export interface PartialUser {
+  id: string;
+  name: string;
+  location?: string;
+  profile_photo?: string;
+}
+
 export interface TaskRequest {
   id: string;
   client_id: string;
@@ -36,9 +44,10 @@ export interface TaskRequest {
   created_at: string;
   updated_at: string;
   // Relations
-  client?: User;
+  client?: PartialUser;
   offers?: Offer[];
   accepted_offer?: Offer;
+  offers_count?: number;
 }
 
 export interface Offer {
@@ -52,7 +61,7 @@ export interface Offer {
   updated_at: string;
   // Relations
   task?: TaskRequest;
-  tasker?: User;
+  tasker?: PartialUser;
 }
 
 export interface Message {
@@ -64,8 +73,8 @@ export interface Message {
   image_url?: string;
   created_at: string;
   // Relations
-  sender?: User;
-  receiver?: User;
+  sender?: PartialUser;
+  receiver?: PartialUser;
   task?: TaskRequest;
 }
 
@@ -78,8 +87,8 @@ export interface Review {
   comment?: string;
   created_at: string;
   // Relations
-  reviewer?: User;
-  reviewed?: User;
+  reviewer?: PartialUser;
+  reviewed?: PartialUser;
   task?: TaskRequest;
 }
 
@@ -95,7 +104,7 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
   // Relations
-  payer?: User;
-  payee?: User;
+  payer?: PartialUser;
+  payee?: PartialUser;
   task?: TaskRequest;
 }

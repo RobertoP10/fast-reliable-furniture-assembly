@@ -30,6 +30,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submission started with data:', {
+      ...formData,
+      password: '***',
+      confirmPassword: '***'
+    });
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -48,6 +54,15 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -59,21 +74,37 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         location: formData.location
       });
       
+      console.log('Registration completed successfully');
+      
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon.",
+          description: "Your tasker account will be reviewed and approved soon. You can log in but won't be able to receive tasks until approved.",
         });
       } else {
         toast({
           title: "Registration successful!",
-          description: "Welcome to MGSDEAL!",
+          description: "Welcome to MGSDEAL! You can now start posting tasks.",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.message?.includes('User already registered')) {
+        errorMessage = "An account with this email already exists. Please try logging in instead.";
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = "Please enter a valid email address.";
+      } else if (error.message?.includes('Password')) {
+        errorMessage = "Password must be at least 6 characters long.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Registration error",
-        description: "Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -168,6 +199,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
+                  minLength={6}
                   className="mt-1"
                 />
               </div>
@@ -180,6 +212,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
+                  minLength={6}
                   className="mt-1"
                 />
               </div>
@@ -189,7 +222,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Create account"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
             
@@ -208,7 +241,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             {formData.role === 'tasker' && (
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                 <p className="text-xs text-yellow-700">
-                  <strong>Note:</strong> Tasker accounts are manually verified before approval.
+                  <strong>Note:</strong> Tasker accounts are manually verified before approval. You'll be able to log in but won't receive task requests until approved.
                 </p>
               </div>
             )}
