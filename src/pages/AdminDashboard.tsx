@@ -10,21 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Wrench, Users, CheckCircle, X, Eye, User as UserIcon, LogOut } from "lucide-react";
 import type { User, Transaction } from "@/types/database";
 
-interface PendingTasker extends User {
-  registeredAt: Date;
-}
-
-interface UserWithStats extends User {
-  tasksCompleted: number;
-  joinedAt: Date;
-}
-
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
-  const [pendingTaskers, setPendingTaskers] = useState<PendingTasker[]>([]);
-  const [allUsers, setAllUsers] = useState<UserWithStats[]>([]);
+  const [pendingTaskers, setPendingTaskers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,12 +26,15 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch pending taskers
+      console.log('Fetching admin dashboard data...');
+      
+      // Fetch pending taskers (approved = false)
       const { data: pendingTaskersData, error: taskersError } = await supabase
         .from('users')
         .select('*')
         .eq('role', 'tasker')
-        .eq('approved', false);
+        .eq('approved', false)
+        .order('created_at', { ascending: false });
 
       if (taskersError) {
         console.error('Error fetching pending taskers:', taskersError);
@@ -50,17 +44,15 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
-        const mappedTaskers = pendingTaskersData?.map(tasker => ({
-          ...tasker,
-          registeredAt: new Date(tasker.created_at)
-        })) || [];
-        setPendingTaskers(mappedTaskers);
+        console.log('Pending taskers fetched:', pendingTaskersData);
+        setPendingTaskers(pendingTaskersData || []);
       }
 
       // Fetch all users
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (usersError) {
         console.error('Error fetching users:', usersError);
@@ -70,18 +62,15 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
-        const mappedUsers = usersData?.map(user => ({
-          ...user,
-          tasksCompleted: 0, // TODO: Count from task_requests table when implemented
-          joinedAt: new Date(user.created_at)
-        })) || [];
-        setAllUsers(mappedUsers);
+        console.log('All users fetched:', usersData);
+        setAllUsers(usersData || []);
       }
 
       // Fetch transactions
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (transactionsError) {
         console.error('Error fetching transactions:', transactionsError);
@@ -91,6 +80,7 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
+        console.log('Transactions fetched:', transactionsData);
         setTransactions(transactionsData || []);
       }
     } catch (error) {
@@ -107,6 +97,7 @@ const AdminDashboard = () => {
 
   const handleApproveTasker = async (id: string) => {
     try {
+      console.log('Approving tasker:', id);
       const { error } = await supabase
         .from('users')
         .update({ approved: true })
@@ -125,7 +116,7 @@ const AdminDashboard = () => {
           description: "Tasker approved successfully",
         });
         // Refresh data
-        fetchData();
+        await fetchData();
       }
     } catch (error) {
       console.error('Error approving tasker:', error);
@@ -139,6 +130,7 @@ const AdminDashboard = () => {
 
   const handleRejectTasker = async (id: string) => {
     try {
+      console.log('Rejecting tasker:', id);
       const { error } = await supabase
         .from('users')
         .delete()
@@ -157,7 +149,7 @@ const AdminDashboard = () => {
           description: "Tasker rejected and removed",
         });
         // Refresh data
-        fetchData();
+        await fetchData();
       }
     } catch (error) {
       console.error('Error rejecting tasker:', error);
@@ -171,6 +163,7 @@ const AdminDashboard = () => {
 
   const handleConfirmTransaction = async (id: string) => {
     try {
+      console.log('Confirming transaction:', id);
       const { error } = await supabase
         .from('transactions')
         .update({ status: 'completed' })
@@ -189,7 +182,7 @@ const AdminDashboard = () => {
           description: "Transaction confirmed",
         });
         // Refresh data
-        fetchData();
+        await fetchData();
       }
     } catch (error) {
       console.error('Error confirming transaction:', error);
@@ -201,12 +194,12 @@ const AdminDashboard = () => {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    }).format(date);
+    }).format(new Date(date));
   };
 
   if (loading) {
@@ -293,7 +286,7 @@ const AdminDashboard = () => {
                   <Badge className="bg-yellow-100 text-yellow-700">{pendingTaskers.length}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Active users</span>
+                  <span className="text-sm text-gray-600">Total users</span>
                   <Badge className="bg-green-100 text-green-700">{allUsers.length}</Badge>
                 </div>
                 <div className="flex justify-between">
@@ -338,7 +331,7 @@ const AdminDashboard = () => {
                             <TableCell className="font-medium">{tasker.name}</TableCell>
                             <TableCell>{tasker.email}</TableCell>
                             <TableCell>{tasker.location}</TableCell>
-                            <TableCell>{formatDate(tasker.registeredAt)}</TableCell>
+                            <TableCell>{formatDate(tasker.created_at!)}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
                                 <Button
@@ -405,7 +398,7 @@ const AdminDashboard = () => {
                               {user.approved ? 'Active' : 'Pending'}
                             </Badge>
                           </TableCell>
-                          <TableCell>{formatDate(user.joinedAt)}</TableCell>
+                          <TableCell>{formatDate(user.created_at!)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -457,7 +450,7 @@ const AdminDashboard = () => {
                                 {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{formatDate(new Date(transaction.created_at))}</TableCell>
+                            <TableCell>{formatDate(transaction.created_at!)}</TableCell>
                             <TableCell>
                               {transaction.status === 'pending' && transaction.payment_method === 'bank_transfer' && (
                                 <Button

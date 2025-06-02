@@ -97,10 +97,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       
       console.log('Registration completed successfully', result);
       
+      // Show success message based on role
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
-          description: "Your tasker account will be reviewed and approved soon. You can log in but won't be able to receive tasks until approved.",
+          description: "Your tasker account is created. You can access your dashboard but won't receive tasks until approved by admin.",
         });
       } else {
         toast({
@@ -109,11 +110,19 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         });
       }
 
-      // Redirect to appropriate dashboard based on role
+      // Redirect immediately based on role
       if (result.user) {
+        console.log('Redirecting user with role:', result.user.role);
         if (result.user.role === 'admin') {
           navigate('/admin-dashboard');
         } else if (result.user.role === 'tasker') {
+          navigate('/tasker-dashboard');
+        } else {
+          navigate('/client-dashboard');
+        }
+      } else {
+        // Fallback redirection based on form role
+        if (formData.role === 'tasker') {
           navigate('/tasker-dashboard');
         } else {
           navigate('/client-dashboard');
@@ -154,7 +163,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             </div>
             <CardTitle className="text-2xl text-blue-900">Create new account</CardTitle>
             <CardDescription>
-              Join the MGSDEAL community
+              Join the MGSDEAL community - no email verification required!
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -244,7 +253,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Creating account..." : "Create account"}
+                {isLoading ? "Creating account..." : "Create account & Sign in"}
               </Button>
             </form>
             
@@ -263,7 +272,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             {formData.role === 'tasker' && (
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
                 <p className="text-xs text-yellow-700">
-                  <strong>Note:</strong> Tasker accounts are manually verified before approval. You'll be able to log in but won't receive task requests until approved.
+                  <strong>Note:</strong> Tasker accounts need admin approval to receive tasks. You'll have immediate access to your dashboard but won't receive task requests until approved.
                 </p>
               </div>
             )}

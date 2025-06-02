@@ -125,10 +125,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting registration for:', userData.email, 'with role:', userData.role);
       
-      const { data, error } = await supabase.auth.signUp({
+      // First create the auth user without email confirmation
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
+          emailRedirectTo: undefined, // Skip email verification
           data: {
             name: userData.name,
             role: userData.role,
@@ -138,27 +140,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      if (error) {
-        console.error('Registration auth error:', error);
-        throw error;
+      if (authError) {
+        console.error('Registration auth error:', authError);
+        throw authError;
       }
 
-      console.log('Auth registration successful:', data);
+      console.log('Auth registration successful:', authData);
 
-      if (data.user) {
-        console.log('User created with ID:', data.user.id);
+      if (authData.user) {
+        console.log('User created with ID:', authData.user.id);
         
-        // Wait for the trigger to create the profile and then fetch it
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await fetchUserProfile(data.user);
-        
-        const { data: userProfile } = await supabase
+        // Manually create the user profile since we're bypassing email verification
+        const { data: profileData, error: profileError } = await supabase
           .from('users')
-          .select('*')
-          .eq('id', data.user.id)
+          .insert({
+            id: authData.user.id,
+            email: userData.email,
+            name: userData.name,
+            role: userData.role,
+            location: userData.location,
+            phone: userData.phone,
+            approved: userData.role === 'client' ? true : false // Auto-approve clients, taskers need approval
+          })
+          .select()
           .single();
 
-        return { success: true, user: userProfile as User };
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // If profile creation fails, still continue as the trigger might have created it
+        }
+
+        // Now sign in the user immediately
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: userData.email,
+          password: userData.password,
+        });
+
+        if (signInError) {
+          console.error('Auto sign-in error:', signInError);
+          throw signInError;
+        }
+
+        console.log('Auto sign-in successful:', signInData);
+        
+        // Fetch the user profile
+        const finalProfile = profileData || await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single()
+          .then(({ data }) => data);
+
+        if (finalProfile) {
+          setUser(finalProfile as User);
+          return { success: true, user: finalProfile as User };
+        }
       }
 
       return { success: true };
