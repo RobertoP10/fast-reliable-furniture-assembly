@@ -69,9 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Function to fetch user profile from public.users
-  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+  const fetchUserProfile = async (authUser: SupabaseUser, retryCount = 0): Promise<User | null> => {
     try {
-      console.log('🔍 [AUTH] Fetching user profile for:', authUser.id);
+      console.log('🔍 [AUTH] Fetching user profile for:', authUser.id, 'retry:', retryCount);
       
       const { data: profile, error } = await supabase
         .from('users')
@@ -81,6 +81,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('❌ [AUTH] Error fetching user profile:', error);
+        
+        // If profile doesn't exist and this is a fresh signup, wait a bit and retry
+        if (error.code === 'PGRST116' && retryCount < 3) {
+          console.log('⏳ [AUTH] Profile not found, waiting for trigger... retry', retryCount + 1);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchUserProfile(authUser, retryCount + 1);
+        }
+        
         throw error;
       }
 
@@ -299,7 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             location: userData.location,
             phone: userData.phone,
           },
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
@@ -318,7 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('✅ [AUTH] User automatically logged in after registration');
           // Auth state change handler will handle profile creation and redirection
         } else {
-          console.log('ℹ️ [AUTH] User created but session not established');
+          console.log('ℹ️ [AUTH] User created but session not established - trigger should have created profile');
           setLoading(false);
         }
       }

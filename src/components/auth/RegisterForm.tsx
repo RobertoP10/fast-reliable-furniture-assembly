@@ -21,7 +21,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     password: "",
     confirmPassword: "",
     role: "" as "client" | "tasker",
-    location: ""
+    location: "",
+    phone: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -33,7 +34,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.location) {
       toast({
         title: "Error",
-        description: "Please fill in all fields.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
@@ -60,9 +61,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
-      console.log('📝 [REGISTER] Attempting registration with instant access...', {
+      console.log('📝 [REGISTER] Attempting registration with data:', {
         email: formData.email,
         role: formData.role,
+        name: formData.name,
+        location: formData.location,
+        phone: formData.phone,
         timestamp: new Date().toISOString()
       });
       
@@ -71,7 +75,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         email: formData.email,
         password: formData.password,
         role: formData.role,
-        location: formData.location
+        location: formData.location,
+        phone: formData.phone
       });
       
       toast({
@@ -93,6 +98,8 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
         errorMessage = "An account with this email already exists. Please try logging in instead.";
       } else if (error.message.includes('Email not confirmed')) {
         errorMessage = "There was an issue with email verification. Please try again or contact support.";
+      } else if (error.message.includes('Invalid email')) {
+        errorMessage = "Please enter a valid email address.";
       }
       
       toast({
@@ -134,7 +141,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">Full name *</Label>
                 <Input
                   id="name"
                   type="text"
@@ -148,7 +155,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -162,7 +169,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="role">Account type</Label>
+                <Label htmlFor="role">Account type *</Label>
                 <Select 
                   value={formData.role} 
                   onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}
@@ -179,7 +186,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">Location *</Label>
                 <Input
                   id="location"
                   type="text"
@@ -191,9 +198,22 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                   disabled={isLoading}
                 />
               </div>
+
+              <div>
+                <Label htmlFor="phone">Phone (optional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+44 123 456 7890"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="mt-1"
+                  disabled={isLoading}
+                />
+              </div>
               
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -207,7 +227,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Label htmlFor="confirmPassword">Confirm password *</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
