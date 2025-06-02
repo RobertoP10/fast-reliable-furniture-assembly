@@ -20,8 +20,10 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -44,7 +46,7 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
-        console.log('Pending taskers fetched:', pendingTaskersData);
+        console.log('Pending taskers fetched:', pendingTaskersData?.length || 0);
         setPendingTaskers(pendingTaskersData || []);
       }
 
@@ -62,7 +64,7 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
-        console.log('All users fetched:', usersData);
+        console.log('All users fetched:', usersData?.length || 0);
         setAllUsers(usersData || []);
       }
 
@@ -80,7 +82,7 @@ const AdminDashboard = () => {
           variant: "destructive",
         });
       } else {
-        console.log('Transactions fetched:', transactionsData);
+        console.log('Transactions fetched:', transactionsData?.length || 0);
         setTransactions(transactionsData || []);
       }
     } catch (error) {

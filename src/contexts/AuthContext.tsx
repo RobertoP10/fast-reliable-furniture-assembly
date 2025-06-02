@@ -34,28 +34,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
-      if (session?.user) {
-        fetchUserProfile(session.user);
-      } else {
-        setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initial session:', session);
+        
+        if (session?.user && mounted) {
+          await fetchUserProfile(session.user);
+        } else if (mounted) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
+      console.log('Auth state changed:', event, session?.user?.id);
+      
+      if (!mounted) return;
+
       if (session?.user) {
-        await fetchUserProfile(session.user);
+        // Use setTimeout to prevent infinite loops
+        setTimeout(async () => {
+          if (mounted) {
+            await fetchUserProfile(session.user);
+          }
+        }, 0);
       } else {
         setUser(null);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (authUser: SupabaseUser) => {
@@ -70,19 +94,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Error fetching user profile:', error);
         if (error.code === 'PGRST116') {
-          console.log('Profile not found, retrying in 2 seconds...');
-          setTimeout(() => fetchUserProfile(authUser), 2000);
+          console.log('Profile not found, will retry...');
+          // Don't set loading to false, let the retry happen
           return;
         }
         setUser(null);
+        setLoading(false);
       } else if (profile) {
-        console.log('User profile fetched:', profile);
+        console.log('User profile fetched successfully:', profile);
         setUser(profile as User);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       setUser(null);
-    } finally {
       setLoading(false);
     }
   };
@@ -101,15 +126,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      console.log('Login successful:', data);
-      if (data.user) {
-        await fetchUserProfile(data.user);
-      }
+      console.log('Login successful');
+      // Don't manually fetch profile here, let the auth state change handle it
     } catch (error: any) {
       console.error('Login error:', error);
-      throw new Error(error.message || 'Login failed');
-    } finally {
       setLoading(false);
+      throw new Error(error.message || 'Login failed');
     }
   };
 
@@ -123,14 +145,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }) => {
     setLoading(true);
     try {
-      console.log('Attempting registration for:', userData.email, 'with role:', userData.role);
+      console.log('Starting registration for:', userData.email, 'with role:', userData.role);
       
-      // First create the auth user without email confirmation
+      // Create auth user without email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
-          emailRedirectTo: undefined, // Skip email verification
+          emailRedirectTo: undefined,
           data: {
             name: userData.name,
             role: userData.role,
@@ -145,61 +167,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw authError;
       }
 
-      console.log('Auth registration successful:', authData);
-
-      if (authData.user) {
-        console.log('User created with ID:', authData.user.id);
-        
-        // Manually create the user profile since we're bypassing email verification
-        const { data: profileData, error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role,
-            location: userData.location,
-            phone: userData.phone,
-            approved: userData.role === 'client' ? true : false // Auto-approve clients, taskers need approval
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          // If profile creation fails, still continue as the trigger might have created it
-        }
-
-        // Now sign in the user immediately
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: userData.email,
-          password: userData.password,
-        });
-
-        if (signInError) {
-          console.error('Auto sign-in error:', signInError);
-          throw signInError;
-        }
-
-        console.log('Auto sign-in successful:', signInData);
-        
-        // Fetch the user profile
-        const finalProfile = profileData || await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single()
-          .then(({ data }) => data);
-
-        if (finalProfile) {
-          setUser(finalProfile as User);
-          return { success: true, user: finalProfile as User };
-        }
+      if (!authData.user) {
+        throw new Error('User creation failed');
       }
 
-      return { success: true };
+      console.log('Auth user created:', authData.user.id);
+
+      // Create user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          location: userData.location,
+          phone: userData.phone,
+          approved: userData.role === 'client' ? true : false
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile created successfully:', profileData);
+
+      // Sign in the user immediately
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: userData.password,
+      });
+
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError);
+        throw signInError;
+      }
+
+      console.log('Auto sign-in successful');
+      
+      // Set the user profile immediately
+      setUser(profileData as User);
+      setLoading(false);
+
+      return { success: true, user: profileData as User };
     } catch (error: any) {
       console.error('Registration error:', error);
+      setLoading(false);
       
       if (error.message?.includes('User already registered')) {
         throw new Error('An account with this email already exists. Please try logging in instead.');
@@ -207,13 +223,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Please enter a valid email address.');
       } else if (error.message?.includes('Password')) {
         throw new Error('Password must be at least 6 characters long.');
-      } else if (error.message?.includes('rate_limit')) {
-        throw new Error('Too many registration attempts. Please wait a moment before trying again.');
       } else {
         throw new Error(error.message || 'Registration failed. Please try again.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 

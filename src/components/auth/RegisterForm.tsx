@@ -32,11 +32,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submission started with data:', {
-      ...formData,
-      password: '***',
-      confirmPassword: '***'
-    });
+    console.log('Form submission started');
 
     // Client-side validation
     if (formData.password !== formData.confirmPassword) {
@@ -97,7 +93,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       
       console.log('Registration completed successfully', result);
       
-      // Show success message based on role
+      // Show success message
       if (formData.role === 'tasker') {
         toast({
           title: "Registration successful!",
@@ -111,23 +107,14 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       }
 
       // Redirect immediately based on role
-      if (result.user) {
-        console.log('Redirecting user with role:', result.user.role);
-        if (result.user.role === 'admin') {
-          navigate('/admin-dashboard');
-        } else if (result.user.role === 'tasker') {
-          navigate('/tasker-dashboard');
-        } else {
-          navigate('/client-dashboard');
-        }
-      } else {
-        // Fallback redirection based on form role
+      setTimeout(() => {
         if (formData.role === 'tasker') {
           navigate('/tasker-dashboard');
         } else {
           navigate('/client-dashboard');
         }
-      }
+      }, 100);
+
     } catch (error: any) {
       console.error('Registration failed:', error);
       
