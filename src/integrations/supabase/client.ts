@@ -16,11 +16,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'mgsdeal-app',
-      'X-Disable-Email-Confirmation': 'true'
-    }
   }
 });
