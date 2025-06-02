@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare } from "lucide-react";
 
-const LandingPage = () => {
+const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
@@ -21,7 +21,11 @@ const LandingPage = () => {
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
       } else if (user.role === 'tasker') {
-        navigate('/tasker-dashboard');
+        if (user.approved) {
+          navigate('/tasker-dashboard');
+        } else {
+          navigate('/tasker-pending');
+        }
       } else {
         navigate('/client-dashboard');
       }
@@ -204,14 +208,6 @@ const LandingPage = () => {
         </div>
       </footer>
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <AuthProvider>
-      <LandingPage />
-    </AuthProvider>
   );
 };
 
