@@ -22,7 +22,7 @@ export const taskAPI = {
     return (data || []).map(task => ({
       ...task,
       client: task.client as PartialUser,
-      offers_count: task.offers_count?.[0]?.count || 0
+      offers_count: Array.isArray(task.offers_count) ? task.offers_count?.[0]?.count || 0 : 0
     }));
   },
 
@@ -48,10 +48,10 @@ export const taskAPI = {
     
     return (data || []).map(task => ({
       ...task,
-      offers: (task.offers || []).map((offer: any) => ({
+      offers: Array.isArray(task.offers) ? task.offers.map((offer: any) => ({
         ...offer,
         tasker: offer.tasker as PartialUser
-      }))
+      })) : []
     }));
   },
 
@@ -77,7 +77,7 @@ export const taskAPI = {
     return (data || []).map(task => ({
       ...task,
       client: task.client as PartialUser,
-      offers: task.offers || []
+      offers: Array.isArray(task.offers) ? task.offers : []
     }));
   },
 
