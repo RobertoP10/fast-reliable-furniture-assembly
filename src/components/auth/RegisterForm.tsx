@@ -36,6 +36,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       confirmPassword: '***'
     });
 
+    // Client-side validation
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -63,15 +64,33 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       return;
     }
 
+    if (!formData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your full name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.location.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await register({
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: formData.role,
-        location: formData.location
+        location: formData.location.trim()
       });
       
       console.log('Registration completed successfully');
@@ -90,21 +109,9 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     } catch (error: any) {
       console.error('Registration failed:', error);
       
-      let errorMessage = "Registration failed. Please try again.";
-      
-      if (error.message?.includes('User already registered')) {
-        errorMessage = "An account with this email already exists. Please try logging in instead.";
-      } else if (error.message?.includes('Invalid email')) {
-        errorMessage = "Please enter a valid email address.";
-      } else if (error.message?.includes('Password')) {
-        errorMessage = "Password must be at least 6 characters long.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Registration error",
-        description: errorMessage,
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -140,11 +147,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Full name</Label>
+                <Label htmlFor="name">Full name *</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="First Last"
+                  placeholder="John Doe"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -153,11 +160,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="john@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -166,10 +173,10 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="role">Account type</Label>
+                <Label htmlFor="role">Account type *</Label>
                 <Select value={formData.role} onValueChange={(value: "client" | "tasker") => setFormData({ ...formData, role: value })}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="client">Client - Looking for assembly services</SelectItem>
@@ -179,7 +186,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
 
               <div>
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">Location *</Label>
                 <Input
                   id="location"
                   type="text"
@@ -192,10 +199,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <Input
                   id="password"
                   type="password"
+                  placeholder="At least 6 characters"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
@@ -205,10 +213,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
               </div>
               
               <div>
-                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Label htmlFor="confirmPassword">Confirm password *</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required

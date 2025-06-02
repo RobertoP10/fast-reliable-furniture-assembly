@@ -69,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching user profile:', error);
+        // If profile doesn't exist yet, wait a bit and try again
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, retrying in 2 seconds...');
+          setTimeout(() => fetchUserProfile(authUser), 2000);
+          return;
+        }
         setUser(null);
       } else if (profile) {
         console.log('User profile fetched:', profile);
@@ -142,11 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth registration successful:', data);
 
       // The user profile will be created automatically by the trigger
-      // But we need to wait a moment for it to be created
       if (data.user) {
         console.log('User created with ID:', data.user.id);
         
-        // Wait a bit for the trigger to create the profile
+        // Wait for the trigger to create the profile
         setTimeout(async () => {
           try {
             await fetchUserProfile(data.user);
@@ -158,7 +163,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      throw new Error(error.message || 'Registration failed');
+      
+      // Provide more specific error messages
+      if (error.message?.includes('User already registered')) {
+        throw new Error('An account with this email already exists. Please try logging in instead.');
+      } else if (error.message?.includes('Invalid email')) {
+        throw new Error('Please enter a valid email address.');
+      } else if (error.message?.includes('Password')) {
+        throw new Error('Password must be at least 6 characters long.');
+      } else if (error.message?.includes('rate_limit')) {
+        throw new Error('Too many registration attempts. Please wait a moment before trying again.');
+      } else {
+        throw new Error(error.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
