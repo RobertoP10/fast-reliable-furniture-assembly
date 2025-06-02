@@ -20,7 +20,7 @@ interface Task {
   location: string;
   created_at: string;
   client_id: string;
-  offers?: { count: number }[];
+  offers_count?: number; // Changed from offers array to simple count
 }
 
 interface TasksListProps {
@@ -45,7 +45,7 @@ const TasksList = ({ userRole }: TasksListProps) => {
         .from('task_requests')
         .select(`
           *,
-          offers(count)
+          offers!inner(count)
         `);
 
       if (userRole === 'client') {
@@ -60,7 +60,13 @@ const TasksList = ({ userRole }: TasksListProps) => {
 
       if (error) throw error;
 
-      setTasks(data || []);
+      // Transform the data to match our interface
+      const transformedTasks = (data || []).map(task => ({
+        ...task,
+        offers_count: task.offers?.[0]?.count || 0
+      }));
+
+      setTasks(transformedTasks);
     } catch (error: any) {
       console.error('Error fetching tasks:', error);
       toast({
@@ -181,10 +187,10 @@ const TasksList = ({ userRole }: TasksListProps) => {
                       {task.category}
                       {task.subcategory && ` - ${task.subcategory}`}
                     </Badge>
-                    {task.offers && task.offers.length > 0 && (
+                    {task.offers_count && task.offers_count > 0 && (
                       <div className="flex items-center space-x-1 text-sm text-gray-600">
                         <Users className="h-4 w-4" />
-                        <span>{task.offers[0].count} offers</span>
+                        <span>{task.offers_count} offers</span>
                       </div>
                     )}
                   </div>
@@ -201,9 +207,9 @@ const TasksList = ({ userRole }: TasksListProps) => {
                         Chat
                       </Button>
                     )}
-                    {userRole === 'client' && task.status === 'pending' && task.offers && (
+                    {userRole === 'client' && task.status === 'pending' && task.offers_count && task.offers_count > 0 && (
                       <Button size="sm" variant="outline">
-                        View Offers ({task.offers[0]?.count || 0})
+                        View Offers ({task.offers_count})
                       </Button>
                     )}
                   </div>
