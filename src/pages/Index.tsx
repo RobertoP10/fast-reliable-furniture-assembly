@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,10 @@ const Index = () => {
   const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
+    console.log('🏠 Index page - Auth state:', { user: user?.id, loading, role: user?.role, approved: user?.approved });
+    
     if (!loading && user) {
-      console.log('User detected in Index, redirecting...', user.role, user.approved);
+      console.log('🔄 User detected in Index, redirecting...', user.role, user.approved);
       // Redirect based on user role and approval status
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
@@ -34,6 +37,7 @@ const Index = () => {
 
   // Show loading while checking authentication
   if (loading) {
+    console.log('⏳ Index page showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -51,6 +55,8 @@ const Index = () => {
   if (showRegister) {
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
+
+  console.log('🏠 Index page rendering main content');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
