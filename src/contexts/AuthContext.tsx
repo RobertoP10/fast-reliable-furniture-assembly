@@ -79,16 +79,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Function to fetch user profile with enhanced error handling
+  // Function to fetch user profile with enhanced error handling and timeout
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+    const TIMEOUT_DURATION = 8000; // 8 seconds timeout
+    
     try {
       console.log(`🔍 [AUTH] Fetching user profile for: ${authUser.id}`);
       
-      const { data: profile, error } = await supabase
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Profile fetch timeout'));
+        }, TIMEOUT_DURATION);
+      });
+
+      // Create the actual fetch promise
+      const fetchPromise = supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single();
+
+      // Race between timeout and actual fetch
+      const { data: profile, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) {
         console.error('❌ [AUTH] Error fetching user profile:', error);
@@ -96,7 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If profile doesn't exist, create one
         if (error.code === 'PGRST116') {
           console.log('📝 [AUTH] Profile not found, creating default profile...');
-          const { data: newProfile, error: insertError } = await supabase
+          
+          const createPromise = supabase
             .from('users')
             .insert({
               id: authUser.id,
@@ -108,9 +122,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select()
             .single();
 
+          const createTimeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Profile creation timeout'));
+            }, TIMEOUT_DURATION);
+          });
+
+          const { data: newProfile, error: insertError } = await Promise.race([createPromise, createTimeoutPromise]);
+
           if (insertError) {
             console.error('❌ [AUTH] Error creating user profile:', insertError);
-            return null;
+            throw new Error('Failed to create profile');
           }
 
           if (newProfile) {
@@ -129,7 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return userProfile;
           }
         }
-        return null;
+        
+        throw error;
       }
 
       if (profile) {
@@ -155,9 +178,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('⚠️ [AUTH] No profile data returned');
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
-      return null;
+      
+      // For timeout errors, we'll proceed without profile to prevent infinite loading
+      if (error.message === 'Profile fetch timeout' || error.message === 'Profile creation timeout') {
+        console.warn('⏱️ [AUTH] Profile fetch timed out, proceeding without profile');
+        return null;
+      }
+      
+      throw error;
     }
   };
 
@@ -185,27 +215,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         try {
           const userProfile = await fetchUserProfile(session.user);
-          if (mounted && userProfile) {
-            console.log('✅ [AUTH] Setting user profile in state');
-            setUser(userProfile);
-            setLoading(false);
-            
-            // Get current path and redirect if on home page
-            const currentPath = window.location.pathname;
-            console.log('📍 [AUTH] Current path:', currentPath);
-            setTimeout(() => {
-              redirectUser(userProfile, currentPath);
-            }, 100);
-          } else if (mounted) {
-            console.log('❌ [AUTH] Failed to fetch user profile');
-            setUser(null);
-            setLoading(false);
+          if (mounted) {
+            if (userProfile) {
+              console.log('✅ [AUTH] Setting user profile in state');
+              setUser(userProfile);
+              setLoading(false);
+              
+              // Get current path and redirect if on home page
+              const currentPath = window.location.pathname;
+              console.log('📍 [AUTH] Current path:', currentPath);
+              setTimeout(() => {
+                redirectUser(userProfile, currentPath);
+              }, 100);
+            } else {
+              console.log('❌ [AUTH] Failed to fetch user profile, clearing auth state');
+              setUser(null);
+              setLoading(false);
+              // Sign out the user if we can't get their profile
+              await supabase.auth.signOut();
+            }
           }
         } catch (error) {
           console.error('❌ [AUTH] Error handling sign in:', error);
           if (mounted) {
             setUser(null);
             setLoading(false);
+            // On error, sign out to prevent infinite loading
+            await supabase.auth.signOut();
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -220,9 +256,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Don't fetch profile again on token refresh if we already have a user
         if (mounted && !user) {
           console.log('🔄 [AUTH] Token refreshed but no user in state, fetching profile...');
-          const userProfile = await fetchUserProfile(session.user);
-          if (userProfile) {
-            setUser(userProfile);
+          try {
+            const userProfile = await fetchUserProfile(session.user);
+            if (userProfile) {
+              setUser(userProfile);
+            }
+          } catch (error) {
+            console.error('❌ [AUTH] Error fetching profile on token refresh:', error);
           }
           setLoading(false);
         }
@@ -235,11 +275,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Get initial session
+    // Get initial session with timeout
     const initializeSession = async () => {
       try {
         console.log('🔍 [AUTH] Getting initial session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Session fetch timeout'));
+          }, 5000);
+        });
+
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
         
         if (error) {
           console.error('❌ [AUTH] Error getting session:', error);
@@ -266,6 +314,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               } else {
                 console.log('❌ [AUTH] Failed to load initial profile');
                 setUser(null);
+                await supabase.auth.signOut();
               }
               setLoading(false);
             }
@@ -274,6 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (mounted) {
               setUser(null);
               setLoading(false);
+              await supabase.auth.signOut();
             }
           }
         } else {
@@ -283,7 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ [AUTH] Error in initializeSession:', error);
         if (mounted) {
           setUser(null);
@@ -294,9 +344,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeSession();
 
+    // Set a maximum loading timeout as a safety net
+    const maxLoadingTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('⚠️ [AUTH] Maximum loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 15000); // 15 seconds max loading time
+
     return () => {
       console.log('🧹 [AUTH] Cleaning up auth context...');
       mounted = false;
+      clearTimeout(maxLoadingTimeout);
       subscription.unsubscribe();
     };
   }, [navigate]);
