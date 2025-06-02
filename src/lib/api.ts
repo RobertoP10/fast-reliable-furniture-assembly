@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -96,7 +95,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
     .from('offers')
     .select(`
       *,
-      tasker:users!offers_tasker_id_fkey(name, rating, total_reviews)
+      tasker:users!offers_tasker_id_fkey(full_name, approved)
     `)
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });

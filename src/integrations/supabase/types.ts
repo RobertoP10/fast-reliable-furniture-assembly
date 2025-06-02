@@ -39,20 +39,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "messages_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
@@ -100,13 +86,6 @@ export type Database = {
             referencedRelation: "task_requests"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "offers_tasker_id_fkey"
-            columns: ["tasker_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       reviews: {
@@ -138,20 +117,6 @@ export type Database = {
           task_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "reviews_reviewee_id_fkey"
-            columns: ["reviewee_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_reviewer_id_fkey"
-            columns: ["reviewer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "reviews_task_id_fkey"
             columns: ["task_id"]
@@ -218,13 +183,6 @@ export type Database = {
             referencedRelation: "offers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "task_requests_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       transactions: {
@@ -269,31 +227,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_admin_confirmed_by_fkey"
-            columns: ["admin_confirmed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "transactions_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_tasker_id_fkey"
-            columns: ["tasker_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -303,39 +240,27 @@ export type Database = {
           approved: boolean
           created_at: string
           email: string
+          full_name: string
           id: string
-          location: string | null
-          name: string
-          phone: string | null
-          rating: number | null
           role: Database["public"]["Enums"]["user_role"]
-          total_reviews: number | null
           updated_at: string
         }
         Insert: {
           approved?: boolean
           created_at?: string
           email: string
+          full_name: string
           id: string
-          location?: string | null
-          name: string
-          phone?: string | null
-          rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
-          total_reviews?: number | null
           updated_at?: string
         }
         Update: {
           approved?: boolean
           created_at?: string
           email?: string
+          full_name?: string
           id?: string
-          location?: string | null
-          name?: string
-          phone?: string | null
-          rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
-          total_reviews?: number | null
           updated_at?: string
         }
         Relationships: []

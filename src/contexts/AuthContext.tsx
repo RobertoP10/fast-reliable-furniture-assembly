@@ -11,19 +11,17 @@ type DbUser = Database['public']['Tables']['users']['Row'];
 export interface User {
   id: string;
   email: string;
-  name: string;
+  full_name: string;
   role: UserRole;
-  location?: string;
-  phone?: string;
   approved: boolean;
-  rating?: number;
-  total_reviews?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id' | 'approved' | 'rating' | 'total_reviews'> & { password: string }) => Promise<void>;
+  register: (userData: Omit<User, 'id' | 'approved' | 'created_at' | 'updated_at'> & { password: string }) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -107,13 +105,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userProfile: User = {
         id: profile.id,
         email: profile.email,
-        name: profile.name,
+        full_name: profile.full_name,
         role: profile.role,
-        location: profile.location || undefined,
-        phone: profile.phone || undefined,
         approved: profile.approved,
-        rating: profile.rating || undefined,
-        total_reviews: profile.total_reviews || undefined,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
       };
       
       console.log('✅ [AUTH] User profile fetched successfully:', {
@@ -300,7 +296,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userData: Omit<User, 'id' | 'approved' | 'rating' | 'total_reviews'> & { password: string }) => {
+  const register = async (userData: Omit<User, 'id' | 'approved' | 'created_at' | 'updated_at'> & { password: string }) => {
     console.log('📝 [AUTH] Attempting registration for:', userData.email, 'as', userData.role);
     setLoading(true);
     
@@ -310,10 +306,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: userData.password,
         options: {
           data: {
-            name: userData.name,
+            name: userData.full_name,
             role: userData.role,
-            location: userData.location,
-            phone: userData.phone,
           },
           emailRedirectTo: `${window.location.origin}/`
         }

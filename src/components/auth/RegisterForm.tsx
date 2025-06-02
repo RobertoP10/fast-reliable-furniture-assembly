@@ -16,13 +16,11 @@ interface RegisterFormProps {
 
 const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const [formData, setFormData] = useState({
-    name: "",
+    full_name: "",
     email: "",
     password: "",
     confirmPassword: "",
     role: "" as "client" | "tasker",
-    location: "",
-    phone: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -31,7 +29,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.location) {
+    if (!formData.full_name || !formData.email || !formData.password || !formData.role) {
       toast({
         title: "Error",
         description: "Please fill in all required fields.",
@@ -64,19 +62,15 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       console.log('📝 [REGISTER] Attempting registration with data:', {
         email: formData.email,
         role: formData.role,
-        name: formData.name,
-        location: formData.location,
-        phone: formData.phone,
+        full_name: formData.full_name,
         timestamp: new Date().toISOString()
       });
       
       await register({
-        name: formData.name,
+        full_name: formData.full_name,
         email: formData.email,
         password: formData.password,
         role: formData.role,
-        location: formData.location,
-        phone: formData.phone
       });
       
       toast({
@@ -141,13 +135,13 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Full name *</Label>
+                <Label htmlFor="full_name">Full name *</Label>
                 <Input
-                  id="name"
+                  id="full_name"
                   type="text"
                   placeholder="First Last"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   required
                   className="mt-1"
                   disabled={isLoading}
@@ -183,33 +177,6 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
                     <SelectItem value="tasker">Tasker - Offering assembly services</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="location">Location *</Label>
-                <Input
-                  id="location"
-                  type="text"
-                  placeholder="Birmingham, UK"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Phone (optional)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+44 123 456 7890"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="mt-1"
-                  disabled={isLoading}
-                />
               </div>
               
               <div>
