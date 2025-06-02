@@ -52,7 +52,7 @@ const TaskerDashboard = () => {
   ];
 
   // Check if tasker is approved
-  if (!user?.isApproved) {
+  if (!user?.approved) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
         <Card className="w-full max-w-md shadow-xl border-0">
