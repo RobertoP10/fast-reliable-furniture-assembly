@@ -9,7 +9,347 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          created_at: string | null
+          event: string | null
+          extension: string | null
+          id: string
+          image_url: string | null
+          inserted_at: string | null
+          message: string | null
+          payload: Json | null
+          private: boolean | null
+          receiver_id: string | null
+          sender_id: string | null
+          task_id: string | null
+          topic: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event?: string | null
+          extension?: string | null
+          id?: string
+          image_url?: string | null
+          inserted_at?: string | null
+          message?: string | null
+          payload?: Json | null
+          private?: boolean | null
+          receiver_id?: string | null
+          sender_id?: string | null
+          task_id?: string | null
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event?: string | null
+          extension?: string | null
+          id?: string
+          image_url?: string | null
+          inserted_at?: string | null
+          message?: string | null
+          payload?: Json | null
+          private?: boolean | null
+          receiver_id?: string | null
+          sender_id?: string | null
+          task_id?: string | null
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          read: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          message?: string | null
+          read?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          read?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      offers: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          price: number | null
+          status: string | null
+          task_id: string | null
+          tasker_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          price?: number | null
+          status?: string | null
+          task_id?: string | null
+          tasker_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          price?: number | null
+          status?: string | null
+          task_id?: string | null
+          tasker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          rating: number | null
+          reviewed_id: string | null
+          reviewer_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating?: number | null
+          reviewed_id?: string | null
+          reviewer_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating?: number | null
+          reviewed_id?: string | null
+          reviewer_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_reviewed_id_fkey"
+            columns: ["reviewed_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_requests: {
+        Row: {
+          category: string | null
+          client_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          location: string | null
+          payment_method: string | null
+          price_range: string | null
+          status: string | null
+          subcategory: string | null
+          title: string | null
+        }
+        Insert: {
+          category?: string | null
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          payment_method?: string | null
+          price_range?: string | null
+          status?: string | null
+          subcategory?: string | null
+          title?: string | null
+        }
+        Update: {
+          category?: string | null
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          payment_method?: string | null
+          price_range?: string | null
+          status?: string | null
+          subcategory?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          id: string
+          method: string | null
+          payee_id: string | null
+          payer_id: string | null
+          status: string | null
+          task_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          method?: string | null
+          payee_id?: string | null
+          payer_id?: string | null
+          status?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          id?: string
+          method?: string | null
+          payee_id?: string | null
+          payer_id?: string | null
+          status?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          email: string | null
+          id: string
+          location: string | null
+          name: string | null
+          phone: string | null
+          profile_photo: string | null
+          role: string | null
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          location?: string | null
+          name?: string | null
+          phone?: string | null
+          profile_photo?: string | null
+          role?: string | null
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          location?: string | null
+          name?: string | null
+          phone?: string | null
+          profile_photo?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

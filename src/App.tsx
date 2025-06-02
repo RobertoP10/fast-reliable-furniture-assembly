@@ -5,10 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import TaskerPending from "./pages/TaskerPending";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,10 +24,38 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/client-dashboard" element={<ClientDashboard />} />
-            <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route 
+              path="/client-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tasker-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['tasker']} requireApproval={true}>
+                  <TaskerDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tasker-pending" 
+              element={
+                <ProtectedRoute allowedRoles={['tasker']}>
+                  <TaskerPending />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
