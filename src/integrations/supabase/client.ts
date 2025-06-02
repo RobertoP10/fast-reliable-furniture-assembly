@@ -19,7 +19,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
-      'X-Client-Info': 'mgsdeal-app'
+      'X-Client-Info': 'mgsdeal-app',
+      'X-Disable-Email-Confirmation': 'true'
     }
   }
 });

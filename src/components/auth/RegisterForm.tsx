@@ -60,7 +60,12 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
-      console.log('📝 [REGISTER] Attempting registration...', formData.role);
+      console.log('📝 [REGISTER] Attempting registration with instant access...', {
+        email: formData.email,
+        role: formData.role,
+        timestamp: new Date().toISOString()
+      });
+      
       await register({
         name: formData.name,
         email: formData.email,
@@ -72,9 +77,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       toast({
         title: "Registration successful!",
         description: formData.role === 'tasker' 
-          ? "Your tasker account will be reviewed and approved soon."
-          : "Welcome to MGSDEAL!",
+          ? "Your tasker account will be reviewed and approved soon. You have instant access!"
+          : "Welcome to MGSDEAL! You have instant access!",
       });
+      
+      console.log('✅ [REGISTER] Registration completed successfully, user should be redirected');
       // Redirect will be handled by the AuthContext
     } catch (error: any) {
       console.error('❌ [REGISTER] Registration failed:', error);
@@ -111,7 +118,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             </div>
             <CardTitle className="text-2xl text-blue-900">Create new account</CardTitle>
             <CardDescription>
-              Join the MGSDEAL community - instant access!
+              Join the MGSDEAL community - instant access, no email confirmation required!
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -228,7 +235,7 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
             <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-xs text-green-700">
                 <strong>Instant Access:</strong> No email confirmation required - you'll be logged in immediately!
-                {formData.role === 'tasker' && " Tasker accounts require admin approval before you can start bidding."}
+                {formData.role === 'tasker' && " Tasker accounts require admin approval before you can start bidding on tasks."}
               </p>
             </div>
           </CardContent>

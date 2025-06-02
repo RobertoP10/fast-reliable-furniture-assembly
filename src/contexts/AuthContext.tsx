@@ -93,9 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('❌ [AUTH] Error fetching user profile:', error);
         
-        // If profile doesn't exist, create one
+        // If profile doesn't exist, create one from user metadata
         if (error.code === 'PGRST116') {
-          console.log('📝 [AUTH] Profile not found, creating default profile...');
+          console.log('📝 [AUTH] Profile not found, creating from auth user metadata...');
           
           const newProfileData = {
             id: authUser.id,
@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (newProfile) {
-            console.log('✅ [AUTH] Default profile created successfully:', newProfile);
+            console.log('✅ [AUTH] Profile created successfully:', newProfile);
             const userProfile: User = {
               id: newProfile.id,
               email: newProfile.email,
@@ -180,7 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: session?.user?.id || 'no user',
         sessionExists: !!session,
         accessToken: session?.access_token ? 'present' : 'missing',
-        userMetadata: session?.user?.user_metadata || 'none'
+        userMetadata: session?.user?.user_metadata || 'none',
+        confirmed: session?.user?.email_confirmed_at ? 'confirmed' : 'not confirmed'
       });
       
       if (!mounted) {
@@ -250,7 +251,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userId: session.user.id,
             email: session.user.email,
             accessToken: session.access_token ? 'present' : 'missing',
-            userMetadata: session.user.user_metadata || 'none'
+            userMetadata: session.user.user_metadata || 'none',
+            confirmed: session.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
           });
           
           try {
@@ -317,7 +319,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ [AUTH] Login successful:', {
           userId: data.user.id,
           sessionExists: !!data.session,
-          accessToken: data.session.access_token ? 'present' : 'missing'
+          accessToken: data.session.access_token ? 'present' : 'missing',
+          confirmed: data.user.email_confirmed_at ? 'confirmed' : 'not confirmed'
         });
         // Auth state change handler will handle the rest
       }
@@ -333,6 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
+      // Sign up with instant access (no email confirmation)
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -357,13 +361,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ [AUTH] Registration successful for user:', data.user.id);
         console.log('🔍 [AUTH] User metadata:', data.user.user_metadata);
         console.log('🔍 [AUTH] User session:', data.session ? 'present' : 'not present');
+        console.log('🔍 [AUTH] Email confirmed:', data.user.email_confirmed_at ? 'yes' : 'no');
         
-        // If session exists, user is automatically logged in (no email confirmation needed)
+        // Check if user is automatically logged in
         if (data.session) {
           console.log('✅ [AUTH] User automatically logged in after registration');
           // Auth state change handler will handle profile creation and redirection
         } else {
-          console.log('ℹ️ [AUTH] User created but needs email confirmation');
+          console.log('ℹ️ [AUTH] User created but session not established');
           setLoading(false);
         }
       }
