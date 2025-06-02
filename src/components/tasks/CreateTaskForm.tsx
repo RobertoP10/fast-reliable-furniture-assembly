@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +48,11 @@ const CreateTaskForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 [FORM] Submit attempt with user:', user?.id);
+    console.log('🔍 [FORM] Form data:', formData);
+    
     if (!user) {
+      console.error('❌ [FORM] No user found');
       toast({
         title: "Error",
         description: "You must be logged in to create a task.",
@@ -59,6 +62,7 @@ const CreateTaskForm = () => {
     }
 
     if (!formData.category || !formData.subcategory) {
+      console.error('❌ [FORM] Missing category or subcategory');
       toast({
         title: "Error",
         description: "Please select category and subcategory.",
@@ -67,10 +71,30 @@ const CreateTaskForm = () => {
       return;
     }
 
+    if (!formData.minBudget || !formData.maxBudget) {
+      console.error('❌ [FORM] Missing budget values');
+      toast({
+        title: "Error",
+        description: "Please enter both minimum and maximum budget.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.address) {
+      console.error('❌ [FORM] Missing address');
+      toast({
+        title: "Error",
+        description: "Please select your location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await createTask({
+      const taskData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -80,7 +104,13 @@ const CreateTaskForm = () => {
         location: formData.address,
         payment_method: formData.paymentMethod,
         client_id: user.id,
-      });
+      };
+
+      console.log('📝 [FORM] Creating task with data:', taskData);
+      
+      const newTask = await createTask(taskData);
+      
+      console.log('✅ [FORM] Task created successfully:', newTask);
 
       toast({
         title: "Task created successfully!",
@@ -99,10 +129,10 @@ const CreateTaskForm = () => {
         paymentMethod: "cash"
       });
     } catch (error) {
-      console.error("Error creating task:", error);
+      console.error("❌ [FORM] Error creating task:", error);
       toast({
         title: "Error",
-        description: "Failed to create task. Please try again.",
+        description: `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -7,6 +8,7 @@ type TaskStatus = Database['public']['Enums']['task_status'];
 type PaymentMethod = Database['public']['Enums']['payment_method'];
 type Offer = Database['public']['Tables']['offers']['Row'];
 type OfferInsert = Database['public']['Tables']['offers']['Insert'];
+type User = Database['public']['Tables']['users']['Row'];
 
 // Enhanced session validation with detailed logging
 export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
@@ -157,6 +159,7 @@ export const createTask = async (taskData: {
       price_range_max: taskData.price_range_max,
       location: taskData.location,
       payment_method: taskData.payment_method,
+      status: 'pending'
     })
     .select()
     .single();
@@ -233,15 +236,33 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
   console.log('✅ [API] Offer accepted successfully');
 };
 
-// Fetch pending taskers for admin approval
-export const fetchPendingTaskers = async () => {
+// Admin functions
+export const fetchAllUsers = async (): Promise<User[]> => {
+  console.log('🔍 [API] Fetching all users for admin');
+  
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [API] Error fetching users:', error);
+    throw new Error(`Failed to fetch users: ${error.message}`);
+  }
+
+  console.log('✅ [API] Users fetched successfully:', data?.length || 0, 'users');
+  return data || [];
+};
+
+export const fetchPendingTaskers = async (): Promise<User[]> => {
   console.log('🔍 [API] Fetching pending taskers for admin review');
   
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .eq('role', 'tasker')
-    .eq('approved', false);
+    .eq('approved', false)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('❌ [API] Error fetching pending taskers:', error);
@@ -249,6 +270,29 @@ export const fetchPendingTaskers = async () => {
   }
 
   console.log('✅ [API] Pending taskers fetched successfully:', data?.length || 0, 'pending');
+  return data || [];
+};
+
+export const fetchPendingTransactions = async () => {
+  console.log('🔍 [API] Fetching pending transactions for admin');
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      task:task_requests!transactions_task_id_fkey(title),
+      client:users!transactions_client_id_fkey(full_name),
+      tasker:users!transactions_tasker_id_fkey(full_name)
+    `)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [API] Error fetching transactions:', error);
+    throw new Error(`Failed to fetch transactions: ${error.message}`);
+  }
+
+  console.log('✅ [API] Transactions fetched successfully:', data?.length || 0, 'transactions');
   return data || [];
 };
 
@@ -267,4 +311,21 @@ export const acceptTasker = async (taskerId: string): Promise<void> => {
   }
 
   console.log('✅ [API] Tasker accepted successfully');
+};
+
+// Reject a tasker
+export const rejectTasker = async (taskerId: string): Promise<void> => {
+  console.log('📝 [API] Rejecting tasker:', taskerId);
+  
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', taskerId);
+
+  if (error) {
+    console.error('❌ [API] Error rejecting tasker:', error);
+    throw new Error(`Failed to reject tasker: ${error.message}`);
+  }
+
+  console.log('✅ [API] Tasker rejected successfully');
 };

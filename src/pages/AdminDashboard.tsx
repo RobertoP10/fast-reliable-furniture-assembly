@@ -6,46 +6,57 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchPendingTaskers, approveTasker, rejectTasker } from "@/lib/adminApi";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut } from "lucide-react";
+import { fetchPendingTaskers, fetchAllUsers, fetchPendingTransactions, acceptTasker, rejectTasker } from "@/lib/api";
+import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, TrendingUp, DollarSign } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
   const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch pending taskers
+  // Load data based on active tab
   useEffect(() => {
-    const loadPendingTaskers = async () => {
-      if (activeTab === 'pending-taskers') {
-        setLoading(true);
-        try {
-          console.log('🔄 [ADMIN] Loading pending taskers...');
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        console.log('🔄 [ADMIN] Loading data for tab:', activeTab);
+        
+        if (activeTab === 'pending-taskers') {
           const taskers = await fetchPendingTaskers();
           setPendingTaskers(taskers);
           console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
-        } catch (error) {
-          console.error('❌ [ADMIN] Error fetching pending taskers:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load pending taskers.",
-            variant: "destructive",
-          });
-        } finally {
-          setLoading(false);
+        } else if (activeTab === 'users') {
+          const users = await fetchAllUsers();
+          setAllUsers(users);
+          console.log('✅ [ADMIN] Loaded all users:', users.length);
+        } else if (activeTab === 'transactions') {
+          const transactions = await fetchPendingTransactions();
+          setPendingTransactions(transactions);
+          console.log('✅ [ADMIN] Loaded transactions:', transactions.length);
         }
+      } catch (error) {
+        console.error('❌ [ADMIN] Error loading data:', error);
+        toast({
+          title: "Error",
+          description: `Failed to load ${activeTab.replace('-', ' ')}.`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadPendingTaskers();
+    loadData();
   }, [activeTab, toast]);
 
   const handleApproveTasker = async (taskerId: string) => {
     try {
       console.log('✅ [ADMIN] Approving tasker:', taskerId);
-      await approveTasker(taskerId);
+      await acceptTasker(taskerId);
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
       toast({
         title: "Tasker Approved",
@@ -80,60 +91,16 @@ const AdminDashboard = () => {
     }
   };
 
-  const mockUsers = [
-    {
-      id: '1',
-      name: 'John Client',
-      email: 'client@email.com',
-      role: 'client',
-      status: 'active',
-      tasksCompleted: 5,
-      joinedAt: new Date(Date.now() - 2592000000)
-    },
-    {
-      id: '2',
-      name: 'Anna Tasker',
-      email: 'anna@email.com',
-      role: 'tasker',
-      status: 'active',
-      tasksCompleted: 12,
-      joinedAt: new Date(Date.now() - 5184000000)
-    }
-  ];
-
-  const mockTransactions = [
-    {
-      id: '1',
-      taskTitle: 'PAX Wardrobe Assembly',
-      client: 'John Client',
-      tasker: 'Anna Tasker',
-      amount: 200,
-      paymentMethod: 'bank',
-      status: 'pending',
-      createdAt: new Date(Date.now() - 86400000)
-    },
-    {
-      id: '2',
-      taskTitle: 'Desk Assembly',
-      client: 'Mary Client',
-      tasker: 'Andrew Tasker',
-      amount: 150,
-      paymentMethod: 'cash',
-      status: 'confirmed',
-      createdAt: new Date(Date.now() - 172800000)
-    }
-  ];
-
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    }).format(date);
+    }).format(new Date(date));
   };
 
-  const handleConfirmTransaction = (id: string) => {
-    console.log('Confirming transaction:', id);
+  const getActiveUsersCount = () => {
+    return allUsers.filter(user => user.role !== 'admin' && (user.role === 'client' || user.approved)).length;
   };
 
   return (
@@ -186,13 +153,14 @@ const AdminDashboard = () => {
                   onClick={() => setActiveTab('users')}
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Users
+                  All Users
                 </Button>
                 <Button
                   variant={activeTab === 'transactions' ? 'default' : 'ghost'}
                   className="w-full justify-start"
                   onClick={() => setActiveTab('transactions')}
                 >
+                  <DollarSign className="h-4 w-4 mr-2" />
                   Transactions
                 </Button>
               </CardContent>
@@ -210,11 +178,11 @@ const AdminDashboard = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active users</span>
-                  <Badge className="bg-green-100 text-green-700">248</Badge>
+                  <Badge className="bg-green-100 text-green-700">{getActiveUsersCount()}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending transactions</span>
-                  <Badge className="bg-blue-100 text-blue-700">5</Badge>
+                  <Badge className="bg-blue-100 text-blue-700">{pendingTransactions.length}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +216,6 @@ const AdminDashboard = () => {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Location</TableHead>
                           <TableHead>Registration Date</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -256,10 +223,9 @@ const AdminDashboard = () => {
                       <TableBody>
                         {pendingTaskers.map((tasker) => (
                           <TableRow key={tasker.id}>
-                            <TableCell className="font-medium">{tasker.name}</TableCell>
+                            <TableCell className="font-medium">{tasker.full_name}</TableCell>
                             <TableCell>{tasker.email}</TableCell>
-                            <TableCell>{tasker.location || 'Not specified'}</TableCell>
-                            <TableCell>{formatDate(new Date(tasker.created_at))}</TableCell>
+                            <TableCell>{formatDate(tasker.created_at)}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
                                 <Button
@@ -298,40 +264,50 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Tasks</TableHead>
-                        <TableHead>Member Since</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={
-                              user.role === 'client' ? 'text-blue-700' : 'text-green-700'
-                            }>
-                              {user.role === 'client' ? 'Client' : 'Tasker'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className="bg-green-100 text-green-700">
-                              {user.status === 'active' ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{user.tasksCompleted}</TableCell>
-                          <TableCell>{formatDate(user.joinedAt)}</TableCell>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Loading users...</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Member Since</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {allUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.full_name}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={
+                                user.role === 'client' ? 'text-blue-700' : 
+                                user.role === 'admin' ? 'text-purple-700' : 'text-green-700'
+                              }>
+                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                user.role === 'client' || user.approved 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }>
+                                {user.role === 'client' || user.approved ? 'Active' : 'Pending'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{formatDate(user.created_at)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -345,54 +321,47 @@ const AdminDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Task</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Tasker</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockTransactions.map((transaction) => (
-                        <TableRow key={transaction.id}>
-                          <TableCell className="font-medium">{transaction.taskTitle}</TableCell>
-                          <TableCell>{transaction.client}</TableCell>
-                          <TableCell>{transaction.tasker}</TableCell>
-                          <TableCell>£{transaction.amount}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {transaction.paymentMethod === 'cash' ? 'Cash' : 'Transfer'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={
-                              transaction.status === 'confirmed' 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-yellow-100 text-yellow-700'
-                            }>
-                              {transaction.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {transaction.status === 'pending' && transaction.paymentMethod === 'bank' && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleConfirmTransaction(transaction.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Confirm
-                              </Button>
-                            )}
-                          </TableCell>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Loading transactions...</p>
+                    </div>
+                  ) : pendingTransactions.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No pending transactions</p>
+                      <p className="text-sm">All transactions have been processed.</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Task</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Tasker</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Payment</TableHead>
+                          <TableHead>Date</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingTransactions.map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell className="font-medium">{transaction.task?.title || 'N/A'}</TableCell>
+                            <TableCell>{transaction.client?.full_name || 'N/A'}</TableCell>
+                            <TableCell>{transaction.tasker?.full_name || 'N/A'}</TableCell>
+                            <TableCell>£{transaction.amount}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {transaction.payment_method === 'cash' ? 'Cash' : 'Transfer'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{formatDate(transaction.created_at)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             )}
