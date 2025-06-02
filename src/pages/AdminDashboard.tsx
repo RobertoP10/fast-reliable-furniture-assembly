@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,12 +19,18 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user?.role === 'admin') {
       fetchData();
     }
   }, [user]);
 
   const fetchData = async () => {
+    if (!user || user.role !== 'admin') {
+      console.log('User is not admin, cannot fetch admin data');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('Fetching admin dashboard data...');
@@ -210,6 +215,16 @@ const AdminDashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Access denied. Admin privileges required.</p>
         </div>
       </div>
     );

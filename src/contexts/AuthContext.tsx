@@ -64,12 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!mounted) return;
 
       if (session?.user) {
-        // Use setTimeout to prevent infinite loops
-        setTimeout(async () => {
-          if (mounted) {
-            await fetchUserProfile(session.user);
-          }
-        }, 0);
+        await fetchUserProfile(session.user);
       } else {
         setUser(null);
         setLoading(false);
@@ -93,11 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        if (error.code === 'PGRST116') {
-          console.log('Profile not found, will retry...');
-          // Don't set loading to false, let the retry happen
-          return;
-        }
         setUser(null);
         setLoading(false);
       } else if (profile) {
@@ -127,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       console.log('Login successful');
-      // Don't manually fetch profile here, let the auth state change handle it
+      // Profile will be fetched by auth state change listener
     } catch (error: any) {
       console.error('Login error:', error);
       setLoading(false);
@@ -147,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting registration for:', userData.email, 'with role:', userData.role);
       
-      // Create auth user without email confirmation
+      // Create auth user with email confirmation disabled
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -173,42 +163,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Auth user created:', authData.user.id);
 
-      // Create user profile
+      // Wait a moment for the trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Fetch the created profile
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .insert({
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Profile fetch error after registration:', profileError);
+        // Profile might not be created yet, set basic user data
+        const basicUser: User = {
           id: authData.user.id,
           email: userData.email,
           name: userData.name,
           role: userData.role,
           location: userData.location,
           phone: userData.phone,
-          approved: userData.role === 'client' ? true : false
-        })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
+          approved: userData.role === 'client' ? true : false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setUser(basicUser);
+        setLoading(false);
+        return { success: true, user: basicUser };
       }
 
-      console.log('Profile created successfully:', profileData);
-
-      // Sign in the user immediately
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (signInError) {
-        console.error('Auto sign-in error:', signInError);
-        throw signInError;
-      }
-
-      console.log('Auto sign-in successful');
-      
-      // Set the user profile immediately
+      console.log('Profile fetched successfully after registration:', profileData);
       setUser(profileData as User);
       setLoading(false);
 

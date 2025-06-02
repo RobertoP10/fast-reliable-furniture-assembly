@@ -107,13 +107,11 @@ const RegisterForm = ({ onBack, onSwitchToLogin }: RegisterFormProps) => {
       }
 
       // Redirect immediately based on role
-      setTimeout(() => {
-        if (formData.role === 'tasker') {
-          navigate('/tasker-dashboard');
-        } else {
-          navigate('/client-dashboard');
-        }
-      }, 100);
+      if (formData.role === 'tasker') {
+        navigate('/tasker-dashboard');
+      } else {
+        navigate('/client-dashboard');
+      }
 
     } catch (error: any) {
       console.error('Registration failed:', error);
