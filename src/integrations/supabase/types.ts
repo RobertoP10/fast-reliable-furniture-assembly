@@ -270,7 +270,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_task_offer_participant: {
+        Args: { task_uuid: string }
+        Returns: boolean
+      }
+      is_task_owner: {
+        Args: { task_client_id: string }
+        Returns: boolean
+      }
+      is_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      user_has_offer_on_task: {
+        Args: { task_uuid: string }
+        Returns: boolean
+      }
+      user_is_assigned_tasker: {
+        Args: { task_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       payment_method: "cash" | "bank_transfer" | "card"

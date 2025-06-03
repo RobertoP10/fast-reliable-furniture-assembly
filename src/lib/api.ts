@@ -236,22 +236,57 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
   console.log('✅ [API] Offer accepted successfully');
 };
 
-// Admin functions
-export const fetchAllUsers = async (): Promise<User[]> => {
+// Admin functions - Fetch all users with auth metadata
+export const fetchAllUsers = async (): Promise<(User & { last_sign_in_at?: string })[]> => {
   console.log('🔍 [API] Fetching all users for admin');
   
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    // First get all users from our users table
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('❌ [API] Error fetching users:', error);
-    throw new Error(`Failed to fetch users: ${error.message}`);
+    if (usersError) {
+      console.error('❌ [API] Error fetching users from users table:', usersError);
+      throw new Error(`Failed to fetch users: ${usersError.message}`);
+    }
+
+    // Get auth users to check last sign in
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    
+    if (authError) {
+      console.warn('⚠️ [API] Could not fetch auth users for last sign in data:', authError);
+      // Return users without last_sign_in_at if auth.admin is not available
+      return usersData || [];
+    }
+
+    // Merge the data
+    const enrichedUsers = (usersData || []).map(user => {
+      const authUser = authUsers.users.find(au => au.id === user.id);
+      return {
+        ...user,
+        last_sign_in_at: authUser?.last_sign_in_at || undefined
+      };
+    });
+
+    console.log('✅ [API] Users fetched successfully:', enrichedUsers.length, 'users');
+    return enrichedUsers;
+  } catch (error) {
+    console.error('❌ [API] Exception in fetchAllUsers:', error);
+    // Fallback to just users table data
+    const { data, error: fallbackError } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (fallbackError) {
+      throw new Error(`Failed to fetch users: ${fallbackError.message}`);
+    }
+
+    console.log('✅ [API] Users fetched successfully (fallback):', data?.length || 0, 'users');
+    return data || [];
   }
-
-  console.log('✅ [API] Users fetched successfully:', data?.length || 0, 'users');
-  return data || [];
 };
 
 export const fetchPendingTaskers = async (): Promise<User[]> => {

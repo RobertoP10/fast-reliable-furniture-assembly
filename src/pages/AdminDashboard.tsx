@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchPendingTaskers, fetchAllUsers, fetchPendingTransactions, acceptTasker, rejectTasker } from "@/lib/api";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, TrendingUp, DollarSign } from "lucide-react";
+import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, TrendingUp, DollarSign, Clock } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
         console.error('❌ [ADMIN] Error loading data:', error);
         toast({
           title: "Error",
-          description: `Failed to load ${activeTab.replace('-', ' ')}.`,
+          description: `Failed to load ${activeTab.replace('-', ' ')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         });
       } finally {
@@ -66,7 +66,7 @@ const AdminDashboard = () => {
       console.error('❌ [ADMIN] Error approving tasker:', error);
       toast({
         title: "Error",
-        description: "Failed to approve tasker. Please try again.",
+        description: `Failed to approve tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
       console.error('❌ [ADMIN] Error rejecting tasker:', error);
       toast({
         title: "Error",
-        description: "Failed to reject tasker. Please try again.",
+        description: `Failed to reject tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
@@ -95,12 +95,36 @@ const AdminDashboard = () => {
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     }).format(new Date(date));
   };
 
   const getActiveUsersCount = () => {
     return allUsers.filter(user => user.role !== 'admin' && (user.role === 'client' || user.approved)).length;
+  };
+
+  const getLastSeenBadge = (lastSignIn?: string) => {
+    if (!lastSignIn) {
+      return <Badge variant="outline" className="text-gray-500">Never</Badge>;
+    }
+    
+    const lastSignInDate = new Date(lastSignIn);
+    const now = new Date();
+    const diffInHours = (now.getTime() - lastSignInDate.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      return <Badge className="bg-green-100 text-green-700">Online</Badge>;
+    } else if (diffInHours < 24) {
+      return <Badge className="bg-blue-100 text-blue-700">Today</Badge>;
+    } else if (diffInHours < 168) { // 7 days
+      return <Badge variant="outline" className="text-orange-600">This week</Badge>;
+    } else {
+      return <Badge variant="outline" className="text-gray-500">
+        {formatDate(lastSignIn)}
+      </Badge>;
+    }
   };
 
   return (
@@ -146,6 +170,11 @@ const AdminDashboard = () => {
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Pending Taskers
+                  {pendingTaskers.length > 0 && (
+                    <Badge className="ml-auto bg-yellow-100 text-yellow-700">
+                      {pendingTaskers.length}
+                    </Badge>
+                  )}
                 </Button>
                 <Button
                   variant={activeTab === 'users' ? 'default' : 'ghost'}
@@ -154,6 +183,9 @@ const AdminDashboard = () => {
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   All Users
+                  <Badge className="ml-auto bg-blue-100 text-blue-700">
+                    {allUsers.length}
+                  </Badge>
                 </Button>
                 <Button
                   variant={activeTab === 'transactions' ? 'default' : 'ghost'}
@@ -162,6 +194,11 @@ const AdminDashboard = () => {
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
                   Transactions
+                  {pendingTransactions.length > 0 && (
+                    <Badge className="ml-auto bg-orange-100 text-orange-700">
+                      {pendingTransactions.length}
+                    </Badge>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -169,20 +206,28 @@ const AdminDashboard = () => {
             {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
+                <CardTitle className="text-blue-900 text-lg">Platform Stats</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending taskers</span>
-                  <Badge className="bg-yellow-100 text-yellow-700">{pendingTaskers.length}</Badge>
+                  <Badge className={pendingTaskers.length > 0 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}>
+                    {pendingTaskers.length}
+                  </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active users</span>
                   <Badge className="bg-green-100 text-green-700">{getActiveUsersCount()}</Badge>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Total users</span>
+                  <Badge className="bg-blue-100 text-blue-700">{allUsers.length}</Badge>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending transactions</span>
-                  <Badge className="bg-blue-100 text-blue-700">{pendingTransactions.length}</Badge>
+                  <Badge className={pendingTransactions.length > 0 ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}>
+                    {pendingTransactions.length}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -258,9 +303,9 @@ const AdminDashboard = () => {
             {activeTab === 'users' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">All Users</CardTitle>
+                  <CardTitle className="text-blue-900">All Platform Users</CardTitle>
                   <CardDescription>
-                    View and manage platform users
+                    View and manage all registered users on the platform
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -268,6 +313,12 @@ const AdminDashboard = () => {
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                       <p className="mt-2 text-gray-600">Loading users...</p>
+                    </div>
+                  ) : allUsers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No users found</p>
+                      <p className="text-sm">No users are registered on the platform yet.</p>
                     </div>
                   ) : (
                     <Table>
@@ -277,6 +328,7 @@ const AdminDashboard = () => {
                           <TableHead>Email</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Last Seen</TableHead>
                           <TableHead>Member Since</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -287,8 +339,8 @@ const AdminDashboard = () => {
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className={
-                                user.role === 'client' ? 'text-blue-700' : 
-                                user.role === 'admin' ? 'text-purple-700' : 'text-green-700'
+                                user.role === 'client' ? 'text-blue-700 border-blue-300' : 
+                                user.role === 'admin' ? 'text-purple-700 border-purple-300' : 'text-green-700 border-green-300'
                               }>
                                 {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                               </Badge>
@@ -301,6 +353,9 @@ const AdminDashboard = () => {
                               }>
                                 {user.role === 'client' || user.approved ? 'Active' : 'Pending'}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {getLastSeenBadge(user.last_sign_in_at)}
                             </TableCell>
                             <TableCell>{formatDate(user.created_at)}</TableCell>
                           </TableRow>
@@ -315,9 +370,9 @@ const AdminDashboard = () => {
             {activeTab === 'transactions' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">Transactions</CardTitle>
+                  <CardTitle className="text-blue-900">Pending Transactions</CardTitle>
                   <CardDescription>
-                    Manage and confirm transactions
+                    Monitor and manage platform transactions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -350,9 +405,11 @@ const AdminDashboard = () => {
                             <TableCell className="font-medium">{transaction.task?.title || 'N/A'}</TableCell>
                             <TableCell>{transaction.client?.full_name || 'N/A'}</TableCell>
                             <TableCell>{transaction.tasker?.full_name || 'N/A'}</TableCell>
-                            <TableCell>£{transaction.amount}</TableCell>
+                            <TableCell className="font-medium">£{transaction.amount}</TableCell>
                             <TableCell>
-                              <Badge variant="outline">
+                              <Badge variant="outline" className={
+                                transaction.payment_method === 'cash' ? 'text-green-700' : 'text-blue-700'
+                              }>
                                 {transaction.payment_method === 'cash' ? 'Cash' : 'Transfer'}
                               </Badge>
                             </TableCell>
