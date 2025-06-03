@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -357,4 +356,125 @@ export const rejectTasker = async (taskerId: string): Promise<void> => {
   }
 
   console.log('✅ [API] Tasker rejected successfully');
+};
+
+// Chat functions for real-time messaging
+export const fetchChatRooms = async (userId: string): Promise<any[]> => {
+  console.log('🔍 [API] Fetching chat rooms for user:', userId);
+  
+  try {
+    // Get all tasks where user is either client or has an accepted offer
+    const { data: userTasks, error: tasksError } = await supabase
+      .from('task_requests')
+      .select(`
+        id,
+        title,
+        client_id,
+        status,
+        accepted_offer_id,
+        offers!inner(
+          id,
+          tasker_id,
+          is_accepted,
+          tasker:users!offers_tasker_id_fkey(full_name)
+        )
+      `)
+      .or(`client_id.eq.${userId},offers.tasker_id.eq.${userId}`)
+      .eq('offers.is_accepted', true);
+
+    if (tasksError) {
+      console.error('❌ [API] Error fetching user tasks:', tasksError);
+      throw new Error(`Failed to fetch chat rooms: ${tasksError.message}`);
+    }
+
+    const chatRooms = (userTasks || []).map(task => {
+      const isClient = task.client_id === userId;
+      const offer = task.offers[0]; // Should only be one accepted offer
+      
+      return {
+        id: task.id,
+        taskTitle: task.title,
+        participantName: isClient ? offer?.tasker?.full_name : 'Client',
+        participantId: isClient ? offer?.tasker_id : task.client_id,
+        status: task.status === 'completed' ? 'closed' : 'active'
+      };
+    });
+
+    console.log('✅ [API] Chat rooms fetched successfully:', chatRooms.length, 'rooms');
+    return chatRooms;
+  } catch (error) {
+    console.error('❌ [API] Exception in fetchChatRooms:', error);
+    throw error;
+  }
+};
+
+export const fetchMessages = async (taskId: string): Promise<any[]> => {
+  console.log('🔍 [API] Fetching messages for task:', taskId);
+  
+  const { data, error } = await supabase
+    .from('messages')
+    .select(`
+      *,
+      sender:users!messages_sender_id_fkey(full_name)
+    `)
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('❌ [API] Error fetching messages:', error);
+    throw new Error(`Failed to fetch messages: ${error.message}`);
+  }
+
+  console.log('✅ [API] Messages fetched successfully:', data?.length || 0, 'messages');
+  return data || [];
+};
+
+export const sendMessage = async (messageData: {
+  task_id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+}): Promise<any> => {
+  console.log('📝 [API] Sending message for task:', messageData.task_id);
+  
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      task_id: messageData.task_id,
+      sender_id: messageData.sender_id,
+      receiver_id: messageData.receiver_id,
+      content: messageData.content,
+      is_read: false
+    })
+    .select(`
+      *,
+      sender:users!messages_sender_id_fkey(full_name)
+    `)
+    .single();
+
+  if (error) {
+    console.error('❌ [API] Error sending message:', error);
+    throw new Error(`Failed to send message: ${error.message}`);
+  }
+
+  console.log('✅ [API] Message sent successfully with ID:', data.id);
+  return data;
+};
+
+export const markMessagesAsRead = async (taskId: string, receiverId: string): Promise<void> => {
+  console.log('📝 [API] Marking messages as read for task:', taskId, 'receiver:', receiverId);
+  
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_read: true })
+    .eq('task_id', taskId)
+    .eq('receiver_id', receiverId)
+    .eq('is_read', false);
+
+  if (error) {
+    console.error('❌ [API] Error marking messages as read:', error);
+    throw new Error(`Failed to mark messages as read: ${error.message}`);
+  }
+
+  console.log('✅ [API] Messages marked as read successfully');
 };

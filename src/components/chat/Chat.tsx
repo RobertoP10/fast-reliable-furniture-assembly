@@ -1,93 +1,148 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, User } from "lucide-react";
+import { Send, User, RefreshCw } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { fetchChatRooms, fetchMessages, sendMessage, markMessagesAsRead } from "@/lib/api";
 
 interface Message {
   id: string;
-  senderId: string;
-  senderName: string;
-  message: string;
-  timestamp: Date;
-  isOwn: boolean;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+  sender?: {
+    full_name: string;
+  };
 }
 
 interface ChatRoom {
   id: string;
   taskTitle: string;
   participantName: string;
-  lastMessage: string;
-  unreadCount: number;
+  participantId: string;
   status: 'active' | 'closed';
+  unreadCount?: number;
 }
 
 const Chat = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
-  const mockChatRooms: ChatRoom[] = [
-    {
-      id: '1',
-      taskTitle: 'Asamblare dulap IKEA PAX',
-      participantName: 'Ion Popescu',
-      lastMessage: 'Când putem programa întâlnirea?',
-      unreadCount: 2,
-      status: 'active'
-    },
-    {
-      id: '2',
-      taskTitle: 'Asamblare birou',
-      participantName: 'Maria Ionescu',
-      lastMessage: 'Am terminat asamblarea. Vă trimit poze.',
-      unreadCount: 0,
-      status: 'closed'
+  // Load chat rooms when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      loadChatRooms();
     }
-  ];
+  }, [user?.id]);
 
-  const mockMessages: Message[] = [
-    {
-      id: '1',
-      senderId: 'tasker1',
-      senderName: 'Ion Popescu',
-      message: 'Bună ziua! Am văzut cererea dumneavoastră pentru asamblarea dulap-ului PAX.',
-      timestamp: new Date(Date.now() - 3600000),
-      isOwn: false
-    },
-    {
-      id: '2',
-      senderId: 'client1',
-      senderName: 'Tu',
-      message: 'Bună! Da, am nevoie de ajutor cu asamblarea.',
-      timestamp: new Date(Date.now() - 3000000),
-      isOwn: true
-    },
-    {
-      id: '3',
-      senderId: 'tasker1',
-      senderName: 'Ion Popescu',
-      message: 'Perfect! Când putem programa întâlnirea? Sunt disponibil mâine după-amiaza.',
-      timestamp: new Date(Date.now() - 1800000),
-      isOwn: false
+  // Load messages when chat is selected
+  useEffect(() => {
+    if (selectedChat && user?.id) {
+      loadMessages(selectedChat);
     }
-  ];
+  }, [selectedChat, user?.id]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  const loadChatRooms = async () => {
+    if (!user?.id) return;
     
-    console.log("Sending message:", newMessage);
-    setNewMessage("");
+    setLoading(true);
+    try {
+      console.log('🔄 [CHAT] Loading chat rooms for user:', user.id);
+      const rooms = await fetchChatRooms(user.id);
+      setChatRooms(rooms);
+      console.log('✅ [CHAT] Loaded chat rooms:', rooms.length);
+    } catch (error) {
+      console.error('❌ [CHAT] Error loading chat rooms:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load chat rooms: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatMessageTime = (date: Date) => {
-    return new Intl.DateTimeFormat('ro-RO', {
+  const loadMessages = async (taskId: string) => {
+    if (!user?.id) return;
+
+    setLoadingMessages(true);
+    try {
+      console.log('🔄 [CHAT] Loading messages for task:', taskId);
+      const taskMessages = await fetchMessages(taskId);
+      setMessages(taskMessages);
+      
+      // Mark messages as read
+      await markMessagesAsRead(taskId, user.id);
+      console.log('✅ [CHAT] Loaded messages:', taskMessages.length);
+    } catch (error) {
+      console.error('❌ [CHAT] Error loading messages:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load messages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat || !user?.id) return;
+    
+    const selectedRoom = chatRooms.find(room => room.id === selectedChat);
+    if (!selectedRoom) return;
+
+    try {
+      console.log('📤 [CHAT] Sending message to task:', selectedChat);
+      const messageData = {
+        task_id: selectedChat,
+        sender_id: user.id,
+        receiver_id: selectedRoom.participantId,
+        content: newMessage.trim()
+      };
+
+      const sentMessage = await sendMessage(messageData);
+      
+      // Add the new message to the current messages
+      setMessages(prev => [...prev, sentMessage]);
+      setNewMessage("");
+      
+      toast({
+        title: "Message sent",
+        description: "Your message has been delivered.",
+      });
+    } catch (error) {
+      console.error('❌ [CHAT] Error sending message:', error);
+      toast({
+        title: "Error",
+        description: `Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatMessageTime = (dateString: string) => {
+    return new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date);
+    }).format(new Date(dateString));
   };
+
+  const selectedRoom = chatRooms.find(room => room.id === selectedChat);
 
   return (
     <div className="grid lg:grid-cols-3 gap-6 h-[600px]">
@@ -95,43 +150,61 @@ const Chat = () => {
       <div className="lg:col-span-1">
         <Card className="shadow-lg border-0 h-full">
           <CardHeader>
-            <CardTitle className="text-blue-900">Conversații</CardTitle>
-            <CardDescription>Chat-urile tale active</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-blue-900">Conversations</CardTitle>
+                <CardDescription>Your active chats</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={loadChatRooms} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-1">
-              {mockChatRooms.map((room) => (
-                <div
-                  key={room.id}
-                  className={`p-4 border-b cursor-pointer hover:bg-blue-50 transition-colors ${
-                    selectedChat === room.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
-                  }`}
-                  onClick={() => setSelectedChat(room.id)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-sm text-blue-900 truncate">
-                      {room.taskTitle}
-                    </h4>
-                    {room.unreadCount > 0 && (
-                      <Badge className="bg-red-500 text-white text-xs">
-                        {room.unreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-600 mb-1">{room.participantName}</p>
-                  <p className="text-xs text-gray-500 truncate">{room.lastMessage}</p>
-                  <Badge 
-                    className={`mt-2 text-xs ${
-                      room.status === 'active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-700'
+            {loading ? (
+              <div className="p-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading chats...</p>
+              </div>
+            ) : chatRooms.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                <p className="text-sm">No active conversations</p>
+                <p className="text-xs mt-1">Accept a task offer to start chatting</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {chatRooms.map((room) => (
+                  <div
+                    key={room.id}
+                    className={`p-4 border-b cursor-pointer hover:bg-blue-50 transition-colors ${
+                      selectedChat === room.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
                     }`}
+                    onClick={() => setSelectedChat(room.id)}
                   >
-                    {room.status === 'active' ? 'Activ' : 'Închis'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-sm text-blue-900 truncate">
+                        {room.taskTitle}
+                      </h4>
+                      {room.unreadCount && room.unreadCount > 0 && (
+                        <Badge className="bg-red-500 text-white text-xs">
+                          {room.unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 mb-1">{room.participantName}</p>
+                    <Badge 
+                      className={`mt-2 text-xs ${
+                        room.status === 'active' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {room.status === 'active' ? 'Active' : 'Closed'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -139,7 +212,7 @@ const Chat = () => {
       {/* Chat Messages */}
       <div className="lg:col-span-2">
         <Card className="shadow-lg border-0 h-full flex flex-col">
-          {selectedChat ? (
+          {selectedChat && selectedRoom ? (
             <>
               <CardHeader className="border-b">
                 <div className="flex items-center space-x-3">
@@ -151,45 +224,58 @@ const Chat = () => {
                   </Avatar>
                   <div>
                     <CardTitle className="text-blue-900 text-lg">
-                      {mockChatRooms.find(r => r.id === selectedChat)?.participantName}
+                      {selectedRoom.participantName}
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      {mockChatRooms.find(r => r.id === selectedChat)?.taskTitle}
+                      {selectedRoom.taskTitle}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent className="flex-1 p-4 overflow-y-auto">
-                <div className="space-y-4">
-                  {mockMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.isOwn
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-900'
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.isOwn ? 'text-blue-100' : 'text-gray-500'
-                        }`}>
-                          {formatMessageTime(message.timestamp)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {loadingMessages ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex justify-center items-center h-full text-gray-500">
+                    <p>No messages yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message) => {
+                      const isOwn = message.sender_id === user?.id;
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              isOwn
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-900'
+                            }`}
+                          >
+                            <p className="text-sm">{message.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              isOwn ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                              {formatMessageTime(message.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
 
               <div className="border-t p-4">
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Scrie un mesaj..."
+                    placeholder="Type a message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -204,7 +290,7 @@ const Chat = () => {
           ) : (
             <CardContent className="flex-1 flex items-center justify-center">
               <div className="text-center text-gray-500">
-                <p>Selectează o conversație pentru a începe chat-ul</p>
+                <p>Select a conversation to start chatting</p>
               </div>
             </CardContent>
           )}
