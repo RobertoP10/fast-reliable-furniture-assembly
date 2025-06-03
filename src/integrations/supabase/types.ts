@@ -294,6 +294,10 @@ export type Database = {
         Args: { task_uuid: string }
         Returns: boolean
       }
+      user_has_offer_on_task_simple: {
+        Args: { task_uuid: string }
+        Returns: boolean
+      }
       user_is_assigned_tasker: {
         Args: { task_uuid: string }
         Returns: boolean

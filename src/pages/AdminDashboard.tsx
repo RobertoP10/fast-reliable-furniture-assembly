@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchPendingTaskers, fetchAllUsers, fetchPendingTransactions, acceptTasker, rejectTasker } from "@/lib/api";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, TrendingUp, DollarSign, Clock } from "lucide-react";
+import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, RefreshCw, DollarSign } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -19,37 +19,37 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
 
   // Load data based on active tab
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        console.log('🔄 [ADMIN] Loading data for tab:', activeTab);
-        
-        if (activeTab === 'pending-taskers') {
-          const taskers = await fetchPendingTaskers();
-          setPendingTaskers(taskers);
-          console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
-        } else if (activeTab === 'users') {
-          const users = await fetchAllUsers();
-          setAllUsers(users);
-          console.log('✅ [ADMIN] Loaded all users:', users.length);
-        } else if (activeTab === 'transactions') {
-          const transactions = await fetchPendingTransactions();
-          setPendingTransactions(transactions);
-          console.log('✅ [ADMIN] Loaded transactions:', transactions.length);
-        }
-      } catch (error) {
-        console.error('❌ [ADMIN] Error loading data:', error);
-        toast({
-          title: "Error",
-          description: `Failed to load ${activeTab.replace('-', ' ')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 [ADMIN] Loading data for tab:', activeTab);
+      
+      if (activeTab === 'pending-taskers') {
+        const taskers = await fetchPendingTaskers();
+        setPendingTaskers(taskers);
+        console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
+      } else if (activeTab === 'users') {
+        const users = await fetchAllUsers();
+        setAllUsers(users);
+        console.log('✅ [ADMIN] Loaded all users:', users.length);
+      } else if (activeTab === 'transactions') {
+        const transactions = await fetchPendingTransactions();
+        setPendingTransactions(transactions);
+        console.log('✅ [ADMIN] Loaded transactions:', transactions.length);
       }
-    };
+    } catch (error) {
+      console.error('❌ [ADMIN] Error loading data:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load ${activeTab.replace('-', ' ')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, [activeTab, toast]);
 
@@ -159,7 +159,12 @@ const AdminDashboard = () => {
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
-                <CardTitle className="text-blue-900">Admin Panel</CardTitle>
+                <CardTitle className="text-blue-900 flex items-center justify-between">
+                  Admin Panel
+                  <Button variant="ghost" size="sm" onClick={loadData} disabled={loading}>
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </CardTitle>
                 <CardDescription>Manage the platform</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">

@@ -70,9 +70,10 @@ export const fetchTasks = async (userRole: string, userId?: string): Promise<Tas
       // Clients see their own tasks
       query = query.eq('client_id', userId);
     } else if (userRole === 'tasker') {
-      // Taskers see pending tasks and tasks they have offers on
-      query = query.or(`status.eq.pending,and(status.neq.pending,id.in.(select task_id from offers where tasker_id.eq.${userId}))`);
+      // Taskers see all pending tasks (they can make offers on any pending task)
+      query = query.eq('status', 'pending');
     }
+    // Admins see all tasks (no additional filtering)
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -236,12 +237,12 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
   console.log('✅ [API] Offer accepted successfully');
 };
 
-// Admin functions - Fetch all users with auth metadata
+// Admin functions - Fetch all users (admins can see all users due to RLS policy)
 export const fetchAllUsers = async (): Promise<(User & { last_sign_in_at?: string })[]> => {
   console.log('🔍 [API] Fetching all users for admin');
   
   try {
-    // First get all users from our users table
+    // Get all users from our users table (RLS policy allows admins to see all)
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('*')
@@ -252,40 +253,33 @@ export const fetchAllUsers = async (): Promise<(User & { last_sign_in_at?: strin
       throw new Error(`Failed to fetch users: ${usersError.message}`);
     }
 
-    // Get auth users to check last sign in
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
+    // Try to get auth users for last sign in data (this might fail if not admin)
+    try {
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (!authError && authUsers) {
+        // Merge the data with proper type handling
+        const enrichedUsers = (usersData || []).map((user: User) => {
+          const authUser = authUsers.users.find((au: any) => au.id === user.id);
+          return {
+            ...user,
+            last_sign_in_at: authUser?.last_sign_in_at || undefined
+          };
+        });
+
+        console.log('✅ [API] Users fetched successfully with auth data:', enrichedUsers.length, 'users');
+        return enrichedUsers;
+      }
+    } catch (authError) {
       console.warn('⚠️ [API] Could not fetch auth users for last sign in data:', authError);
-      // Return users without last_sign_in_at if auth.admin is not available
-      return usersData || [];
     }
 
-    // Merge the data with proper type handling
-    const enrichedUsers = (usersData || []).map((user: User) => {
-      const authUser = authUsers.users.find((au: any) => au.id === user.id);
-      return {
-        ...user,
-        last_sign_in_at: authUser?.last_sign_in_at || undefined
-      };
-    });
-
-    console.log('✅ [API] Users fetched successfully:', enrichedUsers.length, 'users');
-    return enrichedUsers;
+    // Return users without last_sign_in_at if auth.admin is not available
+    console.log('✅ [API] Users fetched successfully (without auth data):', usersData?.length || 0, 'users');
+    return usersData || [];
   } catch (error) {
     console.error('❌ [API] Exception in fetchAllUsers:', error);
-    // Fallback to just users table data
-    const { data, error: fallbackError } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (fallbackError) {
-      throw new Error(`Failed to fetch users: ${fallbackError.message}`);
-    }
-
-    console.log('✅ [API] Users fetched successfully (fallback):', data?.length || 0, 'users');
-    return data || [];
+    throw error;
   }
 };
 
