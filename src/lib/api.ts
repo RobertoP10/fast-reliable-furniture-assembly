@@ -261,9 +261,9 @@ export const fetchAllUsers = async (): Promise<(User & { last_sign_in_at?: strin
       return usersData || [];
     }
 
-    // Merge the data
-    const enrichedUsers = (usersData || []).map(user => {
-      const authUser = authUsers.users.find(au => au.id === user.id);
+    // Merge the data with proper type handling
+    const enrichedUsers = (usersData || []).map((user: User) => {
+      const authUser = authUsers.users.find((au: any) => au.id === user.id);
       return {
         ...user,
         last_sign_in_at: authUser?.last_sign_in_at || undefined
