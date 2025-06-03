@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -236,46 +237,23 @@ export const acceptOffer = async (offerId: string): Promise<void> => {
   console.log('✅ [API] Offer accepted successfully');
 };
 
-// Admin functions - Fetch all users (admins can see all users due to RLS policy)
-export const fetchAllUsers = async (): Promise<(User & { last_sign_in_at?: string })[]> => {
+// Admin functions - Fetch all users
+export const fetchAllUsers = async (): Promise<User[]> => {
   console.log('🔍 [API] Fetching all users for admin');
   
   try {
-    // Get all users from our users table (RLS policy allows admins to see all)
-    const { data: usersData, error: usersError } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (usersError) {
-      console.error('❌ [API] Error fetching users from users table:', usersError);
-      throw new Error(`Failed to fetch users: ${usersError.message}`);
+    if (error) {
+      console.error('❌ [API] Error fetching users:', error);
+      throw new Error(`Failed to fetch users: ${error.message}`);
     }
 
-    // Try to get auth users for last sign in data (this might fail if not admin)
-    try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (!authError && authUsers) {
-        // Merge the data with proper type handling
-        const enrichedUsers = (usersData || []).map((user: User) => {
-          const authUser = authUsers.users.find((au: any) => au.id === user.id);
-          return {
-            ...user,
-            last_sign_in_at: authUser?.last_sign_in_at || undefined
-          };
-        });
-
-        console.log('✅ [API] Users fetched successfully with auth data:', enrichedUsers.length, 'users');
-        return enrichedUsers;
-      }
-    } catch (authError) {
-      console.warn('⚠️ [API] Could not fetch auth users for last sign in data:', authError);
-    }
-
-    // Return users without last_sign_in_at if auth.admin is not available
-    console.log('✅ [API] Users fetched successfully (without auth data):', usersData?.length || 0, 'users');
-    return usersData || [];
+    console.log('✅ [API] Users fetched successfully:', data?.length || 0, 'users');
+    return data || [];
   } catch (error) {
     console.error('❌ [API] Exception in fetchAllUsers:', error);
     throw error;
@@ -358,47 +336,95 @@ export const rejectTasker = async (taskerId: string): Promise<void> => {
   console.log('✅ [API] Tasker rejected successfully');
 };
 
-// Chat functions for real-time messaging
+// Chat functions - Fixed to properly handle relationships
 export const fetchChatRooms = async (userId: string): Promise<any[]> => {
   console.log('🔍 [API] Fetching chat rooms for user:', userId);
   
   try {
-    // Get all tasks where user is either client or has an accepted offer
-    const { data: userTasks, error: tasksError } = await supabase
+    // Get tasks where user is involved and has accepted offers
+    const { data: tasks, error: tasksError } = await supabase
       .from('task_requests')
       .select(`
         id,
         title,
         client_id,
         status,
-        accepted_offer_id,
-        offers!inner(
-          id,
-          tasker_id,
-          is_accepted,
-          tasker:users!offers_tasker_id_fkey(full_name)
-        )
+        accepted_offer_id
       `)
-      .or(`client_id.eq.${userId},offers.tasker_id.eq.${userId}`)
-      .eq('offers.is_accepted', true);
+      .or(`client_id.eq.${userId}`)
+      .not('accepted_offer_id', 'is', null);
 
     if (tasksError) {
-      console.error('❌ [API] Error fetching user tasks:', tasksError);
+      console.error('❌ [API] Error fetching client tasks:', tasksError);
       throw new Error(`Failed to fetch chat rooms: ${tasksError.message}`);
     }
 
-    const chatRooms = (userTasks || []).map(task => {
-      const isClient = task.client_id === userId;
-      const offer = task.offers[0]; // Should only be one accepted offer
-      
-      return {
-        id: task.id,
-        taskTitle: task.title,
-        participantName: isClient ? offer?.tasker?.full_name : 'Client',
-        participantId: isClient ? offer?.tasker_id : task.client_id,
-        status: task.status === 'completed' ? 'closed' : 'active'
-      };
-    });
+    // Get tasks where user is the tasker with accepted offer
+    const { data: taskerTasks, error: taskerError } = await supabase
+      .from('offers')
+      .select(`
+        task_id,
+        task:task_requests!offers_task_id_fkey(
+          id,
+          title,
+          client_id,
+          status
+        )
+      `)
+      .eq('tasker_id', userId)
+      .eq('is_accepted', true);
+
+    if (taskerError) {
+      console.error('❌ [API] Error fetching tasker tasks:', taskerError);
+      throw new Error(`Failed to fetch tasker chat rooms: ${taskerError.message}`);
+    }
+
+    const chatRooms = [];
+
+    // Add client chat rooms
+    for (const task of tasks || []) {
+      if (task.accepted_offer_id) {
+        // Get the accepted offer details
+        const { data: offer } = await supabase
+          .from('offers')
+          .select(`
+            tasker_id,
+            tasker:users!offers_tasker_id_fkey(full_name)
+          `)
+          .eq('id', task.accepted_offer_id)
+          .single();
+
+        if (offer) {
+          chatRooms.push({
+            id: task.id,
+            taskTitle: task.title,
+            participantName: offer.tasker?.full_name || 'Tasker',
+            participantId: offer.tasker_id,
+            status: task.status === 'completed' ? 'closed' : 'active'
+          });
+        }
+      }
+    }
+
+    // Add tasker chat rooms
+    for (const item of taskerTasks || []) {
+      if (item.task) {
+        // Get client details
+        const { data: client } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', item.task.client_id)
+          .single();
+
+        chatRooms.push({
+          id: item.task.id,
+          taskTitle: item.task.title,
+          participantName: client?.full_name || 'Client',
+          participantId: item.task.client_id,
+          status: item.task.status === 'completed' ? 'closed' : 'active'
+        });
+      }
+    }
 
     console.log('✅ [API] Chat rooms fetched successfully:', chatRooms.length, 'rooms');
     return chatRooms;

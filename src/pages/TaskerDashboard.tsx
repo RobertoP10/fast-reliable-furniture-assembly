@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Wrench, Bell, User, LogOut, Star, DollarSign, CheckCircle } from "lucide-react";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
+import RoleProtection from "@/components/auth/RoleProtection";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
@@ -34,115 +36,117 @@ const TaskerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <Wrench className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                MGSDEAL
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-              </Button>
+    <RoleProtection allowedRoles={['tasker']}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.full_name}</span>
-                <Badge className="bg-green-100 text-green-700">Tasker</Badge>
+                <Wrench className="h-8 w-8 text-blue-600" />
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  MGSDEAL
+                </span>
               </div>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" size="sm" className="relative">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
+                </Button>
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm font-medium">{user?.full_name}</span>
+                  <Badge className="bg-green-100 text-green-700">Tasker</Badge>
+                </div>
+                <Button variant="ghost" size="sm" onClick={logout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Tasker Dashboard</CardTitle>
-                <CardDescription>Welcome, {user?.full_name}!</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  variant={activeTab === 'available' ? 'default' : 'ghost'}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab('available')}
-                >
-                  Available Tasks
-                </Button>
-                <Button
-                  variant={activeTab === 'my-tasks' ? 'default' : 'ghost'}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab('my-tasks')}
-                >
-                  My Tasks
-                </Button>
-                <Button
-                  variant={activeTab === 'chat' ? 'default' : 'ghost'}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab('chat')}
-                >
-                  Chat
-                </Button>
-              </CardContent>
-            </Card>
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid lg:grid-cols-4 gap-8">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <Card className="shadow-lg border-0">
+                <CardHeader>
+                  <CardTitle className="text-blue-900">Tasker Dashboard</CardTitle>
+                  <CardDescription>Welcome, {user?.full_name}!</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    variant={activeTab === 'available' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('available')}
+                  >
+                    Available Tasks
+                  </Button>
+                  <Button
+                    variant={activeTab === 'my-tasks' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('my-tasks')}
+                  >
+                    My Tasks
+                  </Button>
+                  <Button
+                    variant={activeTab === 'chat' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('chat')}
+                  >
+                    Chat
+                  </Button>
+                </CardContent>
+              </Card>
 
-            {/* Profile Stats */}
-            <Card className="shadow-lg border-0 mt-6">
-              <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">My Profile</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Rating</span>
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">0</span>
+              {/* Profile Stats */}
+              <Card className="shadow-lg border-0 mt-6">
+                <CardHeader>
+                  <CardTitle className="text-blue-900 text-lg">My Profile</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Rating</span>
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      <span className="text-sm font-medium">0</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Total reviews</span>
-                  <Badge className="bg-green-100 text-green-700">0</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">This month earnings</span>
-                  <div className="flex items-center space-x-1">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium">£0</span>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total reviews</span>
+                    <Badge className="bg-green-100 text-green-700">0</Badge>
                   </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Status</span>
-                  <div className="flex items-center space-x-1">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-600">
-                      {user?.approved ? 'Verified' : 'Pending'}
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">This month earnings</span>
+                    <div className="flex items-center space-x-1">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium">£0</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Status</span>
+                    <div className="flex items-center space-x-1">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-600">
+                        {user?.approved ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === 'available' && <TasksList userRole="tasker" />}
-            {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
-            {activeTab === 'chat' && <Chat />}
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {activeTab === 'available' && <TasksList userRole="tasker" />}
+              {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
+              {activeTab === 'chat' && <Chat />}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </RoleProtection>
   );
 };
 
