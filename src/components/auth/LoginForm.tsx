@@ -29,6 +29,67 @@ const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
         description: "Please fill in all fields.",
         variant: "destructive",
       });
+      const handleLogin = async () => {
+  setError(null);
+
+  if (!email || !password) {
+    setError("Please fill in all fields.");
+    return;
+  }
+
+  const { error: loginError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (loginError) {
+    setError("Invalid email or password.");
+    return;
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const user = sessionData?.session?.user;
+
+  if (!user) {
+    setError("Authentication failed.");
+    return;
+  }
+
+  const { data: roleData, error: roleError } = await supabase.rpc("get_current_user_role");
+
+  if (roleError || !roleData) {
+    setError("Could not determine user role.");
+    return;
+  }
+
+  const role = roleData;
+
+  if (role === "admin") {
+    router.push("/admin-dashboard");
+  } else if (role === "client") {
+    router.push("/client-dashboard");
+  } else if (role === "tasker") {
+    const { data: taskerData, error: taskerError } = await supabase
+      .from("users")
+      .select("approved")
+      .eq("id", user.id)
+      .single();
+
+    if (taskerError) {
+      setError("Failed to verify tasker approval status.");
+      return;
+    }
+
+    if (taskerData.approved === true) {
+      router.push("/tasker-dashboard");
+    } else {
+      router.push("/tasker-pending");
+    }
+  } else {
+    setError("Unknown role.");
+  }
+};
+    
       return;
     }
 
