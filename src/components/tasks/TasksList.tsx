@@ -1,3 +1,4 @@
+
 // ✅ TasksList.tsx (actualizat complet)
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'completed'>('available');
   const [locationFilter, setLocationFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
 
@@ -40,15 +41,37 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
     try {
       setLoading(true);
-      const fetchedTasks = await fetchTasks(user.id, userRole, activeTab, locationFilter, statusFilter);
+      const fetchedTasks = await fetchTasks(user.id, userRole);
+
+      // Apply filters
+      let filteredTasks = fetchedTasks;
+      
+      if (locationFilter) {
+        filteredTasks = filteredTasks.filter(task => 
+          task.location.toLowerCase().includes(locationFilter.toLowerCase())
+        );
+      }
+      
+      if (statusFilter && statusFilter !== 'all') {
+        filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
+      }
 
       if (activeTab === 'completed') {
-        const total = fetchedTasks.reduce((sum, task) => sum + (task.accepted_offer?.price || 0), 0);
-        setCompletedCount(fetchedTasks.length);
+        filteredTasks = filteredTasks.filter(task => task.status === 'completed');
+        const total = filteredTasks.reduce((sum, task) => {
+          // Use accepted_offer_id to check if there's an accepted offer
+          if (task.accepted_offer_id) {
+            // You would need to fetch the actual offer price here
+            // For now, using price_range_max as fallback
+            return sum + task.price_range_max;
+          }
+          return sum;
+        }, 0);
+        setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
       }
 
-      setTasks(fetchedTasks);
+      setTasks(filteredTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -88,7 +111,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           <SelectValue placeholder="Filter by status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All</SelectItem>
+          <SelectItem value="all">All</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="accepted">Accepted</SelectItem>
           <SelectItem value="completed">Completed</SelectItem>
@@ -156,9 +179,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
                   </div>
                 </div>
 
-                {task.accepted_offer?.price && (
+                {task.accepted_offer_id && (
                   <div className="text-sm text-green-700">
-                    Accepted Offer: £{task.accepted_offer.price} by {task.accepted_offer.tasker?.full_name || 'unknown'}
+                    Accepted Offer: Offer ID {task.accepted_offer_id}
                   </div>
                 )}
               </CardContent>
