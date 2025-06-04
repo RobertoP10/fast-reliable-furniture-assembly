@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,19 @@ import type { Database } from '@/integrations/supabase/types';
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-type TaskRequest = Database['public']['Tables']['task_requests']['Row'];
+type TaskRequest = Database['public']['Tables']['task_requests']['Row'] & {
+  client?: {
+    full_name: string;
+    location: string;
+  };
+  accepted_offer?: {
+    id: string;
+    price: number;
+    tasker: {
+      full_name: string;
+    };
+  };
+};
 
 interface TasksListProps {
   userRole: 'client' | 'tasker';

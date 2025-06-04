@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -73,4 +74,46 @@ export const fetchTasks = async (
 
   console.log(`✅ [TASKS] Found ${data?.length || 0} tasks`);
   return data || [];
+};
+
+// Create a new task
+export const createTask = async (taskData: TaskInsert): Promise<Task> => {
+  console.log('📝 [TASKS] Creating task:', taskData);
+
+  const { data, error } = await supabase
+    .from('task_requests')
+    .insert(taskData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ [TASKS] Error creating task:', error);
+    throw new Error(`Failed to create task: ${error.message}`);
+  }
+
+  console.log('✅ [TASKS] Task created successfully:', data);
+  return data;
+};
+
+// Update task status
+export const updateTaskStatus = async (
+  taskId: string, 
+  status: TaskStatus
+): Promise<Task> => {
+  console.log('📝 [TASKS] Updating task status:', taskId, status);
+
+  const { data, error } = await supabase
+    .from('task_requests')
+    .update({ status })
+    .eq('id', taskId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ [TASKS] Error updating task status:', error);
+    throw new Error(`Failed to update task status: ${error.message}`);
+  }
+
+  console.log('✅ [TASKS] Task status updated successfully:', data);
+  return data;
 };
