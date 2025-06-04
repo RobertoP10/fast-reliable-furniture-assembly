@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,65 +29,59 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
     }
 
     try {
+      // Login
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       });
 
       if (loginError) {
-        setError("Invalid email or password.");
+        setError(loginError.message || "Invalid credentials.");
         setLoading(false);
         return;
       }
 
-      // Get session + user
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData?.session?.user;
+      // Obține userul curent
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        setError("Session not found after login.");
+        setError("User not found.");
         setLoading(false);
         return;
       }
 
-      // Get role
-      const { data: roleData, error: roleError } = await supabase.rpc("get_current_user_role");
+      // Obține rolul din tabela users
+      const { data: userData, error: userFetchError } = await supabase
+        .from("users")
+        .select("role, approved")
+        .eq("id", user.id)
+        .single();
 
-      if (roleError || !roleData) {
-        setError("Could not determine user role.");
+      if (userFetchError || !userData) {
+        setError("Failed to fetch user role.");
         setLoading(false);
         return;
       }
 
-      const role = roleData;
+      // Redirecționare în funcție de rol
+      const { role, approved } = userData;
 
-      if (role === "admin") {
-        navigate("/AdminDashboard");
-      } else if (role === "client") {
-        navigate("/ClientDashboard");
+      if (role === "client") {
+        navigate("/client-dashboard");
       } else if (role === "tasker") {
-        const { data: taskerData, error: taskerError } = await supabase
-          .from("users")
-          .select("approved")
-          .eq("id", user.id)
-          .single();
-
-        if (taskerError || !taskerData) {
-          setError("Could not check tasker approval.");
-          setLoading(false);
-          return;
-        }
-
-        if (taskerData.approved === true) {
-          navigate("/TaskerDashboard");
+        if (approved) {
+          navigate("/tasker-dashboard");
         } else {
-          navigate("/TaskerPending");
+          navigate("/tasker-pending");
         }
+      } else if (role === "admin") {
+        navigate("/admin-dashboard");
       } else {
         setError("Unknown user role.");
       }
     } catch (err: any) {
-      setError(err.message || "Unexpected error during login.");
+      console.error("Login error:", err);
+      setError("Login failed.");
     }
 
     setLoading(false);
