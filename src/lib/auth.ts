@@ -49,3 +49,20 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
     return null;
   }
 };
+
+// Get current user role
+export const getCurrentUserRole = async (): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('get_current_user_role');
+    
+    if (error) {
+      console.error('❌ [AUTH] Error getting user role:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('❌ [AUTH] Exception getting user role:', error);
+    return null;
+  }
+};

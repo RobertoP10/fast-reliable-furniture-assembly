@@ -42,7 +42,35 @@ export type Database = {
             foreignKeyName: "messages_receiver_id_fkey"
             columns: ["receiver_id"]
             isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
             referencedColumns: ["id"]
           },
           {
@@ -98,6 +126,20 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
             referencedColumns: ["id"]
           },
           {
@@ -208,6 +250,20 @@ export type Database = {
             foreignKeyName: "task_requests_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -258,7 +314,35 @@ export type Database = {
             foreignKeyName: "transactions_admin_confirmed_by_fkey"
             columns: ["admin_confirmed_by"]
             isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_admin_confirmed_by_fkey"
+            columns: ["admin_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_admin_confirmed_by_fkey"
+            columns: ["admin_confirmed_by"]
+            isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
             referencedColumns: ["id"]
           },
           {
@@ -279,6 +363,20 @@ export type Database = {
             foreignKeyName: "transactions_tasker_id_fkey"
             columns: ["tasker_id"]
             isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -291,7 +389,10 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          location: string | null
+          rating: number | null
           role: Database["public"]["Enums"]["user_role"]
+          total_reviews: number | null
           updated_at: string
         }
         Insert: {
@@ -300,7 +401,10 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          location?: string | null
+          rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
+          total_reviews?: number | null
           updated_at?: string
         }
         Update: {
@@ -309,16 +413,79 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          location?: string | null
+          rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
+          total_reviews?: number | null
           updated_at?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      all_users_view: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          location: string | null
+          rating: number | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          total_reviews: number | null
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          location?: string | null
+          rating?: number | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          total_reviews?: number | null
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          location?: string | null
+          rating?: number | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          total_reviews?: number | null
+        }
+        Relationships: []
+      }
+      pending_taskers_view: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_chat_on_task: {
+        Args: { task_id: string }
+        Returns: boolean
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -327,28 +494,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      is_task_offer_participant: {
-        Args: { task_uuid: string }
-        Returns: boolean
-      }
       is_task_owner: {
-        Args: { task_client_id: string }
+        Args: { task_id: string }
         Returns: boolean
       }
-      is_user_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      user_has_offer_on_task: {
-        Args: { task_uuid: string }
-        Returns: boolean
-      }
-      user_has_offer_on_task_simple: {
-        Args: { task_uuid: string }
-        Returns: boolean
-      }
-      user_is_assigned_tasker: {
-        Args: { task_uuid: string }
+      is_tasker_on_task: {
+        Args: { task_id: string }
         Returns: boolean
       }
     }
