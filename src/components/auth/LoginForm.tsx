@@ -1,204 +1,106 @@
+"use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Wrench, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
-interface LoginFormProps {
-  onBack: () => void;
-  onSwitchToRegister: () => void;
-}
+export default function LoginPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState<string | null>(null);
 
-const LoginForm = ({ onBack, onSwitchToRegister }: LoginFormProps) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
-      const handleLogin = async () => {
-  setError(null);
+    setError(null);
 
-  if (!email || !password) {
-    setError("Please fill in all fields.");
-    return;
-  }
-
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (loginError) {
-    setError("Invalid email or password.");
-    return;
-  }
-
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  const user = sessionData?.session?.user;
-
-  if (!user) {
-    setError("Authentication failed.");
-    return;
-  }
-
-  const { data: roleData, error: roleError } = await supabase.rpc("get_current_user_role");
-
-  if (roleError || !roleData) {
-    setError("Could not determine user role.");
-    return;
-  }
-
-  const role = roleData;
-
-  if (role === "admin") {
-    router.push("/admin-dashboard");
-  } else if (role === "client") {
-    router.push("/client-dashboard");
-  } else if (role === "tasker") {
-    const { data: taskerData, error: taskerError } = await supabase
-      .from("users")
-      .select("approved")
-      .eq("id", user.id)
-      .single();
-
-    if (taskerError) {
-      setError("Failed to verify tasker approval status.");
+    if (!form.email || !form.password) {
+      setError("Please fill in all fields.");
       return;
     }
 
-    if (taskerData.approved === true) {
-      router.push("/tasker-dashboard");
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
+
+    if (loginError) {
+      setError("Invalid email or password.");
+      return;
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+
+    if (!user) {
+      setError("Authentication failed.");
+      return;
+    }
+
+    const { data: roleData, error: roleError } = await supabase.rpc("get_current_user_role");
+
+    if (roleError || !roleData) {
+      setError("Could not determine user role.");
+      return;
+    }
+
+    const role = roleData;
+
+    if (role === "admin") {
+      router.push("/AdminDashboard");
+    } else if (role === "client") {
+      router.push("/ClientDashboard");
+    } else if (role === "tasker") {
+      const { data: taskerData, error: taskerError } = await supabase
+        .from("users")
+        .select("approved")
+        .eq("id", user.id)
+        .single();
+
+      if (taskerError) {
+        setError("Failed to verify tasker approval status.");
+        return;
+      }
+
+      if (taskerData.approved === true) {
+        router.push("/TaskerDashboard");
+      } else {
+        router.push("/TaskerPending");
+      }
     } else {
-      router.push("/tasker-pending");
-    }
-  } else {
-    setError("Unknown role.");
-  }
-};
-    
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      console.log('Attempting login...');
-      await login(email, password);
-      toast({
-        title: "Login successful!",
-        description: "Welcome back to MGSDEAL.",
-      });
-      // Redirect will be handled by the AuthContext
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      toast({
-        title: "Login error",
-        description: error.message || "Incorrect email or password.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      setError("Unknown role.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="mb-6 hover:bg-blue-50"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+    <div className="flex items-center justify-center min-h-screen bg-muted">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
 
-        <Card className="shadow-xl border-0">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex items-center justify-center mb-4">
-              <Wrench className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold ml-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                MGSDEAL
-              </span>
-            </div>
-            <CardTitle className="text-2xl text-blue-900">Welcome back!</CardTitle>
-            <CardDescription>
-              Enter your details to access your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="mt-1"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Login"}
-              </Button>
-            </form>
-            
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <button
-                  onClick={onSwitchToRegister}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
-                  disabled={isLoading}
-                >
-                  Register
-                </button>
-              </p>
-            </div>
+        <div className="space-y-4">
+          <Input
+            type="email"
+            placeholder="Email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
 
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
-                <strong>Demo:</strong> Use admin@test.com / tasker@test.com / client@test.com with any password
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
+          <Button className="w-full mt-4" type="submit">
+            Login
+          </Button>
+        </div>
+      </form>
     </div>
   );
-};
-
-export default LoginForm;
+}
