@@ -5,6 +5,7 @@ import type { Database } from '@/integrations/supabase/types';
 type Task = Database['public']['Tables']['task_requests']['Row'];
 type TaskInsert = Database['public']['Tables']['task_requests']['Insert'];
 type TaskUpdate = Database['public']['Tables']['task_requests']['Update'];
+type TaskStatus = Database['public']['Enums']['task_status'];
 
 // Fetch tasks based on user role
 export const fetchTasks = async (userId: string, userRole: string): Promise<Task[]> => {
@@ -72,10 +73,10 @@ export const createTask = async (taskData: Omit<TaskInsert, 'id' | 'created_at' 
 };
 
 // Update task status
-export const updateTaskStatus = async (taskId: string, status: string, updates?: Partial<TaskUpdate>): Promise<void> => {
+export const updateTaskStatus = async (taskId: string, status: TaskStatus, updates?: Partial<TaskUpdate>): Promise<void> => {
   console.log('📝 [TASKS] Updating task status:', taskId, 'to', status);
   
-  const updateData = { status, ...updates };
+  const updateData: TaskUpdate = { status, ...updates };
   
   const { error } = await supabase
     .from('task_requests')
