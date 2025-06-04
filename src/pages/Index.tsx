@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { Users, Shield, Star, CheckCircle, MessageSquare, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -15,25 +15,35 @@ const Index = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
+  // 🔐 Force logout dacă e blocat mai mult de 10 secunde
   useEffect(() => {
-    console.log('🏠 [INDEX] Component mounted/updated - Auth state:', { 
-      user: user?.id || 'none', 
-      loading, 
-      role: user?.role || 'none', 
+    const timeout = setTimeout(async () => {
+      if (loading) {
+        console.warn("⏳ User stuck in loading... forcing logout and reset");
+        await supabase.auth.signOut();
+        window.location.reload();
+      }
+    }, 10000); // 10 secunde
+
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
+  useEffect(() => {
+    console.log("🏠 [INDEX] Component mounted/updated - Auth state:", {
+      user: user?.id || "none",
+      loading,
+      role: user?.role || "none",
       approved: user?.approved || false,
       currentPath: window.location.pathname,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
-    // If user is authenticated and we're on home page, they should be redirected by AuthContext
-    if (user && !loading && window.location.pathname === '/') {
-      console.log('🔍 [INDEX] User authenticated on home page - AuthContext should handle redirect');
+    if (user && !loading && window.location.pathname === "/") {
+      console.log("🔍 [INDEX] User authenticated on home page - AuthContext should handle redirect");
     }
   }, [user, loading, navigate]);
 
-  // Show loading spinner while authenticating
   if (loading) {
-    console.log('⏳ [INDEX] Showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -45,9 +55,7 @@ const Index = () => {
     );
   }
 
-  // If user is authenticated but still here, show redirect message
   if (user && !loading) {
-    console.log('👤 [INDEX] Authenticated user on home page - showing redirect message');
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -62,20 +70,15 @@ const Index = () => {
   }
 
   if (showLogin) {
-    console.log('🔐 [INDEX] Showing login form');
     return <LoginForm onBack={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />;
   }
 
   if (showRegister) {
-    console.log('📝 [INDEX] Showing register form');
     return <RegisterForm onBack={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />;
   }
 
-  console.log('🏠 [INDEX] Rendering main content for unauthenticated user');
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
@@ -101,7 +104,6 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <Badge className="mb-6 bg-blue-100 text-blue-700 hover:bg-blue-200">
@@ -124,7 +126,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="py-16 px-4 bg-white/50">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -142,7 +143,6 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <CardHeader className="text-center">
                 <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
@@ -154,7 +154,6 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <CardHeader className="text-center">
                 <Star className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
