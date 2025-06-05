@@ -85,24 +85,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
-      if (session?.user) {
-        setLoading(true);
-        const profile = await waitForUserProfile(session.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-        } else {
-          console.warn("⚠️ Profile still not found after waiting.");
-          await supabase.auth.signOut();
-        }
-        setLoading(false);
+ useEffect(() => {
+  const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
+    if (session?.user) {
+      setLoading(true);
+      const profile = await waitForUserProfile(session.user);
+      if (profile) {
+        setUser(profile);
+        handleRedirect(profile);
       } else {
+        console.error("❌ Profile not found even after retries");
         setUser(null);
-        setLoading(false);
+        // Poți naviga la o pagină de eroare sau rămâi pe pagină
+        // navigate('/error'); sau afisezi mesaj vizual
       }
-    });
+      setLoading(false);
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
+  });
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
