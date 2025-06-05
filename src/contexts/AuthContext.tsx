@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,53 +126,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
     if (error) throw new Error(error.message);
     if (!data.session) throw new Error("No session returned");
   };
 
   const register = async (data: RegisterData) => {
     setLoading(true);
-    
-    // Sign up with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.full_name,
-          role: data.role,
-          location: data.location,
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: String(data.full_name),
+            role: String(data.role),
+            location: String(data.location),
+          },
+          emailRedirectTo: `${window.location.origin}/`,
         },
-      },
-    });
+      });
 
-    if (authError) {
-      setLoading(false);
-      throw new Error(authError.message);
-    }
+      if (authError) {
+        console.error("❌ Registration error:", authError);
+        throw new Error(authError.message);
+      }
 
-    if (!authData.user) {
-      setLoading(false);
-      throw new Error("Registration failed");
-    }
+      if (!authData.user) {
+        throw new Error("Registration failed: No user returned");
+      }
 
-    // Create user profile in users table
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert({
+      const { error: profileError } = await supabase.from('users').insert({
         id: authData.user.id,
         email: data.email,
         full_name: data.full_name,
         role: data.role,
-        approved: data.role === 'client', // Auto-approve clients, taskers need manual approval
+        approved: data.role === 'client',
       });
 
-    if (profileError) {
-      setLoading(false);
-      throw new Error("Failed to create user profile");
-    }
+      if (profileError) {
+        console.error("❌ Failed to create user profile:", profileError);
+        throw new Error("Failed to create user profile");
+      }
 
-    setLoading(false);
+      console.log("✅ Registration complete");
+    } catch (err: any) {
+      console.error("❌ Unexpected registration error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
