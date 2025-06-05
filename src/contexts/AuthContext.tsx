@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,9 +18,18 @@ export interface User {
   updated_at: string;
 }
 
+interface RegisterData {
+  full_name: string;
+  email: string;
+  password: string;
+  location: string;
+  role: UserRole;
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -121,6 +131,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!data.session) throw new Error("No session returned");
   };
 
+  const register = async (data: RegisterData) => {
+    setLoading(true);
+    
+    // Sign up with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          full_name: data.full_name,
+          role: data.role,
+          location: data.location,
+        },
+      },
+    });
+
+    if (authError) {
+      setLoading(false);
+      throw new Error(authError.message);
+    }
+
+    if (!authData.user) {
+      setLoading(false);
+      throw new Error("Registration failed");
+    }
+
+    // Create user profile in users table
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        approved: data.role === 'client', // Auto-approve clients, taskers need manual approval
+      });
+
+    if (profileError) {
+      setLoading(false);
+      throw new Error("Failed to create user profile");
+    }
+
+    setLoading(false);
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -128,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
