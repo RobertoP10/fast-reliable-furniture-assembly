@@ -53,11 +53,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .maybeSingle();
 
     if (error || !data) {
-      console.warn("⚠️ User profile not found.");
       return null;
     }
 
     return data;
+  };
+
+  const waitForProfile = async (authUser: SupabaseUser, retries = 10, delay = 300): Promise<User | null> => {
+    for (let i = 0; i < retries; i++) {
+      const profile = await fetchUserProfile(authUser);
+      if (profile) {
+        console.log(`✅ Profile fetched after ${i + 1} retries`);
+        return profile;
+      }
+      console.log(`⏳ Waiting for user profile... Retry ${i + 1}/${retries}`);
+      await new Promise(res => setTimeout(res, delay));
+    }
+    console.warn("❌ Profile not found after retries");
+    return null;
   };
 
   const handleRedirect = (user: User) => {
@@ -96,14 +109,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     syncSessionAndProfile();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        fetchUserProfile(session.user).then(profile => {
-          if (profile) {
-            setUser(profile);
-            handleRedirect(profile);
-          }
-        });
+        setLoading(true);
+        const profile = await waitForProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+        }
+        setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         navigate('/');
@@ -123,43 +137,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await syncSessionAndProfile();
   };
 
- const register = async (data: RegisterData) => {
-  setLoading(true);
+  const register = async (data: RegisterData) => {
+    setLoading(true);
 
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
 
-    if (authError) throw new Error(authError.message);
-    if (!authData.user) throw new Error("No user returned from signup");
+      if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error("No user returned from signup");
 
-    const { error: insertError } = await supabase.from('users').insert({
-      id: authData.user.id,
-      email: data.email,
-      full_name: data.full_name,
-      role: data.role,
-      approved: data.role === 'client',
-    });
+      const { error: insertError } = await supabase.from('users').insert({
+        id: authData.user.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        approved: data.role === 'client',
+      });
 
-    if (insertError) throw new Error("Failed to insert new user");
+      if (insertError) throw new Error("Failed to insert new user");
 
-    console.log("✅ User registered and inserted.");
-
-    // ⚠️ Mic delay pentru a permite propagarea în backend
-    await new Promise(res => setTimeout(res, 400));
-
-    // 🔁 Login ca să declanșeze sesiunea și redirectul
-    await login(data.email, data.password);
-
-  } catch (err) {
-    console.error("❌ Registration error:", err);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+      console.log("✅ User inserted, logging in...");
+      await login(data.email, data.password);
+    } catch (err) {
+      console.error("❌ Registration error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = async () => {
     await supabase.auth.signOut();
