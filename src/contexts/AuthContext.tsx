@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { toast } from 'sonner';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -30,7 +31,6 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
-  waitingForProfile: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,7 +44,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [waitingForProfile, setWaitingForProfile] = useState(false);
   const navigate = useNavigate();
 
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
@@ -54,58 +53,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', authUser.id)
       .maybeSingle();
 
-    if (error || !data) {
-      console.warn("⚠️ User profile not found.");
-      return null;
-    }
-
+    if (error || !data) return null;
     return data;
   };
 
-  const handleRedirect = (user: User) => {
-    if (user.role === 'admin') {
-      navigate('/admin-dashboard');
-    } else if (user.role === 'tasker' && user.approved) {
-      navigate('/tasker-dashboard');
-    } else if (user.role === 'tasker') {
-      navigate('/tasker-pending');
-    } else {
-      navigate('/client-dashboard');
+  const waitForUserProfile = async (authUser: SupabaseUser, retries = 10, delay = 500): Promise<User | null> => {
+    for (let i = 0; i < retries; i++) {
+      const profile = await fetchUserProfile(authUser);
+      if (profile) return profile;
+      await new Promise(res => setTimeout(res, delay));
     }
+    return null;
   };
 
-  const syncSessionAndProfile = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.user) {
-      const profile = await fetchUserProfile(session.user);
-      if (profile) {
-        setUser(profile);
-        handleRedirect(profile);
-      } else {
-        setUser(null);
-        console.error("❌ No user profile found in DB.");
-      }
-    } else {
-      setUser(null);
-    }
-
-    setLoading(false);
+  const handleRedirect = (user: User) => {
+    if (user.role === 'admin') navigate('/admin-dashboard');
+    else if (user.role === 'tasker' && user.approved) navigate('/tasker-dashboard');
+    else if (user.role === 'tasker') navigate('/tasker-pending');
+    else navigate('/client-dashboard');
   };
 
   useEffect(() => {
-    syncSessionAndProfile();
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const profile = await waitForUserProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+        }
+      }
+      setLoading(false);
+    };
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    initSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        fetchUserProfile(session.user).then(profile => {
-          if (profile) {
-            setUser(profile);
-            handleRedirect(profile);
-          }
-        });
+        const profile = await waitForUserProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         navigate('/');
@@ -122,12 +111,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
     if (!data.session) throw new Error("No session returned");
-    await syncSessionAndProfile();
+
+    const profile = await waitForUserProfile(data.session.user);
+    if (profile) {
+      setUser(profile);
+      handleRedirect(profile);
+    }
+
+    setLoading(false);
   };
 
   const register = async (data: RegisterData) => {
     setLoading(true);
-    setWaitingForProfile(true);
+    const toastId = toast.loading("Creating your account...");
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -146,27 +142,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         approved: data.role === 'client',
       });
 
-      if (insertError) throw new Error("Failed to insert new user");
+      if (insertError) throw new Error("Failed to insert user");
 
-      // 🔁 Retry fetching profile up to 15 times
-      for (let i = 0; i < 15; i++) {
-        const profile = await fetchUserProfile(authData.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-          return;
-        }
-        await new Promise(res => setTimeout(res, 300));
+      const profile = await waitForUserProfile(authData.user);
+      if (profile) {
+        setUser(profile);
+        handleRedirect(profile);
+        toast.success("Account created!", { id: toastId });
+      } else {
+        toast.error("Profile sync failed. Try to log in again.", { id: toastId });
       }
 
-      throw new Error("User profile not available after registration");
-
-    } catch (err) {
-      console.error("❌ Registration error:", err);
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
       throw err;
     } finally {
       setLoading(false);
-      setWaitingForProfile(false);
     }
   };
 
@@ -177,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, waitingForProfile }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
