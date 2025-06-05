@@ -50,74 +50,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from('users')
       .select('id, email, full_name, role, approved, created_at, updated_at')
       .eq('id', authUser.id)
+      .limit(1)
       .maybeSingle();
 
-    if (error || !data) {
-      return null;
-    }
-
+    if (error || !data) return null;
     return data;
   };
 
-  const waitForProfile = async (authUser: SupabaseUser, retries = 10, delay = 300): Promise<User | null> => {
+  const waitForProfile = async (authUser: SupabaseUser, retries = 20, delay = 300): Promise<User | null> => {
     for (let i = 0; i < retries; i++) {
       const profile = await fetchUserProfile(authUser);
-      if (profile) {
-        console.log(`✅ Profile fetched after ${i + 1} retries`);
-        return profile;
-      }
-      console.log(`⏳ Waiting for user profile... Retry ${i + 1}/${retries}`);
+      if (profile) return profile;
       await new Promise(res => setTimeout(res, delay));
     }
-    console.warn("❌ Profile not found after retries");
     return null;
   };
 
   const handleRedirect = (user: User) => {
-    if (user.role === 'admin') {
-      navigate('/admin-dashboard');
-    } else if (user.role === 'tasker' && user.approved) {
-      navigate('/tasker-dashboard');
-    } else if (user.role === 'tasker') {
-      navigate('/tasker-pending');
-    } else {
-      navigate('/client-dashboard');
-    }
-  };
-
-  const syncSessionAndProfile = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.user) {
-      const profile = await fetchUserProfile(session.user);
-      if (profile) {
-        setUser(profile);
-        handleRedirect(profile);
-      } else {
-        setUser(null);
-        console.error("❌ No user profile found in DB.");
-      }
-    } else {
-      setUser(null);
-    }
-
-    setLoading(false);
+    if (user.role === 'admin') navigate('/admin-dashboard');
+    else if (user.role === 'tasker' && user.approved) navigate('/tasker-dashboard');
+    else if (user.role === 'tasker') navigate('/tasker-pending');
+    else navigate('/client-dashboard');
   };
 
   useEffect(() => {
-    syncSessionAndProfile();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setLoading(true);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
         const profile = await waitForProfile(session.user);
         if (profile) {
           setUser(profile);
           handleRedirect(profile);
         }
-        setLoading(false);
+      }
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const profile = await waitForProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         navigate('/');
@@ -134,7 +108,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
     if (!data.session) throw new Error("No session returned");
-    await syncSessionAndProfile();
+
+    const profile = await waitForProfile(data.session.user);
+    if (!profile) throw new Error("User profile not found after login");
+    setUser(profile);
+    handleRedirect(profile);
+    setLoading(false);
   };
 
   const register = async (data: RegisterData) => {
@@ -146,8 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: data.password,
       });
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("No user returned from signup");
+      if (authError || !authData.user) throw new Error(authError?.message || 'Signup failed');
 
       const { error: insertError } = await supabase.from('users').insert({
         id: authData.user.id,
@@ -159,8 +137,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (insertError) throw new Error("Failed to insert new user");
 
-      console.log("✅ User inserted, logging in...");
+      // 🔁 Așteaptă propagarea și loghează automat
       await login(data.email, data.password);
+
     } catch (err) {
       console.error("❌ Registration error:", err);
       throw err;
