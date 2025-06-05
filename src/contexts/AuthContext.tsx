@@ -20,7 +20,6 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id' | 'approved' | 'created_at' | 'updated_at'> & { password: string }) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -29,9 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
 
@@ -40,66 +37,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const redirectUser = (profile: User) => {
-    if (window.location.pathname !== '/') return;
+  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, approved, created_at, updated_at')
+      .eq('id', authUser.id)
+      .single();
 
-    switch (profile.role) {
-      case 'admin':
-        navigate('/admin-dashboard', { replace: true });
-        break;
-      case 'tasker':
-        if (profile.approved) {
-          navigate('/tasker-dashboard', { replace: true });
-        } else {
-          navigate('/tasker-pending', { replace: true });
-        }
-        break;
-      case 'client':
-      default:
-        navigate('/client-dashboard', { replace: true });
+    if (error || !data) {
+      console.error("❌ Failed to fetch profile", error);
+      return null;
     }
+
+    return {
+      id: data.id,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      approved: data.approved,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
   };
 
-  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, email, full_name, role, approved, created_at, updated_at')
-        .eq('id', authUser.id)
-        .single();
-
-      if (error || !data) {
-        console.error('Error fetching user profile:', error);
-        return null;
-      }
-
-      return {
-        id: data.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role,
-        approved: data.approved,
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-    } catch (err) {
-      console.error('Exception in fetchUserProfile:', err);
-      return null;
+  const handleRedirect = (user: User) => {
+    if (user.role === 'admin') {
+      navigate('/admin-dashboard');
+    } else if (user.role === 'tasker' && user.approved) {
+      navigate('/tasker-dashboard');
+    } else if (user.role === 'tasker' && !user.approved) {
+      navigate('/tasker-pending');
+    } else {
+      navigate('/client-dashboard');
     }
   };
 
   useEffect(() => {
-    let mounted = true;
-
-    const handleAuthChange = async (event: string, session: any) => {
-      if (!mounted) return;
-
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        setLoading(true);
         const profile = await fetchUserProfile(session.user);
-        if (profile && mounted) {
+        if (profile) {
           setUser(profile);
           setLoading(false);
-          redirectUser(profile);
+          handleRedirect(profile);
         } else {
           await supabase.auth.signOut();
           setUser(null);
@@ -109,80 +90,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setLoading(false);
       }
-    };
+    });
 
-    // Subscribe to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    // Load initial session
-    const initSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error || !session?.user) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      const profile = await fetchUserProfile(session.user);
-      if (profile && mounted) {
-        setUser(profile);
-        setLoading(false);
-        redirectUser(profile);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          setLoading(false);
+          handleRedirect(profile);
+        } else {
+          await supabase.auth.signOut();
+          setUser(null);
+          setLoading(false);
+        }
       } else {
-        await supabase.auth.signOut();
-        setUser(null);
         setLoading(false);
       }
-    };
-
-    initSession();
+    });
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setLoading(false);
-      throw new Error(error.message);
-    }
-    // Redirect will be handled by onAuthStateChange
-  };
-
-  const register = async (userData: Omit<User, 'id' | 'approved' | 'created_at' | 'updated_at'> & { password: string }) => {
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.full_name,
-          role: userData.role
-        },
-        emailRedirectTo: `${window.location.origin}/`
-      }
-    });
-
-    if (error) {
-      setLoading(false);
-      throw new Error(error.message);
-    }
-
-    setLoading(false);
+    if (error) throw new Error(error.message);
+    if (!data.session) throw new Error("No session returned");
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    navigate('/', { replace: true });
+    navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
