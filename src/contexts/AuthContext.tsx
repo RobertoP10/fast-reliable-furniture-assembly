@@ -45,35 +45,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchUserProfileWithRetry = async (
-    authUser: SupabaseUser,
-    retries = 3,
-    delayMs = 1000
-  ): Promise<User | null> => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, email, full_name, role, approved, created_at, updated_at')
-        .eq('id', authUser.id)
-        .maybeSingle();
+  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, approved, created_at, updated_at')
+      .eq('id', authUser.id)
+      .maybeSingle();
 
-      if (error) {
-        console.error("❌ Failed to fetch profile", error);
-        return null;
-      }
-
-      if (data) {
-        console.log(`✅ User profile fetched on attempt ${attempt}`);
-        return data as User;
-      }
-
-      if (attempt < retries) {
-        console.warn(`⏳ Retry ${attempt}: waiting for user row to appear...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
+    if (error) {
+      console.error("❌ Failed to fetch profile", error);
+      return null;
     }
 
-    console.error("❌ User profile not found after retries");
+    return data || null;
+  };
+
+  const waitForUserProfile = async (authUser: SupabaseUser, retries = 10, delay = 200): Promise<User | null> => {
+    for (let i = 0; i < retries; i++) {
+      const profile = await fetchUserProfile(authUser);
+      if (profile) return profile;
+      await new Promise(res => setTimeout(res, delay));
+    }
     return null;
   };
 
@@ -93,10 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         setLoading(true);
-        const profile = await fetchUserProfileWithRetry(session.user);
+        const profile = await waitForUserProfile(session.user);
         if (profile) {
           setUser(profile);
           handleRedirect(profile);
+        } else {
+          console.warn("⚠️ Profile still not found after waiting.");
+          await supabase.auth.signOut();
         }
         setLoading(false);
       } else {
@@ -107,16 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        setLoading(true);
-        const profile = await fetchUserProfileWithRetry(session.user);
+        const profile = await waitForUserProfile(session.user);
         if (profile) {
           setUser(profile);
           handleRedirect(profile);
         }
-        setLoading(false);
-      } else {
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => {
@@ -145,15 +137,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (authError) {
-        console.error("❌ Registration error:", authError);
         throw new Error(authError.message);
       }
 
       if (!authData.user) {
-        throw new Error("Registration failed: No user returned");
+        throw new Error("No user returned from signup");
       }
 
-      // Insert în users
       const { error: insertError } = await supabase.from('users').insert({
         id: authData.user.id,
         email: data.email,
@@ -163,13 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (insertError) {
-        console.error("❌ Insert into users failed:", insertError);
-        throw new Error("Failed to insert new user");
+        throw new Error("Failed to insert into users");
       }
 
-      console.log("✅ User inserted in users table");
+      console.log("✅ User inserted in `users` table.");
     } catch (err) {
-      console.error("❌ Unexpected registration error:", err);
+      console.error("❌ Registration error:", err);
       throw err;
     } finally {
       setLoading(false);
