@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -7,7 +6,7 @@ type Offer = Database['public']['Tables']['offers']['Row'];
 // Fetch offers for a specific task
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for task:', taskId);
-  
+
   const { data, error } = await supabase
     .from('offers')
     .select(`
@@ -29,7 +28,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
 // Fetch user's offers
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for user:', userId);
-  
+
   const { data, error } = await supabase
     .from('offers')
     .select(`
@@ -45,25 +44,29 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   }
 
   console.log('✅ [OFFERS] User offers fetched successfully:', data?.length || 0, 'offers');
-  return data || [];
+  return data;
 };
 
-// Create an offer
+// Create an offer (updated with available date/time)
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
   price: number;
   message: string;
+  available_date: string;  // format YYYY-MM-DD
+  available_time: string;  // format HH:mm
 }): Promise<Offer> => {
-  console.log('📝 [OFFERS] Creating new offer for task:', offerData.task_id, 'by tasker:', offerData.tasker_id);
-  
+  console.log('📝 [OFFERS] Creating new offer:', offerData);
+
   const { data, error } = await supabase
     .from('offers')
     .insert({
-      tasker_id: offerData.tasker_id,
       task_id: offerData.task_id,
+      tasker_id: offerData.tasker_id,
       price: offerData.price,
       message: offerData.message,
+      available_date: offerData.available_date,
+      available_time: offerData.available_time,
     })
     .select()
     .single();
@@ -80,7 +83,7 @@ export const createOffer = async (offerData: {
 // Accept an offer
 export const acceptOffer = async (offerId: string): Promise<void> => {
   console.log('📝 [OFFERS] Accepting offer:', offerId);
-  
+
   const { error } = await supabase
     .from('offers')
     .update({ is_accepted: true })
