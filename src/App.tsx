@@ -4,27 +4,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+
 import Index from "./pages/Index";
 import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
 import TaskerPending from "./pages/TaskerPending";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
-import React from "react";
 
 const queryClient = new QueryClient();
 
-// 👇 Wrap cu acces la context
-const RouterWithAuth = () => {
-  const { loading, isSyncing } = useAuth();
+const LoadingScreen = () => (
+  <div style={{ textAlign: 'center', padding: '4rem' }}>
+    <h2>🛠️ Creating your account...</h2>
+    <p>Please wait a few seconds while we set everything up.</p>
+  </div>
+);
 
-  if (loading || isSyncing) {
-    return (
-      <div style={{ textAlign: "center", paddingTop: "150px", fontSize: "1.2rem" }}>
-        🔄 Please wait, your account is loading...
-      </div>
-    );
-  }
+const AppRoutes = () => {
+  const { waitingForProfile } = useAuth();
+
+  if (waitingForProfile) return <LoadingScreen />;
 
   return (
     <Routes>
@@ -33,6 +33,7 @@ const RouterWithAuth = () => {
       <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
       <Route path="/tasker-pending" element={<TaskerPending />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -45,7 +46,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <RouterWithAuth />
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
@@ -53,4 +54,3 @@ const App = () => (
 );
 
 export default App;
-
