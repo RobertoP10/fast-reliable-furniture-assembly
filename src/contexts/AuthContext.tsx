@@ -132,52 +132,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: RegisterData) => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
         data: {
-        full_name: `${data.full_name}`,
-        role: `${data.role}`,
-        location: `${data.location}`,
-    },
+          full_name: data.full_name,
+          role: data.role,
+          location: data.location,
+        },
         emailRedirectTo: `${window.location.origin}/`,
-  },
-});
+      },
+    });
 
-      if (authError) {
-        console.error("❌ Registration error:", authError);
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("Registration failed: No user returned");
-      }
-
-      const { error: profileError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role,
-        approved: data.role === 'client',
-      });
-
-      if (profileError) {
-        console.error("❌ Failed to create user profile:", profileError);
-        throw new Error("Failed to create user profile");
-      }
-
-      console.log("✅ Registration complete");
-    } catch (err: any) {
-      console.error("❌ Unexpected registration error:", err);
-      throw err;
-    } finally {
-      setLoading(false);
+    if (authError) {
+      console.error("❌ Registration error:", authError);
+      throw new Error(authError.message);
     }
-  };
+
+    if (!authData.user) {
+      throw new Error("Registration failed: No user returned");
+    }
+
+    console.log("✅ Registration complete. User will be created by trigger.");
+
+  } catch (err: any) {
+    console.error("❌ Unexpected registration error:", err);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const logout = async () => {
     await supabase.auth.signOut();
