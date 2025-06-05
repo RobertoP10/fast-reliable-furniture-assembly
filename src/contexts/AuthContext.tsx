@@ -139,14 +139,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         password: data.password,
         options: {
-          data: {
-            full_name: String(data.full_name),
-            role: String(data.role),
-            location: String(data.location),
-          },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
+        data: {
+        full_name: `${data.full_name}`,
+        role: `${data.role}`,
+        location: `${data.location}`,
+    },
+        emailRedirectTo: `${window.location.origin}/`,
+  },
+});
 
       if (authError) {
         console.error("❌ Registration error:", authError);
