@@ -122,44 +122,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: RegisterData) => {
-    setLoading(true);
-    const toastId = toast.loading("Creating your account...");
+  setLoading(true);
+  const toastId = toast.loading("Creating your account...");
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    });
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("No user returned from signup");
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("No user returned from signup");
 
-      const { error: insertError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role,
-        approved: data.role === 'client',
-      });
+    // ⏳ Așteptăm înainte de inserare pentru sincronizare internă
+    await new Promise((res) => setTimeout(res, 500));
 
-      if (insertError) throw new Error("Failed to insert user");
+    const { error: insertError } = await supabase.from('users').insert({
+      id: authData.user.id,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      approved: data.role === 'client',
+    });
 
-      const profile = await waitForUserProfile(authData.user);
-      if (profile) {
-        setUser(profile);
-        handleRedirect(profile);
-        toast.success("Account created!", { id: toastId });
-      } else {
-        toast.error("Profile sync failed. Try to log in again.", { id: toastId });
-      }
+    if (insertError) throw new Error("Failed to insert user");
 
-    } catch (err: any) {
-      toast.error(err.message, { id: toastId });
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+    toast.success("Account created! Redirecting to login...", { id: toastId });
+
+    // 🟡 Așteptăm 2 secunde pentru propagare completă
+    await new Promise((res) => setTimeout(res, 2000));
+
+    // 🔁 Redirecționăm către login normal
+    navigate('/');
+
+  } catch (err: any) {
+    toast.error(err.message, { id: toastId });
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const logout = async () => {
     await supabase.auth.signOut();
