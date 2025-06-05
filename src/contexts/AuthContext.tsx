@@ -115,43 +115,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: RegisterData) => {
-    setLoading(true);
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
+  setLoading(true);
+  try {
+    // 1. Sign up user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    });
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("No user returned from signup");
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("No user returned from signup");
 
-      const { error: insertError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role,
-        approved: data.role === 'client',
-      });
+    const newUserId = authData.user.id;
 
-      if (insertError) throw new Error("Failed to insert into users");
+    // 2. Insert user profile in `users`
+    const { error: insertError } = await supabase.from('users').insert({
+      id: newUserId,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      approved: data.role === 'client',
+    });
 
-      console.log("✅ User inserted in users table");
+    if (insertError) throw new Error("Failed to insert user profile");
 
-      // 🔑 Login imediat după înregistrare
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+    // 3. Creează manual obiectul user și setează-l
+    const userProfile: User = {
+      id: newUserId,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      approved: data.role === 'client',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-      if (loginError) throw new Error("Auto-login failed after register");
+    setUser(userProfile);
+    handleRedirect(userProfile);
+    console.log("✅ Registered and redirected");
 
-    } catch (err) {
-      console.error("❌ Registration error:", err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    console.error("❌ Registration error:", err);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const logout = async () => {
     await supabase.auth.signOut();
