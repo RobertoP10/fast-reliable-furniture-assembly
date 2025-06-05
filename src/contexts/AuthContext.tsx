@@ -1,3 +1,5 @@
+// src/contexts/AuthContext.tsx
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,7 +7,6 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserRole = Database['public']['Enums']['user_role'];
-type DbUser = Database['public']['Tables']['users']['Row'];
 
 export interface User {
   id: string;
@@ -54,19 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
 
     if (error || !data) {
-      console.error("❌ Failed to fetch profile", error);
+      console.error("❌ Failed to fetch profile:", error);
       return null;
     }
 
-    return {
-      id: data.id,
-      email: data.email,
-      full_name: data.full_name,
-      role: data.role,
-      approved: data.approved,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-    };
+    return data;
   };
 
   const handleRedirect = (user: User) => {
@@ -74,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       navigate('/admin-dashboard');
     } else if (user.role === 'tasker' && user.approved) {
       navigate('/tasker-dashboard');
-    } else if (user.role === 'tasker' && !user.approved) {
+    } else if (user.role === 'tasker') {
       navigate('/tasker-pending');
     } else {
       navigate('/client-dashboard');
@@ -82,19 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         setLoading(true);
         const profile = await fetchUserProfile(session.user);
         if (profile) {
           setUser(profile);
-          setLoading(false);
           handleRedirect(profile);
-        } else {
-          await supabase.auth.signOut();
-          setUser(null);
-          setLoading(false);
         }
+        setLoading(false);
       } else {
         setUser(null);
         setLoading(false);
@@ -106,16 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await fetchUserProfile(session.user);
         if (profile) {
           setUser(profile);
-          setLoading(false);
           handleRedirect(profile);
-        } else {
-          await supabase.auth.signOut();
-          setUser(null);
-          setLoading(false);
         }
-      } else {
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => {
@@ -132,40 +115,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: RegisterData) => {
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.full_name,
-          role: data.role,
-          location: data.location,
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
         },
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    });
+      });
 
-    if (authError) {
-      console.error("❌ Registration error:", authError);
-      throw new Error(authError.message);
+      if (authError) {
+        console.error("❌ Registration error:", authError);
+        throw new Error(authError.message);
+      }
+
+      if (!authData.user) {
+        throw new Error("Registration failed: No user returned");
+      }
+
+      // Adaugă manual în `users`
+      const { error: insertError } = await supabase.from('users').insert({
+        id: authData.user.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        approved: data.role === 'client',
+      });
+
+      if (insertError) {
+        console.error("❌ Insert into users failed:", insertError);
+        throw new Error("Failed to insert new user");
+      }
+
+      console.log("✅ User inserted successfully in users table");
+    } catch (err) {
+      console.error("❌ Unexpected error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-
-    if (!authData.user) {
-      throw new Error("Registration failed: No user returned");
-    }
-
-    console.log("✅ Registration complete. User will be created by trigger.");
-
-  } catch (err: any) {
-    console.error("❌ Unexpected registration error:", err);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const logout = async () => {
     await supabase.auth.signOut();
