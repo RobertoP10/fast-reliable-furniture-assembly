@@ -60,14 +60,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data || null;
   };
 
-  const waitForUserProfile = async (authUser: SupabaseUser, retries = 10, delay = 200): Promise<User | null> => {
-    for (let i = 0; i < retries; i++) {
-      const profile = await fetchUserProfile(authUser);
-      if (profile) return profile;
-      await new Promise(res => setTimeout(res, delay));
+  const waitForUserProfile = async (authUser: SupabaseUser, retries = 20, delay = 300): Promise<User | null> => {
+  for (let i = 0; i < retries; i++) {
+    const profile = await fetchUserProfile(authUser);
+    if (profile) {
+      console.log("✅ Profile found after retry", i + 1);
+      return profile;
     }
-    return null;
-  };
+    console.log(`⏳ Retry ${i + 1}/${retries} waiting for profile...`);
+    await new Promise(res => setTimeout(res, delay));
+  }
+  return null;
+};
 
   const handleRedirect = (user: User) => {
     if (user.role === 'admin') {
