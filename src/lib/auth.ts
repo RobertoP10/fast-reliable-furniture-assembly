@@ -50,6 +50,27 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
   }
 };
 
+// Fetch user profile by user ID
+export const fetchUserProfile = async (authUser: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, approved, created_at, updated_at')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.warn("⚠️ User profile not found.");
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
+    return null;
+  }
+};
+
 // Get current user role
 export const getCurrentUserRole = async (): Promise<string | null> => {
   try {
