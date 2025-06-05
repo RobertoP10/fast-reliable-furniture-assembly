@@ -124,35 +124,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: RegisterData) => {
-    setLoading(true);
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
+  setLoading(true);
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("No user returned from signup");
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    });
 
-      const { error: insertError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role,
-        approved: data.role === 'client',
-      });
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("No user returned from signup");
 
-      if (insertError) throw new Error("Failed to insert new user");
+    const { error: insertError } = await supabase.from('users').insert({
+      id: authData.user.id,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      approved: data.role === 'client',
+    });
 
-      console.log("✅ User inserted, syncing session...");
-      await syncSessionAndProfile();
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (insertError) throw new Error("Failed to insert new user");
+
+    console.log("✅ User registered and inserted, proceeding to login...");
+
+    // 🔁 Imediat după înregistrare, reautentificăm:
+    await login(data.email, data.password);
+
+  } catch (err) {
+    console.error("❌ Registration error:", err);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const logout = async () => {
     await supabase.auth.signOut();
