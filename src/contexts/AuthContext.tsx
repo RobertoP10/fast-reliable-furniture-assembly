@@ -48,19 +48,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, email, full_name, role, approved, created_at, updated_at')
-      .eq('id', authUser.id)
-      .single();
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, full_name, role, approved, created_at, updated_at')
+    .eq('id', authUser.id)
+    .maybeSingle(); // ← înlocuiește aici
 
-    if (error || !data) {
-      console.error("❌ Failed to fetch profile:", error);
-      return null;
-    }
+  if (error) {
+    console.error("❌ Failed to fetch profile", error);
+    return null;
+  }
 
-    return data;
+  if (!data) {
+    console.warn("⚠️ User profile not found yet. Waiting...");
+    return null;
+  }
+
+  return {
+    id: data.id,
+    email: data.email,
+    full_name: data.full_name,
+    role: data.role,
+    approved: data.approved,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
   };
+};
 
   const handleRedirect = (user: User) => {
     if (user.role === 'admin') {
