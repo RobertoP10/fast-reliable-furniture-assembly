@@ -30,7 +30,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
-  isSyncing: boolean;
+  waitingForProfile: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,7 +44,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [waitingForProfile, setWaitingForProfile] = useState(false);
   const navigate = useNavigate();
 
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
@@ -54,37 +54,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', authUser.id)
       .maybeSingle();
 
-    if (error || !data) return null;
+    if (error || !data) {
+      console.warn("⚠️ User profile not found.");
+      return null;
+    }
+
     return data;
   };
 
   const handleRedirect = (user: User) => {
-    if (user.role === 'admin') navigate('/admin-dashboard');
-    else if (user.role === 'tasker' && user.approved) navigate('/tasker-dashboard');
-    else if (user.role === 'tasker') navigate('/tasker-pending');
-    else navigate('/client-dashboard');
+    if (user.role === 'admin') {
+      navigate('/admin-dashboard');
+    } else if (user.role === 'tasker' && user.approved) {
+      navigate('/tasker-dashboard');
+    } else if (user.role === 'tasker') {
+      navigate('/tasker-pending');
+    } else {
+      navigate('/client-dashboard');
+    }
   };
 
   const syncSessionAndProfile = async () => {
-    setIsSyncing(true);
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (session?.user) {
-      for (let i = 0; i < 10; i++) {
-        const profile = await fetchUserProfile(session.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-          break;
-        }
-        await new Promise((res) => setTimeout(res, 500));
+      const profile = await fetchUserProfile(session.user);
+      if (profile) {
+        setUser(profile);
+        handleRedirect(profile);
+      } else {
+        setUser(null);
+        console.error("❌ No user profile found in DB.");
       }
     } else {
       setUser(null);
     }
 
     setLoading(false);
-    setIsSyncing(false);
   };
 
   useEffect(() => {
@@ -92,7 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        syncSessionAndProfile();
+        fetchUserProfile(session.user).then(profile => {
+          if (profile) {
+            setUser(profile);
+            handleRedirect(profile);
+          }
+        });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         navigate('/');
@@ -114,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: RegisterData) => {
     setLoading(true);
+    setWaitingForProfile(true);
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -134,14 +148,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (insertError) throw new Error("Failed to insert new user");
 
-      console.log("✅ User registered and inserted. Logging in...");
-      await login(data.email, data.password);
+      // 🔁 Retry fetching profile up to 15 times
+      for (let i = 0; i < 15; i++) {
+        const profile = await fetchUserProfile(authData.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+          return;
+        }
+        await new Promise(res => setTimeout(res, 300));
+      }
+
+      throw new Error("User profile not available after registration");
 
     } catch (err) {
       console.error("❌ Registration error:", err);
       throw err;
     } finally {
       setLoading(false);
+      setWaitingForProfile(false);
     }
   };
 
@@ -152,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, isSyncing }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading, waitingForProfile }}>
       {children}
     </AuthContext.Provider>
   );
