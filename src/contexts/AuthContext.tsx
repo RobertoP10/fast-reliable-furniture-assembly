@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import LoadingScreen from '@/components/LoadingScreen';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -40,6 +39,22 @@ export const useAuth = () => {
   if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
+
+// 🔵 Componenta LoadingScreen (integrată aici)
+const LoadingScreen = () => (
+  <div style={{
+    height: '100vh',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: '1.5rem',
+    fontWeight: 'bold',
+    color: '#555',
+    backgroundColor: '#f9f9f9'
+  }}>
+    Creating your account... Please wait
+  </div>
+);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
