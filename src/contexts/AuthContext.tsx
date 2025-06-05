@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .maybeSingle();
 
     if (error || !data) {
-      console.error("❌ Failed to fetch profile", error);
+      console.warn("⚠️ User profile not found.");
       return null;
     }
 
@@ -72,33 +72,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
-      if (session?.user) {
-        setLoading(true);
-        const profile = await fetchUserProfile(session.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
+  const syncSessionAndProfile = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      const profile = await fetchUserProfile(session.user);
+      if (profile) {
+        setUser(profile);
+        handleRedirect(profile);
       } else {
         setUser(null);
-        setLoading(false);
+        console.error("❌ No user profile found in DB.");
       }
-    });
+    } else {
+      setUser(null);
+    }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-        }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    syncSessionAndProfile();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        fetchUserProfile(session.user).then(profile => {
+          if (profile) {
+            setUser(profile);
+            handleRedirect(profile);
+          }
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        navigate('/');
       }
-      setLoading(false);
     });
 
     return () => {
@@ -109,58 +118,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) throw new Error(error.message);
     if (!data.session) throw new Error("No session returned");
+    await syncSessionAndProfile();
   };
 
   const register = async (data: RegisterData) => {
-  setLoading(true);
-  try {
-    // 1. Sign up user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
+    setLoading(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
 
-    if (authError) throw new Error(authError.message);
-    if (!authData.user) throw new Error("No user returned from signup");
+      if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error("No user returned from signup");
 
-    const newUserId = authData.user.id;
+      const { error: insertError } = await supabase.from('users').insert({
+        id: authData.user.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        approved: data.role === 'client',
+      });
 
-    // 2. Insert user profile in `users`
-    const { error: insertError } = await supabase.from('users').insert({
-      id: newUserId,
-      email: data.email,
-      full_name: data.full_name,
-      role: data.role,
-      approved: data.role === 'client',
-    });
+      if (insertError) throw new Error("Failed to insert new user");
 
-    if (insertError) throw new Error("Failed to insert user profile");
-
-    // 3. Creează manual obiectul user și setează-l
-    const userProfile: User = {
-      id: newUserId,
-      email: data.email,
-      full_name: data.full_name,
-      role: data.role,
-      approved: data.role === 'client',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    setUser(userProfile);
-    handleRedirect(userProfile);
-    console.log("✅ Registered and redirected");
-
-  } catch (err) {
-    console.error("❌ Registration error:", err);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+      console.log("✅ User inserted, syncing session...");
+      await syncSessionAndProfile();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = async () => {
     await supabase.auth.signOut();
