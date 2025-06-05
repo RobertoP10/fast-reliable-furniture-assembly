@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   Users, Shield, Star, CheckCircle, MessageSquare, Loader2
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -19,8 +18,9 @@ const Index = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
+  // Redirecționare după ce userul e încărcat complet
   useEffect(() => {
-    console.log("🏠 [INDEX] Component mounted/updated - Auth state:", {
+    console.log("🏠 [INDEX] Component mounted - Auth state:", {
       user: user?.id || "none",
       role: user?.role || "none",
       approved: user?.approved || false,
@@ -28,25 +28,20 @@ const Index = () => {
       currentPath: window.location.pathname,
     });
 
-    const timeout = setTimeout(async () => {
-      if (loading || !user) {
-        console.warn("⏳ Still loading... Forcing logout for safety");
-        await supabase.auth.signOut();
-        window.location.href = "/";
+    if (!loading && user) {
+      if (user.role === "client") {
+        navigate("/client-dashboard");
+      } else if (user.role === "tasker" && user.approved) {
+        navigate("/tasker-dashboard");
+      } else if (user.role === "tasker" && !user.approved) {
+        navigate("/tasker-pending");
+      } else if (user.role === "admin") {
+        navigate("/admin-dashboard");
       }
-    }, 10000); // 10 sec fallback logout
-
-    if (!loading && user?.role === "client") {
-      navigate("/client-dashboard");
     }
-
-    if (!loading && user?.role === "tasker" && user?.approved === true) {
-      navigate("/tasker-dashboard");
-    }
-
-    return () => clearTimeout(timeout);
   }, [user, loading, navigate]);
 
+  // Loader când verificăm userul
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
@@ -59,6 +54,7 @@ const Index = () => {
     );
   }
 
+  // Interfață de redirect în timp ce navighează
   if (user && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
@@ -73,6 +69,7 @@ const Index = () => {
     );
   }
 
+  // Formulare Login / Register
   if (showLogin) {
     return (
       <LoginForm
