@@ -1,5 +1,3 @@
-// src/contexts/AuthContext.tsx
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,33 +45,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, email, full_name, role, approved, created_at, updated_at')
-    .eq('id', authUser.id)
-    .maybeSingle(); // ← înlocuiește aici
+  const fetchUserProfileWithRetry = async (
+    authUser: SupabaseUser,
+    retries = 3,
+    delayMs = 1000
+  ): Promise<User | null> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, full_name, role, approved, created_at, updated_at')
+        .eq('id', authUser.id)
+        .maybeSingle();
 
-  if (error) {
-    console.error("❌ Failed to fetch profile", error);
+      if (error) {
+        console.error("❌ Failed to fetch profile", error);
+        return null;
+      }
+
+      if (data) {
+        console.log(`✅ User profile fetched on attempt ${attempt}`);
+        return data as User;
+      }
+
+      if (attempt < retries) {
+        console.warn(`⏳ Retry ${attempt}: waiting for user row to appear...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    console.error("❌ User profile not found after retries");
     return null;
-  }
-
-  if (!data) {
-    console.warn("⚠️ User profile not found yet. Waiting...");
-    return null;
-  }
-
-  return {
-    id: data.id,
-    email: data.email,
-    full_name: data.full_name,
-    role: data.role,
-    approved: data.approved,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
   };
-};
 
   const handleRedirect = (user: User) => {
     if (user.role === 'admin') {
@@ -91,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         setLoading(true);
-        const profile = await fetchUserProfile(session.user);
+        const profile = await fetchUserProfileWithRetry(session.user);
         if (profile) {
           setUser(profile);
           handleRedirect(profile);
@@ -105,13 +107,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user);
+        setLoading(true);
+        const profile = await fetchUserProfileWithRetry(session.user);
         if (profile) {
           setUser(profile);
           handleRedirect(profile);
         }
+        setLoading(false);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {
@@ -148,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Registration failed: No user returned");
       }
 
-      // Adaugă manual în `users`
+      // Insert în users
       const { error: insertError } = await supabase.from('users').insert({
         id: authData.user.id,
         email: data.email,
@@ -162,9 +167,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Failed to insert new user");
       }
 
-      console.log("✅ User inserted successfully in users table");
+      console.log("✅ User inserted in users table");
     } catch (err) {
-      console.error("❌ Unexpected error:", err);
+      console.error("❌ Unexpected registration error:", err);
       throw err;
     } finally {
       setLoading(false);
