@@ -9,7 +9,7 @@ import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Database } from '@/integrations/supabase/types';
-import MakeOfferDialog from "@/components/tasks/MakeOfferDialog"; // presupunând că formularul este aici
+import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 
 type Task = Database['public']['Tables']['task_requests']['Row'] & {
   accepted_offer?: {
@@ -35,7 +35,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
-  const [openOfferDialog, setOpenOfferDialog] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!user) return;
@@ -91,6 +91,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       cancelled: "bg-gray-100 text-gray-700"
     };
     return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
+  };
+
+  const handleOfferCreated = () => {
+    setSelectedTaskId(null);
+    loadData(); // Refresh the tasks list
   };
 
   return (
@@ -169,7 +174,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
                   </div>
                 </div>
                 {userRole === 'tasker' && activeTab === 'available' && (
-                  <Button onClick={() => setOpenOfferDialog(task.id)}>Make an Offer</Button>
+                  <Button onClick={() => setSelectedTaskId(task.id)}>Make an Offer</Button>
                 )}
               </CardContent>
             </Card>
@@ -177,7 +182,12 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </div>
       )}
 
-      <MakeOfferDialog openTaskId={openOfferDialog} onClose={() => setOpenOfferDialog(null)} />
+      {selectedTaskId && (
+        <MakeOfferDialog 
+          taskId={selectedTaskId} 
+          onOfferCreated={handleOfferCreated}
+        />
+      )}
     </div>
   );
 };
