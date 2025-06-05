@@ -9,11 +9,22 @@ import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import RoleProtection from "@/components/auth/RoleProtection";
 
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { createOffer } from "@/lib/offers";
+
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'chat'>('available');
 
-  // Check if tasker is approved
+  const [openOfferDialog, setOpenOfferDialog] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [offerMessage, setOfferMessage] = useState('');
+  const [availabilityDate, setAvailabilityDate] = useState('');
+
   if (!user?.approved) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
@@ -38,7 +49,6 @@ const TaskerDashboard = () => {
   return (
     <RoleProtection allowedRoles={['tasker']}>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        {/* Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
           <div className="container mx-auto px-4 py-4">
             <div className="flex justify-between items-center">
@@ -68,7 +78,6 @@ const TaskerDashboard = () => {
 
         <div className="container mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-4 gap-8">
-            {/* Sidebar */}
             <div className="lg:col-span-1">
               <Card className="shadow-lg border-0">
                 <CardHeader>
@@ -100,7 +109,6 @@ const TaskerDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Profile Stats */}
               <Card className="shadow-lg border-0 mt-6">
                 <CardHeader>
                   <CardTitle className="text-blue-900 text-lg">My Profile</CardTitle>
@@ -137,15 +145,57 @@ const TaskerDashboard = () => {
               </Card>
             </div>
 
-            {/* Main Content */}
             <div className="lg:col-span-3">
-              {activeTab === 'available' && <TasksList userRole="tasker" />}
+              {activeTab === 'available' && <TasksList userRole="tasker" onMakeOffer={(taskId) => {
+                setSelectedTaskId(taskId);
+                setOpenOfferDialog(true);
+              }} />}
               {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
               {activeTab === 'chat' && <Chat />}
             </div>
           </div>
         </div>
       </div>
+
+      <Dialog open={openOfferDialog} onOpenChange={setOpenOfferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <h2 className="text-lg font-semibold">Make an Offer</h2>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Price (£)</Label>
+              <Input type="number" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} />
+            </div>
+            <div>
+              <Label>Message to Client</Label>
+              <Textarea value={offerMessage} onChange={(e) => setOfferMessage(e.target.value)} />
+            </div>
+            <div>
+              <Label>Available Date & Time</Label>
+              <Input type="datetime-local" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button onClick={async () => {
+              if (!selectedTaskId || !user) return;
+              await createOffer({
+                task_id: selectedTaskId,
+                tasker_id: user.id,
+                price: parseFloat(offerPrice),
+                message: `${offerMessage}
+Availability: ${availabilityDate}`,
+              });
+              setOpenOfferDialog(false);
+              setOfferPrice('');
+              setOfferMessage('');
+              setAvailabilityDate('');
+            }}>
+              Send Offer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </RoleProtection>
   );
 };
