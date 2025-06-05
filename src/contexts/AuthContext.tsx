@@ -30,6 +30,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  isSyncing: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,25 +41,10 @@ export const useAuth = () => {
   return context;
 };
 
-// 🔵 Componenta LoadingScreen (integrată aici)
-const LoadingScreen = () => (
-  <div style={{
-    height: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#555',
-    backgroundColor: '#f9f9f9'
-  }}>
-    Creating your account... Please wait
-  </div>
-);
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const navigate = useNavigate();
 
   const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
@@ -68,45 +54,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', authUser.id)
       .maybeSingle();
 
-    if (error || !data) {
-      console.warn("⚠️ User profile not found.");
-      return null;
-    }
-
+    if (error || !data) return null;
     return data;
   };
 
   const handleRedirect = (user: User) => {
-    if (user.role === 'admin') {
-      navigate('/admin-dashboard');
-    } else if (user.role === 'tasker' && user.approved) {
-      navigate('/tasker-dashboard');
-    } else if (user.role === 'tasker') {
-      navigate('/tasker-pending');
-    } else {
-      navigate('/client-dashboard');
-    }
+    if (user.role === 'admin') navigate('/admin-dashboard');
+    else if (user.role === 'tasker' && user.approved) navigate('/tasker-dashboard');
+    else if (user.role === 'tasker') navigate('/tasker-pending');
+    else navigate('/client-dashboard');
   };
 
   const syncSessionAndProfile = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    setIsSyncing(true);
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (session?.user) {
-      const profile = await fetchUserProfile(session.user);
-      if (profile) {
-        setUser(profile);
-        handleRedirect(profile);
-      } else {
-        setUser(null);
-        console.error("❌ No user profile found in DB.");
+      for (let i = 0; i < 10; i++) {
+        const profile = await fetchUserProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+          break;
+        }
+        await new Promise((res) => setTimeout(res, 500));
       }
     } else {
       setUser(null);
     }
 
     setLoading(false);
+    setIsSyncing(false);
   };
 
   useEffect(() => {
@@ -114,12 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        fetchUserProfile(session.user).then(profile => {
-          if (profile) {
-            setUser(profile);
-            handleRedirect(profile);
-          }
-        });
+        syncSessionAndProfile();
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         navigate('/');
@@ -161,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (insertError) throw new Error("Failed to insert new user");
 
-      console.log("✅ User registered and inserted, proceeding to login...");
+      console.log("✅ User registered and inserted. Logging in...");
       await login(data.email, data.password);
 
     } catch (err) {
@@ -179,8 +152,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
-      {loading ? <LoadingScreen /> : children}
+    <AuthContext.Provider value={{ user, login, register, logout, loading, isSyncing }}>
+      {children}
     </AuthContext.Provider>
   );
 };
