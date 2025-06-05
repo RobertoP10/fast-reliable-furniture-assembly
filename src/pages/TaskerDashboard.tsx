@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,21 +8,9 @@ import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import RoleProtection from "@/components/auth/RoleProtection";
 
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { createOffer } from "@/lib/offers";
-
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'chat'>('available');
-
-  const [openOfferDialog, setOpenOfferDialog] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [offerPrice, setOfferPrice] = useState('');
-  const [offerMessage, setOfferMessage] = useState('');
-  const [availabilityDate, setAvailabilityDate] = useState('');
 
   if (!user?.approved) {
     return (
@@ -146,56 +133,13 @@ const TaskerDashboard = () => {
             </div>
 
             <div className="lg:col-span-3">
-              {activeTab === 'available' && <TasksList userRole="tasker" onMakeOffer={(taskId) => {
-                setSelectedTaskId(taskId);
-                setOpenOfferDialog(true);
-              }} />}
+              {activeTab === 'available' && <TasksList userRole="tasker" />}
               {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
               {activeTab === 'chat' && <Chat />}
             </div>
           </div>
         </div>
       </div>
-
-      <Dialog open={openOfferDialog} onOpenChange={setOpenOfferDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <h2 className="text-lg font-semibold">Make an Offer</h2>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Price (£)</Label>
-              <Input type="number" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} />
-            </div>
-            <div>
-              <Label>Message to Client</Label>
-              <Textarea value={offerMessage} onChange={(e) => setOfferMessage(e.target.value)} />
-            </div>
-            <div>
-              <Label>Available Date & Time</Label>
-              <Input type="datetime-local" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button onClick={async () => {
-              if (!selectedTaskId || !user) return;
-              await createOffer({
-                task_id: selectedTaskId,
-                tasker_id: user.id,
-                price: parseFloat(offerPrice),
-                message: `${offerMessage}
-Availability: ${availabilityDate}`,
-              });
-              setOpenOfferDialog(false);
-              setOfferPrice('');
-              setOfferMessage('');
-              setAvailabilityDate('');
-            }}>
-              Send Offer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </RoleProtection>
   );
 };

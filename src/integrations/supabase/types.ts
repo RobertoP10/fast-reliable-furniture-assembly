@@ -96,6 +96,8 @@ export type Database = {
           is_accepted: boolean | null
           message: string | null
           price: number
+          proposed_date: string | null
+          proposed_time: string | null
           task_id: string
           tasker_id: string
           updated_at: string
@@ -106,6 +108,8 @@ export type Database = {
           is_accepted?: boolean | null
           message?: string | null
           price: number
+          proposed_date?: string | null
+          proposed_time?: string | null
           task_id: string
           tasker_id: string
           updated_at?: string
@@ -116,6 +120,8 @@ export type Database = {
           is_accepted?: boolean | null
           message?: string | null
           price?: number
+          proposed_date?: string | null
+          proposed_time?: string | null
           task_id?: string
           tasker_id?: string
           updated_at?: string
