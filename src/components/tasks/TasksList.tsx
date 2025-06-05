@@ -1,15 +1,15 @@
-
-// ✅ TasksList.tsx (actualizat complet)
+// ✅ TasksList.tsx (actualizat complet cu butonul „Make Offer”)
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, MessageSquare, Users, Star } from "lucide-react";
+import { MapPin, Clock, DollarSign } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Database } from '@/integrations/supabase/types';
+import MakeOfferDialog from "@/components/tasks/MakeOfferDialog"; // presupunând că formularul este aici
 
 type Task = Database['public']['Tables']['task_requests']['Row'] & {
   accepted_offer?: {
@@ -35,23 +35,20 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
+  const [openOfferDialog, setOpenOfferDialog] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!user) return;
-
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
 
-      // Apply filters
       let filteredTasks = fetchedTasks;
-      
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task => 
           task.location.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
-      
       if (statusFilter && statusFilter !== 'all') {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
@@ -59,10 +56,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       if (activeTab === 'completed') {
         filteredTasks = filteredTasks.filter(task => task.status === 'completed');
         const total = filteredTasks.reduce((sum, task) => {
-          // Use accepted_offer_id to check if there's an accepted offer
           if (task.accepted_offer_id) {
-            // You would need to fetch the actual offer price here
-            // For now, using price_range_max as fallback
             return sum + task.price_range_max;
           }
           return sum;
@@ -99,27 +93,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
   };
 
-  const renderFilters = () => (
-    <div className="grid md:grid-cols-2 gap-4 mb-4">
-      <Input
-        placeholder="Filter by location"
-        value={locationFilter}
-        onChange={(e) => setLocationFilter(e.target.value)}
-      />
-      <Select value={statusFilter} onValueChange={setStatusFilter}>
-        <SelectTrigger>
-          <SelectValue placeholder="Filter by status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="accepted">Accepted</SelectItem>
-          <SelectItem value="completed">Completed</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -137,7 +110,24 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </div>
       </div>
 
-      {renderFilters()}
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <Input
+          placeholder="Filter by location"
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+        />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="accepted">Accepted</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {activeTab === 'completed' && (
         <div className="flex justify-between text-sm text-gray-600">
@@ -178,17 +168,16 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
                     <span>{new Date(task.created_at).toLocaleString()}</span>
                   </div>
                 </div>
-
-                {task.accepted_offer_id && (
-                  <div className="text-sm text-green-700">
-                    Accepted Offer: Offer ID {task.accepted_offer_id}
-                  </div>
+                {userRole === 'tasker' && activeTab === 'available' && (
+                  <Button onClick={() => setOpenOfferDialog(task.id)}>Make an Offer</Button>
                 )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <MakeOfferDialog openTaskId={openOfferDialog} onClose={() => setOpenOfferDialog(null)} />
     </div>
   );
 };
