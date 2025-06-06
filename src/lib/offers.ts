@@ -47,16 +47,16 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   return data;
 };
 
-// Create an offer (updated with available date/time)
+// Create an offer with full data including available date/time
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
   price: number;
-  message: string;
-  available_date: string;  // format YYYY-MM-DD
-  available_time: string;  // format HH:mm
-}): Promise<Offer> => {
-  console.log('📝 [OFFERS] Creating new offer:', offerData);
+  message?: string;
+  available_date: string;
+  available_time: string;
+}) => {
+  console.log("📝 [OFFERS] Creating offer with:", offerData);
 
   const { data, error } = await supabase
     .from('offers')
@@ -72,11 +72,11 @@ export const createOffer = async (offerData: {
     .single();
 
   if (error) {
-    console.error('❌ [OFFERS] Error creating offer:', error);
-    throw new Error(`Failed to create offer: ${error.message}`);
+    console.error("❌ [OFFERS] Error creating offer:", error);
+    throw error;
   }
 
-  console.log('✅ [OFFERS] Offer created successfully with ID:', data.id);
+  console.log("✅ [OFFERS] Offer created successfully:", data.id);
   return data;
 };
 
