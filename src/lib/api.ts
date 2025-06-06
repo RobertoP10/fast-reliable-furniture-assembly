@@ -1,27 +1,33 @@
-// src/lib/api.ts
 
-// AUTH
-export { validateUserSession } from "./auth";
+// Re-export all API functions from their respective modules
+export {
+  validateUserSession
+} from './auth';
 
-// TASKS
-export { fetchTasks, createTask, updateTaskStatus } from "./tasks";
+export {
+  fetchTasks,
+  createTask,
+  updateTaskStatus
+} from './tasks';
 
-// OFFERS
-export { fetchOffers, fetchUserOffers, createOffer, acceptOffer } from "./offers";
+export {
+  fetchOffers,
+  fetchUserOffers,
+  createOffer,
+  acceptOffer
+} from './offers';
 
-// ADMIN (verifică să existe aceste funcții în admin.ts)
 export {
   fetchAllUsers,
   fetchPendingTaskers,
   fetchPendingTransactions,
   acceptTasker,
   rejectTasker
-} from "./admin";
+} from './admin';
 
-// CHAT (verifică să existe aceste funcții în chat.ts)
 export {
   fetchChatRooms,
   fetchMessages,
   sendMessage,
   markMessagesAsRead
-} from "./chat";
+} from './chat';

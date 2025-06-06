@@ -5,22 +5,12 @@ type Task = Database["public"]["Tables"]["task_requests"]["Row"];
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
-type Offer = Database["public"]["Tables"]["offers"]["Row"];
-
-// Define the task type with offers included
-type TaskWithOffers = Task & {
-  client?: {
-    full_name: string;
-    location: string | null;
-  };
-  offers?: Offer[];
-};
 
 // ✅ Fetch tasks based on user role
 export const fetchTasks = async (
   userId: string,
   userRole: string
-): Promise<TaskWithOffers[]> => {
+): Promise<Task[]> => {
   console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
 
   let query = supabase
@@ -28,8 +18,7 @@ export const fetchTasks = async (
     .select(
       `
       *,
-      client:users!task_requests_client_id_fkey(full_name, location),
-      offers(*)
+      client:users!task_requests_client_id_fkey(full_name, location)
     `
     );
 
@@ -37,8 +26,8 @@ export const fetchTasks = async (
     // Clientul vede doar propriile taskuri
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    // Taskerii văd toate taskurile (filtrarea se face în TasksList)
-    // Nu mai filtrăm aici doar după "pending" pentru a permite filtrarea în UI
+    // Taskerii văd doar taskurile cu status "pending"
+    query = query.eq("status", "pending");
   }
 
   const { data, error } = await query.order("created_at", {

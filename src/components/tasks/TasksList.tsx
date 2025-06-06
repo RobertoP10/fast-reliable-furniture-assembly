@@ -1,10 +1,8 @@
-
-// ✅ COD ACTUALIZAT pentru TasksList.tsx
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, PoundSterling } from "lucide-react";
+import { MapPin, Clock, PoundSterling } from "lucide-react"; // folosește PoundSterling în loc de DollarSign
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -12,9 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
-type Offer = Database["public"]["Tables"]["offers"]["Row"];
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  offers?: Offer[];
+  accepted_offer?: {
+    id: string;
+    price: number;
+    tasker?: {
+      full_name: string;
+    };
+  };
 };
 
 interface TasksListProps {
@@ -43,26 +46,20 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       let filteredTasks = fetchedTasks;
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task =>
-          task.location?.toLowerCase().includes(locationFilter.toLowerCase())
+          task.location.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
       if (statusFilter !== "all") {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === "available") {
-        filteredTasks = filteredTasks.filter(task =>
-          task.status === "pending" &&
-          !task.offers?.some((offer) => offer.tasker_id === user.id)
-        );
-      } else if (activeTab === "my-tasks") {
-        filteredTasks = filteredTasks.filter(task =>
-          task.offers?.some((offer) => offer.tasker_id === user.id)
-        );
-      } else if (activeTab === "completed") {
+      if (activeTab === "completed") {
         filteredTasks = filteredTasks.filter(task => task.status === "completed");
         const total = filteredTasks.reduce((sum, task) => {
-          return sum + (task.price_range_max || 0);
+          if (task.accepted_offer_id) {
+            return sum + task.price_range_max;
+          }
+          return sum;
         }, 0);
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
@@ -98,7 +95,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
-    loadData();
+    loadData(); // Reîncarcă taskurile după ce oferta a fost trimisă
   };
 
   return (
@@ -195,6 +192,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </div>
       )}
 
+      {/* Dialog pentru creare ofertă */}
       {selectedTaskId && (
         <MakeOfferDialog
           taskId={selectedTaskId}
