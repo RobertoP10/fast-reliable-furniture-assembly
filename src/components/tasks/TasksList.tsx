@@ -1,28 +1,27 @@
-// ✅ TasksList.tsx (actualizat complet cu butonul „Make Offer”)
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign } from "lucide-react";
+import { MapPin, Clock, PoundSterling } from "lucide-react"; // folosește PoundSterling în loc de DollarSign
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Database } from '@/integrations/supabase/types';
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
+import type { Database } from "@/integrations/supabase/types";
 
-type Task = Database['public']['Tables']['task_requests']['Row'] & {
+type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
   accepted_offer?: {
     id: string;
     price: number;
     tasker?: {
       full_name: string;
-    }
+    };
   };
 };
 
 interface TasksListProps {
-  userRole: 'client' | 'tasker';
+  userRole: "client" | "tasker";
   tasks?: Task[];
 }
 
@@ -30,31 +29,32 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'completed'>('available');
-  const [locationFilter, setLocationFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed">("available");
+  const [locationFilter, setLocationFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!user) return;
+
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
 
       let filteredTasks = fetchedTasks;
       if (locationFilter) {
-        filteredTasks = filteredTasks.filter(task => 
+        filteredTasks = filteredTasks.filter(task =>
           task.location.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
-      if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter !== "all") {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === 'completed') {
-        filteredTasks = filteredTasks.filter(task => task.status === 'completed');
+      if (activeTab === "completed") {
+        filteredTasks = filteredTasks.filter(task => task.status === "completed");
         const total = filteredTasks.reduce((sum, task) => {
           if (task.accepted_offer_id) {
             return sum + task.price_range_max;
@@ -67,7 +67,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
       setTasks(filteredTasks);
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.error("❌ Error loading tasks:", error);
     } finally {
       setLoading(false);
     }
@@ -88,31 +88,39 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       accepted: "bg-blue-100 text-blue-700",
       in_progress: "bg-purple-100 text-purple-700",
       completed: "bg-green-100 text-green-700",
-      cancelled: "bg-gray-100 text-gray-700"
+      cancelled: "bg-gray-100 text-gray-700",
     };
     return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
   };
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
-    loadData(); // Refresh the tasks list
+    loadData(); // Reîncarcă taskurile după ce oferta a fost trimisă
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-blue-900">
-          {activeTab === 'completed' ? 'Completed Tasks' : userRole === 'client' ? 'My Tasks' : 'Available Tasks'}
+          {activeTab === "completed"
+            ? "Completed Tasks"
+            : userRole === "client"
+            ? "My Tasks"
+            : "Available Tasks"}
         </h2>
-        <div className="space-x-2">
-          {userRole === 'tasker' && (
-            <>
-              <Button variant={activeTab === 'available' ? 'default' : 'outline'} onClick={() => setActiveTab('available')}>Available</Button>
-              <Button variant={activeTab === 'my-tasks' ? 'default' : 'outline'} onClick={() => setActiveTab('my-tasks')}>My Offers</Button>
-              <Button variant={activeTab === 'completed' ? 'default' : 'outline'} onClick={() => setActiveTab('completed')}>Completed</Button>
-            </>
-          )}
-        </div>
+        {userRole === "tasker" && (
+          <div className="space-x-2">
+            <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
+              Available
+            </Button>
+            <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
+              My Offers
+            </Button>
+            <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
+              Completed
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -134,7 +142,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </Select>
       </div>
 
-      {activeTab === 'completed' && (
+      {activeTab === "completed" && (
         <div className="flex justify-between text-sm text-gray-600">
           <span>Total tasks: <strong>{completedCount}</strong></span>
           <span>Total value: <strong>£{completedTotal.toFixed(2)}</strong></span>
@@ -161,7 +169,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               <CardContent>
                 <div className="grid md:grid-cols-3 gap-4 mb-4">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <DollarSign className="h-4 w-4" />
+                    <PoundSterling className="h-4 w-4" />
                     <span>£{task.price_range_min} – £{task.price_range_max}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -173,8 +181,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
                     <span>{new Date(task.created_at).toLocaleString()}</span>
                   </div>
                 </div>
-                {userRole === 'tasker' && activeTab === 'available' && (
-                  <Button onClick={() => setSelectedTaskId(task.id)}>Make an Offer</Button>
+                {userRole === "tasker" && activeTab === "available" && (
+                  <Button onClick={() => setSelectedTaskId(task.id)}>
+                    Make an Offer
+                  </Button>
                 )}
               </CardContent>
             </Card>
@@ -182,9 +192,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </div>
       )}
 
+      {/* Dialog pentru creare ofertă */}
       {selectedTaskId && (
-        <MakeOfferDialog 
-          taskId={selectedTaskId} 
+        <MakeOfferDialog
+          taskId={selectedTaskId}
           onOfferCreated={handleOfferCreated}
         />
       )}
