@@ -1,23 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-// ✅ Tipuri locale
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"];
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
-// ✅ Task extins cu relații
+// ✅ tip extins cu relații
 export type Task = TaskBase & {
-  offers?: Offer[]; // ✅ adăugat pentru filtrare în TasksList
+  offers?: Offer[];
   client?: {
     full_name: string;
     location: string;
   };
 };
 
-// ✅ Fetch all taskuri (filtrat după rol)
+// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -29,7 +28,7 @@ export const fetchTasks = async (
     .select(
       `
       *,
-      offers(*),
+      offers:offers!offers_task_id_fkey(*),
       client:users!task_requests_client_id_fkey(full_name, location)
     `
     );
@@ -56,30 +55,22 @@ export const fetchTasks = async (
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
-  console.log("📝 [TASKS] Creating new task:", taskData.title);
-
   const { data, error } = await supabase
     .from("task_requests")
     .insert(taskData)
     .select()
     .single();
 
-  if (error) {
-    console.error("❌ [TASKS] Error creating task:", error);
-    throw new Error(`Failed to create task: ${error.message}`);
-  }
-
+  if (error) throw new Error(`Failed to create task: ${error.message}`);
   return data;
 };
 
-// ✅ Update statusul unui task (ex: la "completed")
+// ✅ Update status (completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
   updates?: Partial<TaskUpdate>
 ): Promise<void> => {
-  console.log("🛠️ [TASKS] Updating task status:", taskId, "to", status);
-
   const updateData: TaskUpdate = { status, ...updates };
 
   const { error } = await supabase
@@ -87,22 +78,17 @@ export const updateTaskStatus = async (
     .update(updateData)
     .eq("id", taskId);
 
-  if (error) {
-    console.error("❌ [TASKS] Error updating task status:", error);
-    throw new Error(`Failed to update task status: ${error.message}`);
-  }
+  if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch single task cu relații
+// ✅ Fetch un singur task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
-  console.log("🔍 [TASKS] Fetching task:", taskId);
-
   const { data, error } = await supabase
     .from("task_requests")
     .select(
       `
       *,
-      offers(*),
+      offers:offers!offers_task_id_fkey(*),
       client:users!task_requests_client_id_fkey(full_name, location)
     `
     )
