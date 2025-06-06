@@ -15,14 +15,15 @@ import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"];
-type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
+type TaskRow = Database["public"]["Tables"]["task_requests"]["Row"];
+
+// Updated Task type to match what we actually get from the API
+type Task = TaskRow & {
   offers?: Offer[];
-  accepted_offer?: {
-    id: string;
-    price: number;
-    tasker?: {
-      full_name: string;
-    };
+  accepted_offer_id?: string | null;
+  client?: {
+    full_name: string;
+    location: string;
   };
 };
 
@@ -86,8 +87,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
       if (activeTab === "completed") {
         const total = filteredTasks.reduce((sum, task) => {
-          if (task.accepted_offer?.price) {
-            return sum + task.accepted_offer.price;
+          // Find the accepted offer price from the offers array
+          const acceptedOffer = task.offers?.find(offer => offer.id === task.accepted_offer_id);
+          if (acceptedOffer?.price) {
+            return sum + acceptedOffer.price;
           }
           return sum;
         }, 0);

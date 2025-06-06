@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,17 +11,17 @@ import { fetchTasks } from "@/lib/tasks";
 import { acceptOffer } from "@/lib/offers";
 import type { Database } from "@/integrations/supabase/types";
 
-// Define a simple type alias instead of interface extension
+// Define simple type alias
 type TaskRow = Database["public"]["Tables"]["task_requests"]["Row"];
 type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
 
-interface TaskWithOffers extends TaskRow {
+type TaskWithOffers = TaskRow & {
   offers?: OfferRow[];
   client?: {
     full_name: string;
     location: string;
   };
-}
+};
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
@@ -40,9 +39,9 @@ const ClientDashboard = () => {
     }
   };
 
-  const handleAccept = async (offerId: string) => {
+  const handleAccept = async (taskId: string, offerId: string) => {
     try {
-      await acceptOffer(offerId);
+      await acceptOffer(taskId, offerId);
       await loadClientOffers();
     } catch (error) {
       console.error("Failed to accept offer:", error);
@@ -158,7 +157,7 @@ const ClientDashboard = () => {
                       <CardContent className="space-y-2 text-sm">
                         <div>Proposed: £{offer.price} on {offer.proposed_date} at {offer.proposed_time}</div>
                         {!offer.is_accepted && (
-                          <Button size="sm" onClick={() => handleAccept(offer.id)}>
+                          <Button size="sm" onClick={() => handleAccept(task.id, offer.id)}>
                             Accept Offer
                           </Button>
                         )}
