@@ -7,7 +7,7 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchClientOffers, acceptOffer } from "@/lib/api/offers";
+import { fetchUserOffers as fetchClientOffers, acceptOffer } from "@/lib/api/offers";
 import type { OfferWithTask } from "@/types/custom";
 
 const ClientDashboard = () => {
