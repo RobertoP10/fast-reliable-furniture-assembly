@@ -1,6 +1,3 @@
-
-
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +41,7 @@ const ClientDashboard = () => {
   const loadTasksWithOffers = async () => {
     if (!user?.id) return;
     try {
-      const result = await fetchTasks();
+      const result = await fetchTasks(user.id, "client");
       // Filter to only show tasks owned by this client that have offers
       const clientTasks = result.filter(task => 
         task.client_id === user.id && 
@@ -209,5 +206,3 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
-
