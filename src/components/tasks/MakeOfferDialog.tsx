@@ -1,5 +1,12 @@
+// src/components/tasks/MakeOfferDialog.tsx
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +24,7 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [open, setOpen] = useState(true); // începe deschis când se creează
+  const [open, setOpen] = useState(false);
   const [price, setPrice] = useState("");
   const [message, setMessage] = useState("");
   const [date, setDate] = useState("");
@@ -42,11 +49,11 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
         proposed_time: time,
       });
 
-      toast({ title: "✅ Offer sent successfully!" });
+      toast({ title: "Offer sent successfully!" });
       setOpen(false);
       onOfferCreated?.();
     } catch (error) {
-      toast({ title: "❌ Failed to send offer", variant: "destructive" });
+      toast({ title: "Failed to send offer", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -54,6 +61,9 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default">Make an Offer</Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Submit Your Offer</DialogTitle>
