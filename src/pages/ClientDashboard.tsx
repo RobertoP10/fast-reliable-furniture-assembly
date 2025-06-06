@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +8,16 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchTasks } from "../lib/tasks";
-import { acceptOffer } from "../lib/offers";
-import type { Database } from "../integrations/supabase/types";
+import { fetchTasks } from "@/lib/tasks";
+import { acceptOffer } from "@/lib/offers";
+import type { Database } from "@/integrations/supabase/types";
 
-// ✅ Task type with offers relation included
-interface TaskWithOffers extends Database["public"]["Tables"]["task_requests"]["Row"] {
-  offers?: Database["public"]["Tables"]["offers"]["Row"][];
+// Define a simple type alias instead of interface extension
+type TaskRow = Database["public"]["Tables"]["task_requests"]["Row"];
+type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
+
+interface TaskWithOffers extends TaskRow {
+  offers?: OfferRow[];
   client?: {
     full_name: string;
     location: string;
@@ -30,7 +34,7 @@ const ClientDashboard = () => {
     try {
       const allTasks = await fetchTasks(user.id, "client");
       const withOffers = allTasks.filter((t) => Array.isArray(t.offers) && t.offers.length > 0);
-      setTasksWithOffers(withOffers);
+      setTasksWithOffers(withOffers as TaskWithOffers[]);
     } catch (error) {
       console.error("Error loading client offers:", error);
     }
