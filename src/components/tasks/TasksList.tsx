@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, PoundSterling } from "lucide-react"; // folosește PoundSterling în loc de DollarSign
+import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
       full_name: string;
     };
   };
+  offers?: Database["public"]["Tables"]["offers"]["Row"][]; // 🔥 Adăugat pentru filtering corect
 };
 
 interface TasksListProps {
@@ -44,35 +45,38 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       const fetchedTasks = await fetchTasks(user.id, userRole);
 
       let filteredTasks = fetchedTasks;
+
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task =>
           task.location.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
+
       if (statusFilter !== "all") {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === 'available') {
-  filteredTasks = fetchedTasks.filter(task =>
-    task.status === 'pending' &&
-    !task.offers?.some((offer) => offer.tasker_id === user.id)
-  );
-} else if (activeTab === 'my-tasks') {
-  filteredTasks = fetchedTasks.filter(task =>
-    task.offers?.some((offer) => offer.tasker_id === user.id)
-  );
-} else if (activeTab === 'completed') {
-  filteredTasks = fetchedTasks.filter(task => task.status === 'completed');
-  const total = filteredTasks.reduce((sum, task) => {
-    if (task.accepted_offer_id) {
-      return sum + task.price_range_max;
-    }
-    return sum;
-  }, 0);
-  setCompletedCount(filteredTasks.length);
-  setCompletedTotal(total);
-}
+      if (activeTab === "available") {
+        filteredTasks = fetchedTasks.filter(
+          task => task.status === "pending" && !task.offers?.some(offer => offer.tasker_id === user.id)
+        );
+      } else if (activeTab === "my-tasks") {
+        filteredTasks = fetchedTasks.filter(
+          task => task.offers?.some(offer => offer.tasker_id === user.id)
+        );
+      } else if (activeTab === "completed") {
+        filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+
+        const total = filteredTasks.reduce((sum, task) => {
+          if (task.accepted_offer_id) {
+            return sum + task.price_range_max;
+          }
+          return sum;
+        }, 0);
+
+        setCompletedCount(filteredTasks.length);
+        setCompletedTotal(total);
+      }
 
       setTasks(filteredTasks);
     } catch (error) {
@@ -104,7 +108,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
-    loadData(); // Reîncarcă taskurile după ce oferta a fost trimisă
+    loadData();
   };
 
   return (
@@ -201,7 +205,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         </div>
       )}
 
-      {/* Dialog pentru creare ofertă */}
       {selectedTaskId && (
         <MakeOfferDialog
           taskId={selectedTaskId}
