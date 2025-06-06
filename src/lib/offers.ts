@@ -3,7 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Offer = Database['public']['Tables']['offers']['Row'];
 
-// Fetch offers for a specific task
+// ✅ Fetch all offers for a specific task (vizibil clientului)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for task:', taskId);
 
@@ -25,17 +25,17 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// Fetch user's offers
-export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  console.log('🔍 [OFFERS] Fetching offers for user:', userId);
+// ✅ Fetch all offers sent by the current tasker (pentru My Offers)
+export const fetchUserOffers = async (taskerId: string): Promise<Offer[]> => {
+  console.log('🔍 [OFFERS] Fetching offers sent by tasker:', taskerId);
 
   const { data, error } = await supabase
     .from('offers')
     .select(`
       *,
-      task:task_requests!offers_task_id_fkey(title, description, location, status)
+      task:task_requests!offers_task_id_fkey(id, title, description, location, status, created_at)
     `)
-    .eq('tasker_id', userId)
+    .eq('tasker_id', taskerId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -43,26 +43,28 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     throw new Error(`Failed to fetch user offers: ${error.message}`);
   }
 
-  console.log('✅ [OFFERS] User offers fetched successfully:', data?.length || 0, 'offers');
-  return data;
+  console.log('✅ [OFFERS] User offers fetched:', data?.length || 0);
+  return data || [];
 };
 
-// Create an offer (updated with available date/time)
+// ✅ Create an offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
   price: number;
   message?: string;
-  proposed_date: string;  // <- actualizat
-  proposed_time: string;  // <- actualizat
+  proposed_date: string;
+  proposed_time: string;
 }): Promise<Offer> => {
+  console.log('📝 [OFFERS] Creating new offer:', offerData);
+
   const { data, error } = await supabase
     .from('offers')
     .insert({
       task_id: offerData.task_id,
       tasker_id: offerData.tasker_id,
       price: offerData.price,
-      message: offerData.message,
+      message: offerData.message || '',
       proposed_date: offerData.proposed_date,
       proposed_time: offerData.proposed_time,
     })
@@ -71,16 +73,16 @@ export const createOffer = async (offerData: {
 
   if (error) {
     console.error("❌ [OFFERS] Error creating offer:", error);
-    throw new Error(`Failed to create offer: ${error.message}`);
+    throw error;
   }
 
-  console.log("✅ [OFFERS] Offer created successfully with ID:", data.id);
+  console.log("✅ [OFFERS] Offer created:", data.id);
   return data;
 };
 
-// Accept an offer
+// ✅ Accept an offer (clientul o aprobă)
 export const acceptOffer = async (offerId: string): Promise<void> => {
-  console.log('📝 [OFFERS] Accepting offer:', offerId);
+  console.log('🔁 [OFFERS] Accepting offer:', offerId);
 
   const { error } = await supabase
     .from('offers')
