@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, PoundSterling } from "lucide-react"; // folosește PoundSterling în loc de DollarSign
+import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/api";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
+type Offer = Database["public"]["Tables"]["offers"]["Row"];
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
+  offers?: Offer[];
   accepted_offer?: {
     id: string;
     price: number;
@@ -44,35 +50,38 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       const fetchedTasks = await fetchTasks(user.id, userRole);
 
       let filteredTasks = fetchedTasks;
+
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task =>
-          task.location.toLowerCase().includes(locationFilter.toLowerCase())
+          task.location?.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
+
       if (statusFilter !== "all") {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === 'available') {
-  filteredTasks = fetchedTasks.filter(task =>
-    task.status === 'pending' &&
-    !task.offers?.some((offer) => offer.tasker_id === user.id)
-  );
-} else if (activeTab === 'my-tasks') {
-  filteredTasks = fetchedTasks.filter(task =>
-    task.offers?.some((offer) => offer.tasker_id === user.id)
-  );
-} else if (activeTab === 'completed') {
-  filteredTasks = fetchedTasks.filter(task => task.status === 'completed');
-  const total = filteredTasks.reduce((sum, task) => {
-    if (task.accepted_offer_id) {
-      return sum + task.price_range_max;
-    }
-    return sum;
-  }, 0);
-  setCompletedCount(filteredTasks.length);
-  setCompletedTotal(total);
-}
+      // Filtrare după taburi
+      if (activeTab === "available") {
+        filteredTasks = fetchedTasks.filter(task =>
+          task.status === "pending" &&
+          !task.offers?.some((offer) => offer.tasker_id === user.id)
+        );
+      } else if (activeTab === "my-tasks") {
+        filteredTasks = fetchedTasks.filter(task =>
+          task.offers?.some((offer) => offer.tasker_id === user.id)
+        );
+      } else if (activeTab === "completed") {
+        filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        const total = filteredTasks.reduce((sum, task) => {
+          if (task.accepted_offer_id) {
+            return sum + task.price_range_max;
+          }
+          return sum;
+        }, 0);
+        setCompletedCount(filteredTasks.length);
+        setCompletedTotal(total);
+      }
 
       setTasks(filteredTasks);
     } catch (error) {
@@ -104,7 +113,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
-    loadData(); // Reîncarcă taskurile după ce oferta a fost trimisă
+    loadData();
   };
 
   return (
@@ -115,6 +124,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             ? "Completed Tasks"
             : userRole === "client"
             ? "My Tasks"
+            : activeTab === "my-tasks"
+            ? "My Offers"
             : "Available Tasks"}
         </h2>
         {userRole === "tasker" && (
@@ -164,44 +175,59 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <Card><CardContent className="text-center py-8">No tasks found.</CardContent></Card>
       ) : (
         <div className="grid gap-6">
-          {tasks.map(task => (
-            <Card key={task.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
-                    <CardDescription>{task.description}</CardDescription>
+          {tasks.map(task => {
+            const hasOffered = task.offers?.some((offer) => offer.tasker_id === user.id);
+            const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
+
+            return (
+              <Card key={task.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
+                      <CardDescription>{task.description}</CardDescription>
+                    </div>
+                    {getStatusBadge(task.status)}
                   </div>
-                  {getStatusBadge(task.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-4 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <PoundSterling className="h-4 w-4" />
-                    <span>£{task.price_range_min} – £{task.price_range_max}</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2">
+                      <PoundSterling className="h-4 w-4" />
+                      <span>£{task.price_range_min} – £{task.price_range_max}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{task.location}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4" />
+                      <span>{new Date(task.created_at).toLocaleString()}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    <span>{task.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Clock className="h-4 w-4" />
-                    <span>{new Date(task.created_at).toLocaleString()}</span>
-                  </div>
-                </div>
-                {userRole === "tasker" && activeTab === "available" && (
-                  <Button onClick={() => setSelectedTaskId(task.id)}>
-                    Make an Offer
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+
+                  {userRole === "tasker" && activeTab === "available" && (
+                    hasOffered ? (
+                      <Badge>You already sent an offer</Badge>
+                    ) : (
+                      <Button onClick={() => setSelectedTaskId(task.id)}>
+                        Make an Offer
+                      </Button>
+                    )
+                  )}
+
+                  {userRole === "tasker" && activeTab === "my-tasks" && myOffer && (
+                    <div className="text-sm text-gray-700 mt-2">
+                      Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>{myOffer.status}</strong>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Dialog pentru creare ofertă */}
       {selectedTaskId && (
         <MakeOfferDialog
           taskId={selectedTaskId}
