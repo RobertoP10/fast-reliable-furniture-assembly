@@ -1,4 +1,5 @@
 
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +11,23 @@ import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import { fetchUserOffers, acceptOffer } from "@/lib/api";
 
-// Define the type locally since we don't have the types file
+// Define the type locally to match what fetchUserOffers returns
 type OfferWithTask = {
   id: string;
   price: number;
   proposed_date: string;
   proposed_time: string;
+  created_at: string;
+  is_accepted: boolean;
+  message: string;
+  task_id: string;
+  tasker_id: string;
+  updated_at: string;
   task: {
     title: string;
     description: string;
+    location: string;
+    status: string;
   };
   tasker?: {
     full_name: string;
@@ -176,3 +185,4 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
