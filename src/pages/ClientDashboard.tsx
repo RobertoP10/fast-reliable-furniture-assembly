@@ -11,9 +11,13 @@ import { fetchTasks } from "../lib/tasks";
 import { acceptOffer } from "../lib/offers";
 import type { Database } from "../integrations/supabase/types";
 
-// Define custom type to include offers
+// ✅ Task type with offers relation included
 interface TaskWithOffers extends Database["public"]["Tables"]["task_requests"]["Row"] {
   offers?: Database["public"]["Tables"]["offers"]["Row"][];
+  client?: {
+    full_name: string;
+    location: string;
+  };
 }
 
 const ClientDashboard = () => {
@@ -25,7 +29,7 @@ const ClientDashboard = () => {
     if (!user?.id) return;
     try {
       const allTasks = await fetchTasks(user.id, "client");
-      const withOffers = allTasks.filter((t: any) => Array.isArray(t.offers) && t.offers.length > 0);
+      const withOffers = allTasks.filter((t) => Array.isArray(t.offers) && t.offers.length > 0);
       setTasksWithOffers(withOffers);
     } catch (error) {
       console.error("Error loading client offers:", error);
@@ -47,7 +51,6 @@ const ClientDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
@@ -76,7 +79,6 @@ const ClientDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <Card className="shadow-lg border-0">
               <CardHeader>
@@ -110,7 +112,6 @@ const ClientDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
                 <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
@@ -135,13 +136,11 @@ const ClientDashboard = () => {
             </Card>
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {activeTab === 'tasks' && <TasksList userRole="client" />}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
 
-            {/* Offer List for client */}
             {activeTab === 'tasks' && tasksWithOffers.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-blue-800">Offers Received</h3>
@@ -154,7 +153,11 @@ const ClientDashboard = () => {
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
                         <div>Proposed: £{offer.price} on {offer.proposed_date} at {offer.proposed_time}</div>
-                        <Button size="sm" onClick={() => handleAccept(offer.id)}>Accept Offer</Button>
+                        {!offer.is_accepted && (
+                          <Button size="sm" onClick={() => handleAccept(offer.id)}>
+                            Accept Offer
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   ))
