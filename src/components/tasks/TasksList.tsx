@@ -61,20 +61,33 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === "available") {
-        filteredTasks = fetchedTasks.filter(task =>
-          task.status === "pending" &&
-          !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
-        );
-      } else if (activeTab === "my-tasks") {
-        filteredTasks = fetchedTasks.filter(task =>
-          task.offers?.some((offer) => offer.tasker_id === user.id)
-        );
-      } else if (activeTab === "completed") {
-        filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+      if (userRole === "tasker") {
+        if (activeTab === "available") {
+          filteredTasks = fetchedTasks.filter(task =>
+            task.status === "pending" &&
+            !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
+          );
+        } else if (activeTab === "my-tasks") {
+          filteredTasks = fetchedTasks.filter(task =>
+            task.offers?.some((offer) => offer.tasker_id === user.id)
+          );
+        } else if (activeTab === "completed") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        }
+      } else if (userRole === "client") {
+        if (activeTab === "available") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "pending");
+        } else if (activeTab === "my-tasks") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "accepted");
+        } else if (activeTab === "completed") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        }
+      }
+
+      if (activeTab === "completed") {
         const total = filteredTasks.reduce((sum, task) => {
-          if (task.accepted_offer_id) {
-            return sum + task.price_range_max;
+          if (task.accepted_offer?.price) {
+            return sum + task.accepted_offer.price;
           }
           return sum;
         }, 0);
@@ -99,6 +112,29 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     }
   }, [user, activeTab, locationFilter, statusFilter]);
 
+  const handleOfferCreated = () => {
+    setSelectedTaskId(null);
+    loadData();
+  };
+
+  const handleAcceptOffer = async (taskId: string, offerId: string) => {
+    try {
+      const res = await fetch("/api/accept-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, offerId }),
+      });
+
+      if (res.ok) {
+        loadData();
+      } else {
+        console.error("❌ Failed to accept offer");
+      }
+    } catch (err) {
+      console.error("❌ Error accepting offer:", err);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const map: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-700",
@@ -108,11 +144,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       cancelled: "bg-gray-100 text-gray-700",
     };
     return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
-  };
-
-  const handleOfferCreated = () => {
-    setSelectedTaskId(null);
-    loadData();
   };
 
   return (
@@ -224,6 +255,28 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
                           ? "Rejected"
                           : "Pending"}
                       </strong>
+                    </div>
+                  )}
+
+                  {userRole === "client" && task.offers?.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="font-semibold">Received Offers:</h4>
+                      {task.offers.map((offer) => (
+                        <div key={offer.id} className="border p-3 rounded shadow-sm">
+                          <p>Tasker ID: {offer.tasker_id}</p>
+                          <p>Price: £{offer.price}</p>
+                          <p>Message: {offer.message}</p>
+                          <p>Status: <strong>{offer.is_accepted ? "Accepted" : "Pending"}</strong></p>
+                          {!offer.is_accepted && (
+                            <Button
+                              className="mt-2"
+                              onClick={() => handleAcceptOffer(task.id, offer.id)}
+                            >
+                              Accept Offer
+                            </Button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
