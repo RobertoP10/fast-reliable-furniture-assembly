@@ -1,5 +1,6 @@
 
 
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,57 +10,64 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchUserOffers, acceptOffer } from "@/lib/api";
+import { fetchTasks, acceptOffer } from "@/lib/api";
 
-// Define the type locally to match what fetchUserOffers returns
-type OfferWithTask = {
+// Define the type locally to match what we'll get from fetching tasks with offers
+type TaskWithOffers = {
   id: string;
-  price: number;
-  proposed_date: string;
-  proposed_time: string;
-  created_at: string;
-  is_accepted: boolean;
-  message: string;
-  task_id: string;
-  tasker_id: string;
-  updated_at: string;
-  task: {
-    title: string;
-    description: string;
-    location: string;
-    status: string;
-  };
-  tasker?: {
-    full_name: string;
-  };
+  title: string;
+  description: string;
+  location: string;
+  status: string;
+  offers?: {
+    id: string;
+    price: number;
+    proposed_date: string;
+    proposed_time: string;
+    created_at: string;
+    is_accepted: boolean;
+    message: string;
+    task_id: string;
+    tasker_id: string;
+    updated_at: string;
+    tasker?: {
+      full_name: string;
+    };
+  }[];
 };
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const [offers, setOffers] = useState<OfferWithTask[]>([]);
+  const [tasksWithOffers, setTasksWithOffers] = useState<TaskWithOffers[]>([]);
 
-  const loadOffers = async () => {
+  const loadTasksWithOffers = async () => {
     if (!user?.id) return;
     try {
-      const result = await fetchUserOffers(user.id);
-      setOffers(result);
+      const result = await fetchTasks();
+      // Filter to only show tasks owned by this client that have offers
+      const clientTasks = result.filter(task => 
+        task.client_id === user.id && 
+        task.offers && 
+        task.offers.length > 0
+      );
+      setTasksWithOffers(clientTasks);
     } catch (error) {
-      console.error("Error loading offers:", error);
+      console.error("Error loading tasks with offers:", error);
     }
   };
 
   const handleAccept = async (offerId: string) => {
     try {
       await acceptOffer(offerId);
-      loadOffers();
+      loadTasksWithOffers();
     } catch (error) {
       console.error("Failed to accept offer:", error);
     }
   };
 
   useEffect(() => {
-    if (user?.id) loadOffers();
+    if (user?.id) loadTasksWithOffers();
   }, [user]);
 
   return (
@@ -158,20 +166,36 @@ const ClientDashboard = () => {
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
 
-            {/* Offer List for client */}
-            {activeTab === 'tasks' && offers.length > 0 && (
+            {/* Offers List for client */}
+            {activeTab === 'tasks' && tasksWithOffers.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-blue-800">Offers Received</h3>
-                {offers.map((offer) => (
-                  <Card key={offer.id} className="border border-blue-100 shadow-sm">
+                {tasksWithOffers.map((task) => (
+                  <Card key={task.id} className="border border-blue-100 shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-blue-900">{offer.task.title}</CardTitle>
-                      <CardDescription>{offer.task.description}</CardDescription>
+                      <CardTitle className="text-blue-900">{task.title}</CardTitle>
+                      <CardDescription>{task.description}</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div>Tasker: <strong>{offer.tasker?.full_name || 'Unknown'}</strong></div>
-                      <div>Proposed: £{offer.price} on {offer.proposed_date} at {offer.proposed_time}</div>
-                      <Button size="sm" onClick={() => handleAccept(offer.id)}>Accept Offer</Button>
+                    <CardContent className="space-y-4">
+                      {task.offers?.map((offer) => (
+                        <div key={offer.id} className="border-l-4 border-blue-200 pl-4 space-y-2">
+                          <div className="text-sm">
+                            <div>Tasker: <strong>{offer.tasker?.full_name || 'Unknown'}</strong></div>
+                            <div>Proposed: £{offer.price} on {offer.proposed_date} at {offer.proposed_time}</div>
+                            {offer.message && <div>Message: {offer.message}</div>}
+                          </div>
+                          {!offer.is_accepted && (
+                            <Button size="sm" onClick={() => handleAccept(offer.id)}>
+                              Accept Offer
+                            </Button>
+                          )}
+                          {offer.is_accepted && (
+                            <Badge variant="default" className="bg-green-100 text-green-700">
+                              Accepted
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
                     </CardContent>
                   </Card>
                 ))}
@@ -185,4 +209,5 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
 
