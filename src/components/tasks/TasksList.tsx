@@ -1,3 +1,5 @@
+
+// ✅ COD ACTUALIZAT pentru TasksList.tsx
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +43,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       let filteredTasks = fetchedTasks;
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task =>
-          task.location.toLowerCase().includes(locationFilter.toLowerCase())
+          task.location?.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
       if (statusFilter !== "all") {
