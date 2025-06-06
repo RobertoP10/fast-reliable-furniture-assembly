@@ -10,15 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
+type Offer = Database["public"]["Tables"]["offers"]["Row"];
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  accepted_offer?: {
-    id: string;
-    price: number;
-    tasker?: {
-      full_name: string;
-    };
-  };
-  offers?: Database["public"]["Tables"]["offers"]["Row"][]; // 🔥 Adăugat pentru filtering corect
+  offers?: Offer[];
 };
 
 interface TasksListProps {
@@ -45,35 +39,29 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       const fetchedTasks = await fetchTasks(user.id, userRole);
 
       let filteredTasks = fetchedTasks;
-
       if (locationFilter) {
         filteredTasks = filteredTasks.filter(task =>
           task.location.toLowerCase().includes(locationFilter.toLowerCase())
         );
       }
-
       if (statusFilter !== "all") {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
       if (activeTab === "available") {
-        filteredTasks = fetchedTasks.filter(
-          task => task.status === "pending" && !task.offers?.some(offer => offer.tasker_id === user.id)
+        filteredTasks = filteredTasks.filter(task =>
+          task.status === "pending" &&
+          !task.offers?.some((offer) => offer.tasker_id === user.id)
         );
       } else if (activeTab === "my-tasks") {
-        filteredTasks = fetchedTasks.filter(
-          task => task.offers?.some(offer => offer.tasker_id === user.id)
+        filteredTasks = filteredTasks.filter(task =>
+          task.offers?.some((offer) => offer.tasker_id === user.id)
         );
       } else if (activeTab === "completed") {
-        filteredTasks = fetchedTasks.filter(task => task.status === "completed");
-
+        filteredTasks = filteredTasks.filter(task => task.status === "completed");
         const total = filteredTasks.reduce((sum, task) => {
-          if (task.accepted_offer_id) {
-            return sum + task.price_range_max;
-          }
-          return sum;
+          return sum + (task.price_range_max || 0);
         }, 0);
-
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
       }
