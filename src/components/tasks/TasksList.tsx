@@ -15,16 +15,8 @@ import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"];
-type TaskRow = Database["public"]["Tables"]["task_requests"]["Row"];
-
-// Updated Task type to match what we actually get from the API
-type Task = TaskRow & {
+type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
   offers?: Offer[];
-  accepted_offer_id?: string | null;
-  client?: {
-    full_name: string;
-    location: string;
-  };
 };
 
 interface TasksListProps {
@@ -87,12 +79,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
       if (activeTab === "completed") {
         const total = filteredTasks.reduce((sum, task) => {
-          // Find the accepted offer price from the offers array
-          const acceptedOffer = task.offers?.find(offer => offer.id === task.accepted_offer_id);
-          if (acceptedOffer?.price) {
-            return sum + acceptedOffer.price;
-          }
-          return sum;
+          const accepted = task.offers?.find(o => o.is_accepted);
+          return sum + (accepted?.price ?? 0);
         }, 0);
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
@@ -127,17 +115,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     } else {
       console.error("❌ Failed to accept offer:", res.error);
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-700",
-      accepted: "bg-blue-100 text-blue-700",
-      in_progress: "bg-purple-100 text-purple-700",
-      completed: "bg-green-100 text-green-700",
-      cancelled: "bg-gray-100 text-gray-700",
-    };
-    return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
   };
 
   return (
@@ -199,84 +176,16 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <Card><CardContent className="text-center py-8">No tasks found.</CardContent></Card>
       ) : (
         <div className="grid gap-6">
-          {tasks.map(task => {
-            const hasOffered = task.offers?.some((offer) => offer.tasker_id === user.id);
-            const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
-
-            return (
-              <Card key={task.id} className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
-                      <CardDescription>{task.description}</CardDescription>
-                    </div>
-                    {getStatusBadge(task.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <PoundSterling className="h-4 w-4" />
-                      <span>£{task.price_range_min} – £{task.price_range_max}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{task.location}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{new Date(task.created_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  {userRole === "tasker" && activeTab === "available" && (
-                    hasOffered ? (
-                      <Badge>You already sent an offer</Badge>
-                    ) : (
-                      <Button onClick={() => setSelectedTaskId(task.id)}>
-                        Make an Offer
-                      </Button>
-                    )
-                  )}
-
-                  {userRole === "tasker" && activeTab === "my-tasks" && myOffer && (
-                    <div className="text-sm text-gray-700 mt-2">
-                      Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
-                        {myOffer.is_accepted === true
-                          ? "Accepted"
-                          : myOffer.is_accepted === false
-                          ? "Rejected"
-                          : "Pending"}
-                      </strong>
-                    </div>
-                  )}
-
-                  {userRole === "client" && task.offers?.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <h4 className="font-semibold">Received Offers:</h4>
-                      {task.offers.map((offer) => (
-                        <div key={offer.id} className="border p-3 rounded shadow-sm">
-                          <p>Tasker ID: {offer.tasker_id}</p>
-                          <p>Price: £{offer.price}</p>
-                          <p>Message: {offer.message}</p>
-                          <p>Status: <strong>{offer.is_accepted ? "Accepted" : "Pending"}</strong></p>
-                          {!offer.is_accepted && (
-                            <Button
-                              className="mt-2"
-                              onClick={() => handleAcceptOffer(task.id, offer.id)}
-                            >
-                              Accept Offer
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+          {tasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              userRole={userRole}
+              user={user}
+              onAccept={handleAcceptOffer}
+              onMakeOffer={() => setSelectedTaskId(task.id)}
+            />
+          ))}
         </div>
       )}
 
@@ -291,3 +200,109 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 };
 
 export default TasksList;
+
+// ✅ COMPONENTĂ: TaskCard
+function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
+  task: Task;
+  userRole: "client" | "tasker";
+  user: any;
+  onAccept: (taskId: string, offerId: string) => void;
+  onMakeOffer: () => void;
+}) {
+  const hasOffered = task.offers?.some((offer) => offer.tasker_id === user.id);
+  const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
+
+  return (
+    <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
+            <CardDescription>{task.description}</CardDescription>
+          </div>
+          {getStatusBadge(task.status)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600">
+          <div className="flex items-center space-x-2">
+            <PoundSterling className="h-4 w-4" />
+            <span>£{task.price_range_min} – £{task.price_range_max}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <MapPin className="h-4 w-4" />
+            <span>{task.location}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="h-4 w-4" />
+            <span>{new Date(task.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+
+        {userRole === "tasker" && (
+          hasOffered ? (
+            <Badge>You already sent an offer</Badge>
+          ) : (
+            <Button onClick={onMakeOffer}>Make an Offer</Button>
+          )
+        )}
+
+        {userRole === "tasker" && myOffer && (
+          <div className="text-sm text-gray-700 mt-2">
+            Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
+              {myOffer.is_accepted === true
+                ? "Accepted"
+                : myOffer.is_accepted === false
+                ? "Rejected"
+                : "Pending"}
+            </strong>
+          </div>
+        )}
+
+        {userRole === "client" && task.offers?.length > 0 && (
+          <ClientOffers task={task} onAccept={onAccept} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ✅ COMPONENTĂ: ClientOffers
+function ClientOffers({ task, onAccept }: {
+  task: Task;
+  onAccept: (taskId: string, offerId: string) => void;
+}) {
+  return (
+    <div className="mt-4 space-y-2">
+      <h4 className="font-semibold">Received Offers:</h4>
+      {task.offers!.map((offer) => (
+        <div key={offer.id} className="border p-3 rounded shadow-sm">
+          <p>Tasker ID: {offer.tasker_id}</p>
+          <p>Price: £{offer.price}</p>
+          <p>Message: {offer.message}</p>
+          <p>Status: <strong>{offer.is_accepted ? "Accepted" : "Pending"}</strong></p>
+          {!offer.is_accepted && (
+            <Button
+              className="mt-2"
+              onClick={() => onAccept(task.id, offer.id)}
+            >
+              Accept Offer
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ✅ FUNCȚIE UTILITARĂ: getStatusBadge
+function getStatusBadge(status: string) {
+  const map: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-700",
+    accepted: "bg-blue-100 text-blue-700",
+    in_progress: "bg-purple-100 text-purple-700",
+    completed: "bg-green-100 text-green-700",
+    cancelled: "bg-gray-100 text-gray-700",
+  };
+  return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
+}
