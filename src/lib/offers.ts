@@ -3,7 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Offer = Database['public']['Tables']['offers']['Row'];
 
-// Fetch offers for a specific task
+// ✅ Fetch offers for a specific task
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for task:', taskId);
 
@@ -25,7 +25,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// Fetch user's offers
+// ✅ Fetch offers made by a specific user (tasker)
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for user:', userId);
 
@@ -47,14 +47,14 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   return data;
 };
 
-// Create an offer (updated with available date/time)
+// ✅ Create an offer (with proposed date/time)
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
   price: number;
   message?: string;
-  proposed_date: string;  // <- actualizat
-  proposed_time: string;  // <- actualizat
+  proposed_date: string;
+  proposed_time: string;
 }): Promise<Offer> => {
   const { data, error } = await supabase
     .from('offers')
@@ -78,19 +78,46 @@ export const createOffer = async (offerData: {
   return data;
 };
 
-// Accept an offer
-export const acceptOffer = async (offerId: string): Promise<void> => {
-  console.log('📝 [OFFERS] Accepting offer:', offerId);
+// ✅ Accept an offer (exclusiv) and update task status
+export const acceptOffer = async (
+  taskId: string,
+  offerId: string
+): Promise<{ success: boolean; error?: any }> => {
+  console.log("📝 [OFFERS] Accepting offer:", offerId, "for task:", taskId);
 
-  const { error } = await supabase
-    .from('offers')
-    .update({ is_accepted: true })
-    .eq('id', offerId);
+  // 1. Set all offers for this task as unaccepted
+  const { error: clearError } = await supabase
+    .from("offers")
+    .update({ is_accepted: false })
+    .eq("task_id", taskId);
 
-  if (error) {
-    console.error('❌ [OFFERS] Error accepting offer:', error);
-    throw new Error(`Failed to accept offer: ${error.message}`);
+  if (clearError) {
+    console.error("❌ [OFFERS] Error clearing old accepted offers:", clearError);
+    return { success: false, error: clearError };
   }
 
-  console.log('✅ [OFFERS] Offer accepted successfully');
+  // 2. Set selected offer as accepted
+  const { error: offerError } = await supabase
+    .from("offers")
+    .update({ is_accepted: true })
+    .eq("id", offerId);
+
+  if (offerError) {
+    console.error("❌ [OFFERS] Error accepting selected offer:", offerError);
+    return { success: false, error: offerError };
+  }
+
+  // 3. Update task status to accepted
+  const { error: taskError } = await supabase
+    .from("task_requests")
+    .update({ status: "accepted" })
+    .eq("id", taskId);
+
+  if (taskError) {
+    console.error("❌ [OFFERS] Error updating task status:", taskError);
+    return { success: false, error: taskError };
+  }
+
+  console.log("✅ [OFFERS] Offer accepted and task updated successfully");
+  return { success: true };
 };
