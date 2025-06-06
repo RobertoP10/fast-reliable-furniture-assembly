@@ -1,12 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type Task = Database["public"]["Tables"]["task_requests"]["Row"];
+// ✅ Tipuri locale
+type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
+type Offer = Database["public"]["Tables"]["offers"]["Row"];
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
-// ✅ Fetch tasks based on user role
+// ✅ Task extins cu relații
+export type Task = TaskBase & {
+  offers?: Offer[]; // ✅ adăugat pentru filtrare în TasksList
+  client?: {
+    full_name: string;
+    location: string;
+  };
+};
+
+// ✅ Fetch all taskuri (filtrat după rol)
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -24,10 +35,8 @@ export const fetchTasks = async (
     );
 
   if (userRole === "client") {
-    // Clientul vede doar propriile taskuri
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    // Taskerii văd doar taskurile deschise
     query = query.eq("status", "pending");
   }
 
@@ -40,7 +49,6 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  console.log("✅ [TASKS] Tasks fetched successfully:", data?.length || 0);
   return data || [];
 };
 
@@ -61,7 +69,6 @@ export const createTask = async (
     throw new Error(`Failed to create task: ${error.message}`);
   }
 
-  console.log("✅ [TASKS] Task created successfully with ID:", data.id);
   return data;
 };
 
@@ -71,7 +78,7 @@ export const updateTaskStatus = async (
   status: TaskStatus,
   updates?: Partial<TaskUpdate>
 ): Promise<void> => {
-  console.log("📝 [TASKS] Updating task status:", taskId, "to", status);
+  console.log("🛠️ [TASKS] Updating task status:", taskId, "to", status);
 
   const updateData: TaskUpdate = { status, ...updates };
 
@@ -84,13 +91,11 @@ export const updateTaskStatus = async (
     console.error("❌ [TASKS] Error updating task status:", error);
     throw new Error(`Failed to update task status: ${error.message}`);
   }
-
-  console.log("✅ [TASKS] Task status updated successfully");
 };
 
-// ✅ Fetch single task
+// ✅ Fetch single task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
-  console.log("🔍 [TASKS] Fetching single task:", taskId);
+  console.log("🔍 [TASKS] Fetching task:", taskId);
 
   const { data, error } = await supabase
     .from("task_requests")
@@ -109,6 +114,5 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  console.log("✅ [TASKS] Task fetched successfully");
   return data;
 };
