@@ -7,7 +7,8 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchTasks, acceptOffer } from "../lib/api/tasks";
+import { fetchTasks } from "../lib/tasks";
+import { acceptOffer } from "../lib/offers";
 import type { Database } from "../integrations/supabase/types";
 
 const ClientDashboard = () => {
@@ -19,7 +20,7 @@ const ClientDashboard = () => {
     if (!user?.id) return;
     try {
       const allTasks = await fetchTasks(user.id, "client");
-      const withOffers = allTasks.filter(t => t.offers && t.offers.length > 0);
+      const withOffers = allTasks.filter(t => Array.isArray(t.offers) && t.offers.length > 0);
       setTasksWithOffers(withOffers);
     } catch (error) {
       console.error("Error loading client offers:", error);
