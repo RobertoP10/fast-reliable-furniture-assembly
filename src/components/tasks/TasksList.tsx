@@ -53,17 +53,26 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      if (activeTab === "completed") {
-        filteredTasks = filteredTasks.filter(task => task.status === "completed");
-        const total = filteredTasks.reduce((sum, task) => {
-          if (task.accepted_offer_id) {
-            return sum + task.price_range_max;
-          }
-          return sum;
-        }, 0);
-        setCompletedCount(filteredTasks.length);
-        setCompletedTotal(total);
-      }
+      if (activeTab === 'available') {
+  filteredTasks = fetchedTasks.filter(task =>
+    task.status === 'pending' &&
+    !task.offers?.some((offer) => offer.tasker_id === user.id)
+  );
+} else if (activeTab === 'my-tasks') {
+  filteredTasks = fetchedTasks.filter(task =>
+    task.offers?.some((offer) => offer.tasker_id === user.id)
+  );
+} else if (activeTab === 'completed') {
+  filteredTasks = fetchedTasks.filter(task => task.status === 'completed');
+  const total = filteredTasks.reduce((sum, task) => {
+    if (task.accepted_offer_id) {
+      return sum + task.price_range_max;
+    }
+    return sum;
+  }, 0);
+  setCompletedCount(filteredTasks.length);
+  setCompletedTotal(total);
+}
 
       setTasks(filteredTasks);
     } catch (error) {
