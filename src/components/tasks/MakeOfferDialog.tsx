@@ -1,10 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,22 +17,12 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [open, setOpen] = useState<boolean>(true); // important: deschis by default când este montat
-  const [price, setPrice] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
-  const [date, setDate] = useState<string>("");
-  const [time, setTime] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-
-  // resetare formular când se închide
-  useEffect(() => {
-    if (!open) {
-      setPrice("");
-      setMessage("");
-      setDate("");
-      setTime("");
-    }
-  }, [open]);
+  const [open, setOpen] = useState(false);
+  const [price, setPrice] = useState("");
+  const [message, setMessage] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!price || !date || !time) {
@@ -47,21 +32,21 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
     try {
       setLoading(true);
-      await createOffer({
-        task_id: taskId,
-        tasker_id: user!.id,
-        price: Number(price),
-        message,
-        available_date: date,
-        available_time: time,
-      });
 
-      toast({ title: "✅ Offer sent successfully!" });
+      await createOffer({
+  task_id: taskId,
+  tasker_id: user!.id,
+  price: Number(price),
+  message,
+  proposed_date: date,     // <- schimbat numele
+  proposed_time: time,     // <- schimbat numele
+});
+
+      toast({ title: "Offer sent successfully!" });
       setOpen(false);
-      onOfferCreated?.(); // notifică TasksList să reîncarce
+      onOfferCreated?.();
     } catch (error) {
-      console.error(error);
-      toast({ title: "❌ Failed to send offer", variant: "destructive" });
+      toast({ title: "Failed to send offer", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -69,6 +54,9 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default">Make an Offer</Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Submit Your Offer</DialogTitle>
@@ -76,55 +64,35 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="price">Offer Price (£)</Label>
+            <Label>Offer Price (£)</Label>
             <Input
-              id="price"
               type="number"
-              min="1"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter your price in pounds"
-              required
+              placeholder="Enter your offer"
             />
           </div>
 
           <div>
-            <Label htmlFor="message">Message (optional)</Label>
+            <Label>Message (optional)</Label>
             <Textarea
-              id="message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add an optional message to the client"
+              placeholder="Message to client"
             />
           </div>
 
           <div>
-            <Label htmlFor="date">Available Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
+            <Label>Available Date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
           <div>
-            <Label htmlFor="time">Available Time</Label>
-            <Input
-              id="time"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              required
-            />
+            <Label>Available Time</Label>
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
 
-          <Button
-            disabled={loading}
-            onClick={handleSubmit}
-            className="w-full mt-2"
-          >
+          <Button disabled={loading} onClick={handleSubmit} className="w-full mt-2">
             {loading ? "Sending..." : "Submit Offer"}
           </Button>
         </div>
