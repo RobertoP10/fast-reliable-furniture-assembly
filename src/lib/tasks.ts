@@ -18,6 +18,7 @@ export const fetchTasks = async (
     .select(
       `
       *,
+      offers(*),
       client:users!task_requests_client_id_fkey(full_name, location)
     `
     );
@@ -26,7 +27,7 @@ export const fetchTasks = async (
     // Clientul vede doar propriile taskuri
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    // Taskerii văd doar taskurile cu status "pending"
+    // Taskerii văd doar taskurile deschise
     query = query.eq("status", "pending");
   }
 
@@ -87,7 +88,7 @@ export const updateTaskStatus = async (
   console.log("✅ [TASKS] Task status updated successfully");
 };
 
-// ✅ Fetch single task (dacă ai nevoie în pagina de detalii)
+// ✅ Fetch single task
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   console.log("🔍 [TASKS] Fetching single task:", taskId);
 
@@ -96,6 +97,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .select(
       `
       *,
+      offers(*),
       client:users!task_requests_client_id_fkey(full_name, location)
     `
     )
