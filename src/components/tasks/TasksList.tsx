@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchTasks } from "@/lib/api";
+import { fetchTasks, acceptOffer } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -118,20 +118,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   };
 
   const handleAcceptOffer = async (taskId: string, offerId: string) => {
-    try {
-      const res = await fetch("/api/accept-offer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, offerId }),
-      });
-
-      if (res.ok) {
-        loadData();
-      } else {
-        console.error("❌ Failed to accept offer");
-      }
-    } catch (err) {
-      console.error("❌ Error accepting offer:", err);
+    const res = await acceptOffer(taskId, offerId);
+    if (res.success) {
+      loadData();
+    } else {
+      console.error("❌ Failed to accept offer:", res.error);
     }
   };
 
