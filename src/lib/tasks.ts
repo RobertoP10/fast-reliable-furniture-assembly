@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -18,7 +19,8 @@ export const fetchTasks = async (
     .select(
       `
       *,
-      client:users!task_requests_client_id_fkey(full_name, location)
+      client:users!task_requests_client_id_fkey(full_name, location),
+      offers(*)
     `
     );
 
@@ -26,8 +28,8 @@ export const fetchTasks = async (
     // Clientul vede doar propriile taskuri
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    // Taskerii văd doar taskurile cu status "pending"
-    query = query.eq("status", "pending");
+    // Taskerii văd toate taskurile (filtrarea se face în TasksList)
+    // Nu mai filtrăm aici doar după "pending" pentru a permite filtrarea în UI
   }
 
   const { data, error } = await query.order("created_at", {
