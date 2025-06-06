@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +22,7 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [open, setOpen] = useState(true); // începe deschis când se creează
+  const [open, setOpen] = useState(true);
   const [price, setPrice] = useState("");
   const [message, setMessage] = useState("");
   const [date, setDate] = useState("");
@@ -43,8 +48,21 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
       });
 
       toast({ title: "✅ Offer sent successfully!" });
+
+      // Închide dialogul doar după ce datele au fost procesate
       setOpen(false);
-      onOfferCreated?.();
+
+      // Notifică parentul (TasksList) să reîncarce datele
+      if (onOfferCreated) {
+        await new Promise((resolve) => setTimeout(resolve, 300)); // mic delay de siguranță
+        onOfferCreated();
+      }
+
+      // Resetează câmpurile (opțional)
+      setPrice("");
+      setMessage("");
+      setDate("");
+      setTime("");
     } catch (error) {
       toast({ title: "❌ Failed to send offer", variant: "destructive" });
     } finally {
@@ -54,7 +72,11 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent aria-describedby="make-offer-description">
+        <div id="make-offer-description" className="sr-only">
+          Fill out the form below to submit your offer to the client.
+        </div>
+
         <DialogHeader>
           <DialogTitle>Submit Your Offer</DialogTitle>
         </DialogHeader>
@@ -67,6 +89,7 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="Enter your offer"
+              min={1}
             />
           </div>
 
