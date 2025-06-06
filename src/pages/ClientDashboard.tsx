@@ -1,16 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-react";
+import {
+  Wrench,
+  Plus,
+  MessageSquare,
+  Bell,
+  User,
+  LogOut,
+  Star,
+} from "lucide-react";
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
-import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
+import { fetchTasks, acceptOffer } from "@/lib/api";
+import type { Database } from "@/integrations/supabase/types";
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadOffers = async () => {
+    try {
+      const data = await fetchTasks(user!.id, "client");
+      setTasks(data);
+    } catch (err) {
+      console.error("Error loading offers:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'tasks') {
+      loadOffers();
+    }
+  }, [activeTab]);
+
+  const handleAccept = async (offerId: string, taskId: string) => {
+    try {
+      await acceptOffer(offerId, taskId);
+      loadOffers();
+    } catch (err) {
+      console.error("Failed to accept offer:", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -77,7 +120,6 @@ const ClientDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Stats Card */}
             <Card className="shadow-lg border-0 mt-6">
               <CardHeader>
                 <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
@@ -104,7 +146,44 @@ const ClientDashboard = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'tasks' && <TasksList userRole="client" />}
+            {activeTab === 'tasks' && (
+              loading ? (
+                <p>Loading offers...</p>
+              ) : (
+                <div className="space-y-6">
+                  {tasks.map((task) => (
+                    <Card key={task.id}>
+                      <CardHeader>
+                        <CardTitle>{task.title}</CardTitle>
+                        <CardDescription>{task.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {task.offers && task.offers.length > 0 ? (
+                          <div className="space-y-4">
+                            {task.offers.map((offer: any) => (
+                              <div key={offer.id} className="border p-4 rounded shadow-sm">
+                                <p><strong>Price:</strong> £{offer.price}</p>
+                                <p><strong>Date:</strong> {offer.proposed_date}</p>
+                                <p><strong>Time:</strong> {offer.proposed_time}</p>
+                                <p><strong>Message:</strong> {offer.message || "—"}</p>
+                                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
+                                {!offer.is_accepted && (
+                                  <Button onClick={() => handleAccept(offer.id, task.id)} className="mt-2">
+                                    Accept Offer
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500">No offers received yet.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            )}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
           </div>
