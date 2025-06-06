@@ -1,64 +1,27 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+// src/lib/api.ts
 
-// Tipuri locale
-type Task = Database["public"]["Tables"]["task_requests"]["Row"];
-type Offer = Database["public"]["Tables"]["offers"]["Row"];
+// AUTH
+export { validateUserSession } from "./auth";
 
-// ✅ Fetch tasks în funcție de rolul utilizatorului
-export const fetchTasks = async (
-  userId: string,
-  role: "client" | "tasker"
-): Promise<(Task & { offers?: Offer[] })[]> => {
-  let query = supabase
-    .from("task_requests")
-    .select(
-      `
-        *,
-        offers(*)
-      `
-    )
-    .order("created_at", { ascending: false });
+// TASKS
+export { fetchTasks, createTask, updateTaskStatus } from "./tasks";
 
-  if (role === "client") {
-    query = query.eq("client_id", userId);
-  }
+// OFFERS
+export { fetchOffers, fetchUserOffers, createOffer, acceptOffer } from "./offers";
 
-  const { data, error } = await query;
+// ADMIN (verifică să existe aceste funcții în admin.ts)
+export {
+  fetchAllUsers,
+  fetchPendingTaskers,
+  fetchPendingTransactions,
+  acceptTasker,
+  rejectTasker
+} from "./admin";
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching tasks:", error);
-    throw new Error("Failed to fetch tasks");
-  }
-
-  return data as (Task & { offers?: Offer[] })[];
-};
-
-// ✅ Creează un nou task
-export const createTask = async (taskData: Partial<Task>) => {
-  const { data, error } = await supabase
-    .from("task_requests")
-    .insert(taskData)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("❌ [TASKS] Error creating task:", error);
-    throw new Error("Failed to create task");
-  }
-
-  return data;
-};
-
-// ✅ Actualizează statusul unui task (ex: accepted, completed etc.)
-export const updateTaskStatus = async (taskId: string, status: string) => {
-  const { error } = await supabase
-    .from("task_requests")
-    .update({ status })
-    .eq("id", taskId);
-
-  if (error) {
-    console.error("❌ [TASKS] Error updating task status:", error);
-    throw new Error("Failed to update task status");
-  }
-};
+// CHAT (verifică să existe aceste funcții în chat.ts)
+export {
+  fetchChatRooms,
+  fetchMessages,
+  sendMessage,
+  markMessagesAsRead
+} from "./chat";
