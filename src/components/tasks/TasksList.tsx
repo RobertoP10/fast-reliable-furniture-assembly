@@ -61,11 +61,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
       }
 
-      // Filtrare după taburi
       if (activeTab === "available") {
         filteredTasks = fetchedTasks.filter(task =>
           task.status === "pending" &&
-          !task.offers?.some((offer) => offer.tasker_id === user.id)
+          !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
         );
       } else if (activeTab === "my-tasks") {
         filteredTasks = fetchedTasks.filter(task =>
@@ -218,7 +217,13 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
                   {userRole === "tasker" && activeTab === "my-tasks" && myOffer && (
                     <div className="text-sm text-gray-700 mt-2">
-                      Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>{myOffer.status}</strong>
+                      Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
+                        {myOffer.is_accepted === true
+                          ? "Accepted"
+                          : myOffer.is_accepted === false
+                          ? "Rejected"
+                          : "Pending"}
+                      </strong>
                     </div>
                   )}
                 </CardContent>
