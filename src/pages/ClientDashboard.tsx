@@ -11,16 +11,21 @@ import { fetchTasks } from "../lib/tasks";
 import { acceptOffer } from "../lib/offers";
 import type { Database } from "../integrations/supabase/types";
 
+// Define custom type to include offers
+interface TaskWithOffers extends Database["public"]["Tables"]["task_requests"]["Row"] {
+  offers?: Database["public"]["Tables"]["offers"]["Row"][];
+}
+
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const [tasksWithOffers, setTasksWithOffers] = useState<Database["public"]["Tables"]["task_requests"]["Row"][]>([]);
+  const [tasksWithOffers, setTasksWithOffers] = useState<TaskWithOffers[]>([]);
 
   const loadClientOffers = async () => {
     if (!user?.id) return;
     try {
       const allTasks = await fetchTasks(user.id, "client");
-      const withOffers = allTasks.filter(t => Array.isArray(t.offers) && t.offers.length > 0);
+      const withOffers = allTasks.filter((t: any) => Array.isArray(t.offers) && t.offers.length > 0);
       setTasksWithOffers(withOffers);
     } catch (error) {
       console.error("Error loading client offers:", error);
