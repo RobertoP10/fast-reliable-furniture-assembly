@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +8,22 @@ import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-re
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchUserOffers as fetchClientOffers, acceptOffer } from "@/lib/api/offers";
-import type { OfferWithTask } from "@/types/custom";
+import { fetchUserOffers, acceptOffer } from "@/lib/api";
+
+// Define the type locally since we don't have the types file
+type OfferWithTask = {
+  id: string;
+  price: number;
+  proposed_date: string;
+  proposed_time: string;
+  task: {
+    title: string;
+    description: string;
+  };
+  tasker?: {
+    full_name: string;
+  };
+};
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
@@ -18,7 +33,7 @@ const ClientDashboard = () => {
   const loadOffers = async () => {
     if (!user?.id) return;
     try {
-      const result = await fetchClientOffers(user.id);
+      const result = await fetchUserOffers(user.id);
       setOffers(result);
     } catch (error) {
       console.error("Error loading offers:", error);
