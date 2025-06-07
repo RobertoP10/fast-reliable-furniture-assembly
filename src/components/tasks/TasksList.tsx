@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -8,10 +7,6 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks, acceptOffer } from "@/lib/api";
-import { Input } from "@/components/ui/input";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -51,10 +46,17 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.offers?.some((offer) => offer.tasker_id === user.id)
+            task.offers?.some((offer) =>
+              offer.tasker_id === user.id && offer.is_accepted === true
+            )
           );
         } else if (activeTab === "completed") {
-          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+          filteredTasks = fetchedTasks.filter(task =>
+            task.status === "completed" &&
+            task.offers?.some((offer) =>
+              offer.tasker_id === user.id && offer.is_accepted === true
+            )
+          );
         }
       } else if (userRole === "client") {
         if (activeTab === "available") {
@@ -178,7 +180,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
 export default TasksList;
 
-// ✅ COMPONENT: TaskCard
+// ⬇ COMPONENT: TaskCard
 function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   task: Task;
   userRole: "client" | "tasker";
@@ -244,7 +246,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   );
 }
 
-// ✅ COMPONENT: ClientOffers
+// ⬇ COMPONENT: ClientOffers
 function ClientOffers({ task, onAccept }: {
   task: Task;
   onAccept: (taskId: string, offerId: string) => void;
@@ -272,7 +274,7 @@ function ClientOffers({ task, onAccept }: {
   );
 }
 
-// ✅ UTILITY FUNCTION: getStatusBadge
+// ⬇ UTILITAR: getStatusBadge
 function getStatusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
