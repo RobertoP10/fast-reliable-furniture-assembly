@@ -3,7 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Offer = Database['public']['Tables']['offers']['Row'];
 
-// ✅ Fetch offers for a specific task
+// ✅ Fetch offers for a specific task (vizibile pentru client)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   console.log('🔍 [OFFERS] Fetching offers for task:', taskId);
 
@@ -25,15 +25,22 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// ✅ Fetch offers made by a specific user (tasker)
+// ✅ Fetch all offers made by a specific tasker (pentru tab-ul "My Offers")
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  console.log('🔍 [OFFERS] Fetching offers for user:', userId);
+  console.log('🔍 [OFFERS] Fetching offers made by user:', userId);
 
   const { data, error } = await supabase
     .from('offers')
     .select(`
       *,
-      task:task_requests!offers_task_id_fkey(title, description, location, status)
+      task:task_requests!offers_task_id_fkey(
+        id,
+        title,
+        description,
+        location,
+        status,
+        created_at
+      )
     `)
     .eq('tasker_id', userId)
     .order('created_at', { ascending: false });
@@ -43,11 +50,11 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     throw new Error(`Failed to fetch user offers: ${error.message}`);
   }
 
-  console.log('✅ [OFFERS] User offers fetched successfully:', data?.length || 0, 'offers');
-  return data;
+  console.log('✅ [OFFERS] Offers fetched for user:', data?.length || 0);
+  return data || [];
 };
 
-// ✅ Create an offer (with proposed date/time)
+// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -74,40 +81,40 @@ export const createOffer = async (offerData: {
     throw new Error(`Failed to create offer: ${error.message}`);
   }
 
-  console.log("✅ [OFFERS] Offer created successfully with ID:", data.id);
+  console.log("✅ [OFFERS] Offer created with ID:", data.id);
   return data;
 };
 
-// ✅ Accept an offer (exclusiv) and update task status
+// ✅ Accept one offer and reject all others
 export const acceptOffer = async (
   taskId: string,
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
-  console.log("📝 [OFFERS] Accepting offer:", offerId, "for task:", taskId);
+  console.log("📝 [OFFERS] Accepting offer ID:", offerId, "for task ID:", taskId);
 
-  // 1. Set all offers for this task as unaccepted
-  const { error: clearError } = await supabase
+  // 1. Reset all offers for task to not accepted
+  const { error: resetError } = await supabase
     .from("offers")
     .update({ is_accepted: false })
     .eq("task_id", taskId);
 
-  if (clearError) {
-    console.error("❌ [OFFERS] Error clearing old accepted offers:", clearError);
-    return { success: false, error: clearError };
+  if (resetError) {
+    console.error("❌ [OFFERS] Error resetting offers:", resetError);
+    return { success: false, error: resetError };
   }
 
-  // 2. Set selected offer as accepted
-  const { error: offerError } = await supabase
+  // 2. Mark selected offer as accepted
+  const { error: acceptError } = await supabase
     .from("offers")
     .update({ is_accepted: true })
     .eq("id", offerId);
 
-  if (offerError) {
-    console.error("❌ [OFFERS] Error accepting selected offer:", offerError);
-    return { success: false, error: offerError };
+  if (acceptError) {
+    console.error("❌ [OFFERS] Error accepting offer:", acceptError);
+    return { success: false, error: acceptError };
   }
 
-  // 3. Update task status to accepted
+  // 3. Update task status to 'accepted'
   const { error: taskError } = await supabase
     .from("task_requests")
     .update({ status: "accepted" })
@@ -118,6 +125,6 @@ export const acceptOffer = async (
     return { success: false, error: taskError };
   }
 
-  console.log("✅ [OFFERS] Offer accepted and task updated successfully");
+  console.log("✅ [OFFERS] Offer accepted and task updated successfully.");
   return { success: true };
 };
