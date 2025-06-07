@@ -8,13 +8,14 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   };
 };
 
-// ✅ Fetch offers for a specific task (vizibile pentru client)
+// ✅ Fetch offers for a specific task (pentru client)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
-  console.log("🔍 [OFFERS] Fetching offers for task:", taskId);
-
   const { data, error } = await supabase
     .from("offers")
-    .select(`*, tasker:users!offers_tasker_id_fkey(full_name, approved)`)
+    .select(`
+      *,
+      tasker:users!offers_tasker_id_fkey(full_name, approved)
+    `)
     .eq("task_id", taskId)
     .order("created_at", { ascending: false });
 
@@ -23,14 +24,11 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
     throw new Error(`Failed to fetch offers: ${error.message}`);
   }
 
-  console.log("✅ [OFFERS] Offers fetched successfully:", data?.length || 0);
   return data || [];
 };
 
-// ✅ Fetch all offers made by a specific tasker (pentru tab-ul "My Offers")
+// ✅ Fetch all offers made by a specific tasker (My Offers tab)
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  console.log("🔍 [OFFERS] Fetching offers made by user:", userId);
-
   const { data, error } = await supabase
     .from("offers")
     .select(`
@@ -47,7 +45,6 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     throw new Error(`Failed to fetch user offers: ${error.message}`);
   }
 
-  console.log("✅ [OFFERS] User offers fetched:", data?.length || 0);
   return data || [];
 };
 
@@ -62,14 +59,7 @@ export const createOffer = async (offerData: {
 }): Promise<Offer> => {
   const { data, error } = await supabase
     .from("offers")
-    .insert({
-      task_id: offerData.task_id,
-      tasker_id: offerData.tasker_id,
-      price: offerData.price,
-      message: offerData.message,
-      proposed_date: offerData.proposed_date,
-      proposed_time: offerData.proposed_time,
-    })
+    .insert(offerData)
     .select()
     .single();
 
@@ -78,18 +68,14 @@ export const createOffer = async (offerData: {
     throw new Error(`Failed to create offer: ${error.message}`);
   }
 
-  console.log("✅ [OFFERS] Offer created with ID:", data.id);
   return data;
 };
 
-// ✅ Accept one offer and reject all others
+// ✅ Accept one offer and reject the rest
 export const acceptOffer = async (
   taskId: string,
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
-  console.log("📝 [OFFERS] Accepting offer ID:", offerId, "for task ID:", taskId);
-
-  // 1. Reset all offers for task to not accepted
   const { error: resetError } = await supabase
     .from("offers")
     .update({ is_accepted: false })
@@ -100,7 +86,6 @@ export const acceptOffer = async (
     return { success: false, error: resetError };
   }
 
-  // 2. Mark selected offer as accepted
   const { error: acceptError } = await supabase
     .from("offers")
     .update({ is_accepted: true })
@@ -111,7 +96,6 @@ export const acceptOffer = async (
     return { success: false, error: acceptError };
   }
 
-  // 3. Update task status to 'accepted'
   const { error: taskError } = await supabase
     .from("task_requests")
     .update({ status: "accepted" })
@@ -122,6 +106,5 @@ export const acceptOffer = async (
     return { success: false, error: taskError };
   }
 
-  console.log("✅ [OFFERS] Offer accepted and task updated successfully.");
   return { success: true };
 };
