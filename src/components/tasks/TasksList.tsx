@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -6,12 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchTasks, acceptOffer } from "@/lib/api/tasks";
+import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 // Types
-
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string };
 };
