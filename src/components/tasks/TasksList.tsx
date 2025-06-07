@@ -178,8 +178,8 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: () => void;
 }) {
-  const hasOffered = task.offers?.some((offer) => offer.tasker_id === user.id);
-  const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
+  const hasOffered = task.offers?.some((offer) => offer.full_name === user.id);
+  const myOffer = task.offers?.find((offer) => offer.full_name === user.id);
 
   return (
     <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
