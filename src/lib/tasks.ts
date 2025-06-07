@@ -17,7 +17,7 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte
+// ✅ Fetch all tasks for user (client or tasker)
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -26,23 +26,17 @@ export const fetchTasks = async (
 
   let query = supabase
     .from("task_requests")
-    .select(
-      `
+    .select(`
       *,
       offers:offers!offers_task_id_fkey(*, tasker:users!offers_tasker_id_fkey(full_name)),
       client:users!task_requests_client_id_fkey(full_name, location)
-    `
-    );
+    `);
 
   if (userRole === "client") {
     query = query.eq("client_id", userId);
   }
 
-  // Pentru taskeri, nu filtrăm aici — filtrarea se face în componentă, în funcție de tab
-
-  const { data, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("❌ [TASKS] Error fetching tasks:", error);
@@ -52,7 +46,7 @@ export const fetchTasks = async (
   return data || [];
 };
 
-// ✅ Creează un nou task
+// ✅ Create new task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -66,7 +60,7 @@ export const createTask = async (
   return data;
 };
 
-// ✅ Update status (completed etc.)
+// ✅ Update task status
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -82,17 +76,15 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch un singur task cu relații
+// ✅ Fetch single task by ID
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("task_requests")
-    .select(
-      `
+    .select(`
       *,
       offers:offers!offers_task_id_fkey(*, tasker:users!offers_tasker_id_fkey(full_name)),
       client:users!task_requests_client_id_fkey(full_name, location)
-    `
-    )
+    `)
     .eq("id", taskId)
     .single();
 
