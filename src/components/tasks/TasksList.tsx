@@ -1,116 +1,246 @@
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MapPin, Clock, PoundSterling } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchTasks, acceptOffer } from "@/lib/api";
+import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: {
+  tasker?: { full_name: string };
+};
+
+type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
+  offers?: Offer[];
+  client?: {
     full_name: string;
-    approved?: boolean;
+    location: string;
   };
 };
 
-// ✅ Fetch offers for a specific task (with tasker full_name)
-export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
-  const { data, error } = await supabase
-    .from("offers")
-    .select(
-      `*,
-       tasker:users!offers_tasker_id_fkey(full_name, approved)
-      `
-    )
-    .eq("task_id", taskId)
-    .order("created_at", { ascending: false });
+interface TasksListProps {
+  userRole: "client" | "tasker";
+  tasks?: Task[];
+}
 
-  if (error) {
-    console.error("❌ [OFFERS] Error fetching offers:", error);
-    throw new Error(`Failed to fetch offers: ${error.message}`);
-  }
+const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed">("available");
+  const [completedCount, setCompletedCount] = useState(0);
+  const [completedTotal, setCompletedTotal] = useState(0);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  return data || [];
+  const loadData = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const fetchedTasks = await fetchTasks(user.id, userRole);
+      let filteredTasks = fetchedTasks;
+
+      if (userRole === "tasker") {
+        if (activeTab === "available") {
+          filteredTasks = fetchedTasks.filter(task =>
+            task.status === "pending" &&
+            !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
+          );
+        } else if (activeTab === "my-tasks") {
+          filteredTasks = fetchedTasks.filter(task =>
+            task.offers?.some((offer) => offer.tasker_id === user.id)
+          );
+        } else if (activeTab === "completed") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        }
+      } else if (userRole === "client") {
+        if (activeTab === "available") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "pending");
+        } else if (activeTab === "my-tasks") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "accepted");
+        } else if (activeTab === "completed") {
+          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        }
+      }
+
+      if (activeTab === "completed") {
+        const total = filteredTasks.reduce((sum, task) => {
+          const accepted = task.offers?.find(o => o.is_accepted);
+          return sum + (accepted?.price ?? 0);
+        }, 0);
+        setCompletedCount(filteredTasks.length);
+        setCompletedTotal(total);
+      }
+
+      setTasks(filteredTasks);
+    } catch (error) {
+      console.error("❌ Error loading tasks:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!propTasks) {
+      loadData();
+    } else {
+      setTasks(propTasks);
+      setLoading(false);
+    }
+  }, [user, activeTab]);
+
+  const handleOfferCreated = () => {
+    setSelectedTaskId(null);
+    loadData();
+  };
+
+  const handleAcceptOffer = async (taskId: string, offerId: string) => {
+    const res = await acceptOffer(taskId, offerId);
+    if (res.success) {
+      loadData();
+    } else {
+      console.error("❌ Failed to accept offer:", res.error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-blue-900">
+          {activeTab === "completed"
+            ? "Completed Tasks"
+            : activeTab === "my-tasks"
+            ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+            : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
+        </h2>
+        <div className="space-x-2">
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>{userRole === "client" ? "Pending Requests" : "Available"}</Button>
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>{userRole === "client" ? "Accepted Tasks" : "My Offers"}</Button>
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>Completed</Button>
+        </div>
+      </div>
+
+      {activeTab === "completed" && (
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>Total tasks: <strong>{completedCount}</strong></span>
+          <span>Total value: <strong>£{completedTotal.toFixed(2)}</strong></span>
+        </div>
+      )}
+
+      {loading ? (
+        <Card><CardContent className="text-center py-8">Loading...</CardContent></Card>
+      ) : tasks.length === 0 ? (
+        <Card><CardContent className="text-center py-8">No tasks found.</CardContent></Card>
+      ) : (
+        <div className="grid gap-6">
+          {tasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              userRole={userRole}
+              user={user}
+              onAccept={handleAcceptOffer}
+              onMakeOffer={() => setSelectedTaskId(task.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {selectedTaskId && (
+        <MakeOfferDialog
+          taskId={selectedTaskId}
+          onOfferCreated={handleOfferCreated}
+        />
+      )}
+    </div>
+  );
 };
 
-// ✅ Fetch offers created by a specific tasker
-export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  const { data, error } = await supabase
-    .from("offers")
-    .select(
-      `*,
-       task:task_requests!offers_task_id_fkey(
-         id, title, description, location, status, created_at
-       )
-      `
-    )
-    .eq("tasker_id", userId)
-    .order("created_at", { ascending: false });
+export default TasksList;
 
-  if (error) {
-    console.error("❌ [OFFERS] Error fetching user offers:", error);
-    throw new Error(`Failed to fetch user offers: ${error.message}`);
-  }
+function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
+  task: Task;
+  userRole: "client" | "tasker";
+  user: any;
+  onAccept: (taskId: string, offerId: string) => void;
+  onMakeOffer: () => void;
+}) {
+  const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
+  const hasOffered = !!myOffer;
 
-  return data || [];
-};
+  return (
+    <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
+            <CardDescription>{task.description}</CardDescription>
+          </div>
+          {getStatusBadge(task.status)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600">
+          <div className="flex items-center space-x-2">
+            <PoundSterling className="h-4 w-4" />
+            <span>£{task.price_range_min} – £{task.price_range_max}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <MapPin className="h-4 w-4" />
+            <span>{task.location}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="h-4 w-4" />
+            <span>{new Date(task.created_at).toLocaleString()}</span>
+          </div>
+        </div>
 
-// ✅ Create a new offer
-export const createOffer = async (offerData: {
-  task_id: string;
-  tasker_id: string;
-  price: number;
-  message?: string;
-  proposed_date: string;
-  proposed_time: string;
-}): Promise<Offer> => {
-  const { data, error } = await supabase
-    .from("offers")
-    .insert(offerData)
-    .select(
-      `*,
-       tasker:users!offers_tasker_id_fkey(full_name, approved)
-      `
-    )
-    .single();
+        {userRole === "tasker" && !hasOffered && (
+          <Button onClick={onMakeOffer}>Make an Offer</Button>
+        )}
 
-  if (error) {
-    console.error("❌ [OFFERS] Error creating offer:", error);
-    throw new Error(`Failed to create offer: ${error.message}`);
-  }
+        {userRole === "tasker" && hasOffered && myOffer && (
+          <div className="text-sm text-gray-700 mt-2">
+            Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
+              {myOffer.is_accepted === true ? "Accepted" : myOffer.is_accepted === false ? "Rejected" : "Pending"}
+            </strong>
+          </div>
+        )}
 
-  return data;
-};
+        {userRole === "client" && task.offers && task.offers.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <h4 className="font-semibold">Received Offers:</h4>
+            {task.offers.map((offer) => (
+              <div key={offer.id} className="border p-3 rounded shadow-sm">
+                <p><strong>Tasker:</strong> {offer.tasker?.full_name || offer.tasker_id}</p>
+                <p><strong>Price:</strong> £{offer.price}</p>
+                {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
+                <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
+                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
+                {!offer.is_accepted && (
+                  <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
+                    Accept Offer
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
-// ✅ Accept one offer and reject all others for a task
-export const acceptOffer = async (
-  taskId: string,
-  offerId: string
-): Promise<{ success: boolean; error?: any }> => {
-  const { error: resetError } = await supabase
-    .from("offers")
-    .update({ is_accepted: false })
-    .eq("task_id", taskId);
-
-  if (resetError) {
-    console.error("❌ [OFFERS] Error resetting offers:", resetError);
-    return { success: false, error: resetError };
-  }
-
-  const { error: acceptError } = await supabase
-    .from("offers")
-    .update({ is_accepted: true })
-    .eq("id", offerId);
-
-  if (acceptError) {
-    console.error("❌ [OFFERS] Error accepting offer:", acceptError);
-    return { success: false, error: acceptError };
-  }
-
-  const { error: taskError } = await supabase
-    .from("task_requests")
-    .update({ status: "accepted" })
-    .eq("id", taskId);
-
-  if (taskError) {
-    console.error("❌ [OFFERS] Error updating task status:", taskError);
-    return { success: false, error: taskError };
-  }
-
-  return { success: true };
-};
+function getStatusBadge(status: string) {
+  const map: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-700",
+    accepted: "bg-blue-100 text-blue-700",
+    in_progress: "bg-purple-100 text-purple-700",
+    completed: "bg-green-100 text-green-700",
+    cancelled: "bg-gray-100 text-gray-700",
+  };
+  return <Badge className={map[status] || "bg-gray-100 text-gray-700"}>{status}</Badge>;
+}
