@@ -1,3 +1,12 @@
+
+<h2 className="text-2xl font-bold text-blue-900">
+  {activeTab === "completed"
+    ? "Completed Tasks"
+    : activeTab === "my-tasks"
+    ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+    : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
+</h2>
+
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -29,8 +38,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed">("available");
-  const [locationFilter, setLocationFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -44,17 +51,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
       let filteredTasks = fetchedTasks;
 
-      if (locationFilter) {
-        filteredTasks = filteredTasks.filter(task =>
-          task.location?.toLowerCase().includes(locationFilter.toLowerCase())
-        );
-      }
-
-      if (statusFilter !== "all") {
-        filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
-      }
-
-      if (userRole === "tasker") {
+        if (userRole === "tasker") {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
@@ -95,14 +92,15 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   };
 
   useEffect(() => {
-    if (!propTasks) {
-      loadData();
-    } else {
-      setTasks(propTasks);
-      setLoading(false);
-    }
-  }, [user, activeTab, locationFilter, statusFilter]);
+  if (!propTasks) {
+    loadData();
+  } else {
+    setTasks(propTasks);
+    setLoading(false);
+  }
+}, [user, activeTab]);
 
+  
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
     loadData();
@@ -129,40 +127,27 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             ? "My Offers"
             : "Available Tasks"}
         </h2>
-        {userRole === "tasker" && (
-          <div className="space-x-2">
-            <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
-              Available
-            </Button>
-            <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
-              My Offers
-            </Button>
-            <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
-              Completed
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <Input
-          placeholder="Filter by location"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+        <div className="space-x-2">
+  <Button
+    variant={activeTab === "available" ? "default" : "outline"}
+    onClick={() => setActiveTab("available")}
+  >
+    {userRole === "client" ? "Pending Requests" : "Available"}
+  </Button>
+  <Button
+    variant={activeTab === "my-tasks" ? "default" : "outline"}
+    onClick={() => setActiveTab("my-tasks")}
+  >
+    {userRole === "client" ? "Accepted Tasks" : "My Offers"}
+  </Button>
+  <Button
+    variant={activeTab === "completed" ? "default" : "outline"}
+    onClick={() => setActiveTab("completed")}
+  >
+    Completed
+  </Button>
+</div>
+      {/* Filters removed by request */}
       {activeTab === "completed" && (
         <div className="flex justify-between text-sm text-gray-600">
           <span>Total tasks: <strong>{completedCount}</strong></span>
