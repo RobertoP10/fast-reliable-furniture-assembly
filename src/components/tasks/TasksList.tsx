@@ -10,7 +10,12 @@ import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
-type Offer = Database["public"]["Tables"]["offers"]["Row"];
+// Type Definitions
+
+type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
+  tasker?: { full_name: string };
+};
+
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
   offers?: Offer[];
 };
@@ -35,7 +40,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
-
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
@@ -49,10 +53,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             task.offers?.some((offer) => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
-          filteredTasks = fetchedTasks.filter(task =>
-            task.status === "completed" &&
-            task.offers?.some((offer) => offer.tasker_id === user.id && offer.is_accepted === true)
-          );
+          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
         }
       } else if (userRole === "client") {
         if (activeTab === "available") {
@@ -110,29 +111,18 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <h2 className="text-2xl font-bold text-blue-900">
           {activeTab === "completed"
             ? "Completed Tasks"
-            : userRole === "client"
-            ? "My Tasks"
             : activeTab === "my-tasks"
-            ? "My Offers"
-            : "Available Tasks"}
+            ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+            : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
         </h2>
         <div className="space-x-2">
-          <Button
-            variant={activeTab === "available" ? "default" : "outline"}
-            onClick={() => setActiveTab("available")}
-          >
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
             {userRole === "client" ? "Pending Requests" : "Available"}
           </Button>
-          <Button
-            variant={activeTab === "my-tasks" ? "default" : "outline"}
-            onClick={() => setActiveTab("my-tasks")}
-          >
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
             {userRole === "client" ? "Accepted Tasks" : "My Offers"}
           </Button>
-          <Button
-            variant={activeTab === "completed" ? "default" : "outline"}
-            onClick={() => setActiveTab("completed")}
-          >
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
             Completed
           </Button>
         </div>
@@ -176,7 +166,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
 export default TasksList;
 
-// COMPONENT: TaskCard
 function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   task: Task;
   userRole: "client" | "tasker";
@@ -225,16 +214,12 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
         {userRole === "tasker" && myOffer && (
           <div className="text-sm text-gray-700 mt-2">
             Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
-              {myOffer.is_accepted === true
-                ? "Accepted"
-                : myOffer.is_accepted === false
-                ? "Rejected"
-                : "Pending"}
+              {myOffer.is_accepted === true ? "Accepted" : myOffer.is_accepted === false ? "Rejected" : "Pending"}
             </strong>
           </div>
         )}
 
-        {userRole === "client" && task.offers?.length > 0 && (
+        {userRole === "client" && task.offers && task.offers.length > 0 && (
           <ClientOffers task={task} onAccept={onAccept} />
         )}
       </CardContent>
@@ -242,7 +227,6 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   );
 }
 
-// COMPONENT: ClientOffers
 function ClientOffers({ task, onAccept }: {
   task: Task;
   onAccept: (taskId: string, offerId: string) => void;
@@ -252,15 +236,15 @@ function ClientOffers({ task, onAccept }: {
       <h4 className="font-semibold">Received Offers:</h4>
       {task.offers!.map((offer) => (
         <div key={offer.id} className="border p-3 rounded shadow-sm">
-          <p><strong>Tasker:</strong> {offer.tasker_id}</p>
+          <p><strong>Tasker:</strong> {offer.tasker?.full_name ?? offer.tasker_id}</p>
           <p><strong>Price:</strong> £{offer.price}</p>
-          <p><strong>Message:</strong> {offer.message || "(no message)"}</p>
-          <p><strong>Status:</strong> {
-            offer.is_accepted === true ? "Accepted" :
-            offer.is_accepted === false ? "Rejected" : "Pending"
-          }</p>
-          {offer.is_accepted === null && (
-            <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
+          <p><strong>Message:</strong> {offer.message}</p>
+          <p><strong>Status:</strong> {offer.is_accepted ? "Accepted" : "Pending"}</p>
+          {!offer.is_accepted && (
+            <Button
+              className="mt-2"
+              onClick={() => onAccept(task.id, offer.id)}
+            >
               Accept Offer
             </Button>
           )}
@@ -270,7 +254,6 @@ function ClientOffers({ task, onAccept }: {
   );
 }
 
-// UTILITY: Status badge
 function getStatusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
