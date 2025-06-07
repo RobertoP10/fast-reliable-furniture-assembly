@@ -17,7 +17,7 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch all tasks for user (client or tasker)
+// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -28,7 +28,10 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(*, tasker:users!offers_tasker_id_fkey(full_name)),
+      offers:offers!offers_task_id_fkey(
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name)
+      ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `);
 
@@ -36,7 +39,9 @@ export const fetchTasks = async (
     query = query.eq("client_id", userId);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: false });
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
   if (error) {
     console.error("❌ [TASKS] Error fetching tasks:", error);
@@ -46,7 +51,7 @@ export const fetchTasks = async (
   return data || [];
 };
 
-// ✅ Create new task
+// ✅ Creează un nou task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -60,7 +65,7 @@ export const createTask = async (
   return data;
 };
 
-// ✅ Update task status
+// ✅ Update status (completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -76,13 +81,16 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch single task by ID
+// ✅ Fetch un singur task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(*, tasker:users!offers_tasker_id_fkey(full_name)),
+      offers:offers!offers_task_id_fkey(
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name)
+      ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("id", taskId)
