@@ -10,6 +10,7 @@ import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
+// Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string };
 };
@@ -38,6 +39,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   const loadData = async () => {
     if (!user) return;
+
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
@@ -117,9 +119,15 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
         </h2>
         <div className="space-x-2">
-          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>{userRole === "client" ? "Pending Requests" : "Available"}</Button>
-          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>{userRole === "client" ? "Accepted Tasks" : "My Offers"}</Button>
-          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>Completed</Button>
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
+            {userRole === "client" ? "Pending Requests" : "Available"}
+          </Button>
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
+            {userRole === "client" ? "Accepted Tasks" : "My Offers"}
+          </Button>
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
+            Completed
+          </Button>
         </div>
       </div>
 
@@ -198,14 +206,22 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
           </div>
         </div>
 
-        {userRole === "tasker" && !hasOffered && (
-          <Button onClick={onMakeOffer}>Make an Offer</Button>
+        {userRole === "tasker" && (
+          hasOffered ? (
+            <Badge>You already sent an offer</Badge>
+          ) : (
+            <Button onClick={onMakeOffer}>Make an Offer</Button>
+          )
         )}
 
-        {userRole === "tasker" && hasOffered && myOffer && (
+        {userRole === "tasker" && myOffer && (
           <div className="text-sm text-gray-700 mt-2">
             Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
-              {myOffer.is_accepted === true ? "Accepted" : myOffer.is_accepted === false ? "Rejected" : "Pending"}
+              {myOffer.is_accepted === true
+                ? "Accepted"
+                : myOffer.is_accepted === false
+                ? "Rejected"
+                : "Pending"}
             </strong>
           </div>
         )}
@@ -215,13 +231,16 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
             <h4 className="font-semibold">Received Offers:</h4>
             {task.offers.map((offer) => (
               <div key={offer.id} className="border p-3 rounded shadow-sm">
-                <p><strong>Tasker:</strong> {offer.tasker?.full_name || offer.tasker_id}</p>
+                <p><strong>Tasker:</strong> {offer.tasker?.full_name ?? offer.tasker_id}</p>
                 <p><strong>Price:</strong> £{offer.price}</p>
                 {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
                 <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
                 {!offer.is_accepted && (
-                  <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
+                  <Button
+                    className="mt-2"
+                    onClick={() => onAccept(task.id, offer.id)}
+                  >
                     Accept Offer
                   </Button>
                 )}
