@@ -35,9 +35,10 @@ export const fetchTasks = async (
 
   if (userRole === "client") {
     query = query.eq("client_id", userId);
-  } else if (userRole === "tasker") {
-    query = query.eq("status", "pending");
   }
+
+  // ❌ Nu filtrăm după status dacă e tasker — vrem toate taskurile la care a ofertat
+  // (Filtrarea o facem mai târziu, în funcție de tabul activ)
 
   const { data, error } = await query.order("created_at", {
     ascending: false,
