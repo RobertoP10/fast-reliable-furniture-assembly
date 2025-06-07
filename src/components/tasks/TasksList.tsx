@@ -46,16 +46,12 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.offers?.some((offer) =>
-              offer.tasker_id === user.id && offer.is_accepted === true
-            )
+            task.offers?.some((offer) => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "completed" &&
-            task.offers?.some((offer) =>
-              offer.tasker_id === user.id && offer.is_accepted === true
-            )
+            task.offers?.some((offer) => offer.tasker_id === user.id && offer.is_accepted === true)
           );
         }
       } else if (userRole === "client") {
@@ -180,7 +176,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
 export default TasksList;
 
-// ⬇ COMPONENT: TaskCard
+// COMPONENT: TaskCard
 function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   task: Task;
   userRole: "client" | "tasker";
@@ -246,7 +242,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   );
 }
 
-// ⬇ COMPONENT: ClientOffers
+// COMPONENT: ClientOffers
 function ClientOffers({ task, onAccept }: {
   task: Task;
   onAccept: (taskId: string, offerId: string) => void;
@@ -256,15 +252,15 @@ function ClientOffers({ task, onAccept }: {
       <h4 className="font-semibold">Received Offers:</h4>
       {task.offers!.map((offer) => (
         <div key={offer.id} className="border p-3 rounded shadow-sm">
-          <p>Tasker ID: {offer.tasker_id}</p>
-          <p>Price: £{offer.price}</p>
-          <p>Message: {offer.message}</p>
-          <p>Status: <strong>{offer.is_accepted ? "Accepted" : "Pending"}</strong></p>
-          {!offer.is_accepted && (
-            <Button
-              className="mt-2"
-              onClick={() => onAccept(task.id, offer.id)}
-            >
+          <p><strong>Tasker:</strong> {offer.tasker_id}</p>
+          <p><strong>Price:</strong> £{offer.price}</p>
+          <p><strong>Message:</strong> {offer.message || "(no message)"}</p>
+          <p><strong>Status:</strong> {
+            offer.is_accepted === true ? "Accepted" :
+            offer.is_accepted === false ? "Rejected" : "Pending"
+          }</p>
+          {offer.is_accepted === null && (
+            <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
               Accept Offer
             </Button>
           )}
@@ -274,7 +270,7 @@ function ClientOffers({ task, onAccept }: {
   );
 }
 
-// ⬇ UTILITAR: getStatusBadge
+// UTILITY: Status badge
 function getStatusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
