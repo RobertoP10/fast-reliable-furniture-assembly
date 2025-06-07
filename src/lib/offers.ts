@@ -4,18 +4,18 @@ import type { Database } from "@/integrations/supabase/types";
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: {
     full_name: string;
-    approved: boolean;
+    approved?: boolean;
   };
 };
 
-// ✅ Fetch offers for a specific task (pentru client)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
-    .select(`
-      *,
-      tasker:users!offers_tasker_id_fkey(full_name, approved)
-    `)
+    .select(
+      `*,
+       tasker:users!offers_tasker_id_fkey(full_name, approved)
+      `
+    )
     .eq("task_id", taskId)
     .order("created_at", { ascending: false });
 
@@ -27,16 +27,16 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// ✅ Fetch all offers made by a specific tasker (My Offers tab)
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
-    .select(`
-      *,
-      task:task_requests!offers_task_id_fkey(
-        id, title, description, location, status, created_at
-      )
-    `)
+    .select(
+      `*,
+       task:task_requests!offers_task_id_fkey(
+         id, title, description, location, status, created_at
+       )
+      `
+    )
     .eq("tasker_id", userId)
     .order("created_at", { ascending: false });
 
@@ -48,7 +48,6 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -71,7 +70,6 @@ export const createOffer = async (offerData: {
   return data;
 };
 
-// ✅ Accept one offer and reject the rest
 export const acceptOffer = async (
   taskId: string,
   offerId: string
