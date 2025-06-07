@@ -1,12 +1,4 @@
 
-<h2 className="text-2xl font-bold text-blue-900">
-  {activeTab === "completed"
-    ? "Completed Tasks"
-    : activeTab === "my-tasks"
-    ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
-    : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
-</h2>
-
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -51,7 +43,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
       let filteredTasks = fetchedTasks;
 
-        if (userRole === "tasker") {
+      if (userRole === "tasker") {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
@@ -92,15 +84,14 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   };
 
   useEffect(() => {
-  if (!propTasks) {
-    loadData();
-  } else {
-    setTasks(propTasks);
-    setLoading(false);
-  }
-}, [user, activeTab]);
+    if (!propTasks) {
+      loadData();
+    } else {
+      setTasks(propTasks);
+      setLoading(false);
+    }
+  }, [user, activeTab]);
 
-  
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
     loadData();
@@ -128,26 +119,27 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             : "Available Tasks"}
         </h2>
         <div className="space-x-2">
-  <Button
-    variant={activeTab === "available" ? "default" : "outline"}
-    onClick={() => setActiveTab("available")}
-  >
-    {userRole === "client" ? "Pending Requests" : "Available"}
-  </Button>
-  <Button
-    variant={activeTab === "my-tasks" ? "default" : "outline"}
-    onClick={() => setActiveTab("my-tasks")}
-  >
-    {userRole === "client" ? "Accepted Tasks" : "My Offers"}
-  </Button>
-  <Button
-    variant={activeTab === "completed" ? "default" : "outline"}
-    onClick={() => setActiveTab("completed")}
-  >
-    Completed
-  </Button>
-</div>
-      {/* Filters removed by request */}
+          <Button
+            variant={activeTab === "available" ? "default" : "outline"}
+            onClick={() => setActiveTab("available")}
+          >
+            {userRole === "client" ? "Pending Requests" : "Available"}
+          </Button>
+          <Button
+            variant={activeTab === "my-tasks" ? "default" : "outline"}
+            onClick={() => setActiveTab("my-tasks")}
+          >
+            {userRole === "client" ? "Accepted Tasks" : "My Offers"}
+          </Button>
+          <Button
+            variant={activeTab === "completed" ? "default" : "outline"}
+            onClick={() => setActiveTab("completed")}
+          >
+            Completed
+          </Button>
+        </div>
+      </div>
+
       {activeTab === "completed" && (
         <div className="flex justify-between text-sm text-gray-600">
           <span>Total tasks: <strong>{completedCount}</strong></span>
@@ -186,7 +178,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
 export default TasksList;
 
-// ✅ COMPONENTĂ: TaskCard
+// ✅ COMPONENT: TaskCard
 function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   task: Task;
   userRole: "client" | "tasker";
@@ -252,7 +244,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   );
 }
 
-// ✅ COMPONENTĂ: ClientOffers
+// ✅ COMPONENT: ClientOffers
 function ClientOffers({ task, onAccept }: {
   task: Task;
   onAccept: (taskId: string, offerId: string) => void;
@@ -280,7 +272,7 @@ function ClientOffers({ task, onAccept }: {
   );
 }
 
-// ✅ FUNCȚIE UTILITARĂ: getStatusBadge
+// ✅ UTILITY FUNCTION: getStatusBadge
 function getStatusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
