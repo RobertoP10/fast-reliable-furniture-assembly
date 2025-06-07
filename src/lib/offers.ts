@@ -8,6 +8,7 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   };
 };
 
+// ✅ Fetch offers for a specific task (with tasker full_name)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
@@ -27,6 +28,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
+// ✅ Fetch offers created by a specific tasker
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
@@ -48,6 +50,7 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   return data || [];
 };
 
+// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -70,6 +73,7 @@ export const createOffer = async (offerData: {
   return data;
 };
 
+// ✅ Accept one offer and reject all others for a task
 export const acceptOffer = async (
   taskId: string,
   offerId: string
