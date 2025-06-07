@@ -1,3 +1,5 @@
+// TasksList.tsx (versiune completă cu ClientOffers inclus)
+
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -10,10 +12,10 @@ import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
-// Type Definitions
-
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string };
+  tasker?: {
+    full_name: string;
+  };
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
@@ -40,6 +42,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
+
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
@@ -111,20 +114,16 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <h2 className="text-2xl font-bold text-blue-900">
           {activeTab === "completed"
             ? "Completed Tasks"
+            : userRole === "client"
+            ? "My Tasks"
             : activeTab === "my-tasks"
-            ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
-            : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
+            ? "My Offers"
+            : "Available Tasks"}
         </h2>
         <div className="space-x-2">
-          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
-            {userRole === "client" ? "Pending Requests" : "Available"}
-          </Button>
-          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
-            {userRole === "client" ? "Accepted Tasks" : "My Offers"}
-          </Button>
-          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
-            Completed
-          </Button>
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>{userRole === "client" ? "Pending Requests" : "Available"}</Button>
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>{userRole === "client" ? "Accepted Tasks" : "My Offers"}</Button>
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>Completed</Button>
         </div>
       </div>
 
@@ -219,7 +218,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
           </div>
         )}
 
-        {userRole === "client" && task.offers && task.offers.length > 0 && (
+        {userRole === "client" && task.offers?.length > 0 && (
           <ClientOffers task={task} onAccept={onAccept} />
         )}
       </CardContent>
@@ -233,18 +232,17 @@ function ClientOffers({ task, onAccept }: {
 }) {
   return (
     <div className="mt-4 space-y-2">
-      <h4 className="font-semibold">Received Offers:</h4>
-      {task.offers!.map((offer) => (
-        <div key={offer.id} className="border p-3 rounded shadow-sm">
-          <p><strong>Tasker:</strong> {offer.tasker?.full_name ?? offer.tasker_id}</p>
+      <h4 className="font-semibold">Offers Received:</h4>
+      {task.offers?.map((offer) => (
+        <div key={offer.id} className="border p-3 rounded-md shadow-sm bg-white">
+          <p><strong>Tasker:</strong> {offer.tasker?.full_name || "Anonymous"}</p>
           <p><strong>Price:</strong> £{offer.price}</p>
-          <p><strong>Message:</strong> {offer.message}</p>
-          <p><strong>Status:</strong> {offer.is_accepted ? "Accepted" : "Pending"}</p>
+          <p><strong>Message:</strong> {offer.message || "—"}</p>
+          <p><strong>Date/Time:</strong> {offer.proposed_date} – {offer.proposed_time}</p>
+          <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
+
           {!offer.is_accepted && (
-            <Button
-              className="mt-2"
-              onClick={() => onAccept(task.id, offer.id)}
-            >
+            <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
               Accept Offer
             </Button>
           )}
