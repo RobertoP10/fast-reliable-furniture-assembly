@@ -3,64 +3,73 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved: boolean };
+  tasker?: { full_name: string; approved?: boolean };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 export type Task = TaskBase & {
-  offers?: Offer[];
+  offers?: Offer[] | null;
   client?: {
     full_name: string;
     location: string;
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte
+// ✅ Fetch taskuri cu opțiune de filtrare după oferte
 export const fetchTasks = async (
   userId: string,
-  userRole: string
+  userRole: string,
+  onlyWithOffers: boolean = false
 ): Promise<Task[]> => {
-  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
+  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole, "onlyWithOffers:", onlyWithOffers);
 
+  // Construim interogarea
   let query = supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(
-        *,
-        tasker:users!offers_tasker_id_fkey(full_name, approved)
+      ${onlyWithOffers ? "offers!inner" : "offers"} (
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        tasker:users(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
-    `);
+    `)
+    .order("created_at", { ascending: false });
 
+  // Filtrare pe rol
   if (userRole === "client") {
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    query = query.neq("client_id", userId);
+    // pentru tasker momentan nu e nevoie de filtrare
   }
 
-  const { data, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, error } = await query;
 
   if (error) {
     console.error("❌ [TASKS] Error fetching tasks:", error);
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  const normalizedData = (data || []).map((task: any) => ({
+  const transformedData = (data || []).map((task) => ({
     ...task,
     offers: Array.isArray(task.offers)
       ? task.offers
       : task.offers
-      ? [task.offers]
-      : [],
+        ? [task.offers]
+        : null,
   }));
 
-  console.log("✅ [TASKS] Fetched and normalized tasks:", normalizedData);
-  return normalizedData;
+  console.log("🔍 [TASKS] Transformed tasks:", transformedData);
+  return transformedData;
 };
 
 // ✅ Creează un nou task
@@ -77,7 +86,7 @@ export const createTask = async (
   return data;
 };
 
-// ✅ Update status (ex. completed)
+// ✅ Update status (completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -99,9 +108,16 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(
-        *,
-        tasker:users!offers_tasker_id_fkey(full_name, approved)
+      offers (
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        tasker:users(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
@@ -113,15 +129,12 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  const normalized = {
+  return {
     ...data,
     offers: Array.isArray(data.offers)
       ? data.offers
       : data.offers
-      ? [data.offers]
-      : [],
+        ? [data.offers]
+        : null,
   };
-
-  console.log("✅ [TASKS] Fetched single task:", normalized);
-  return normalized;
 };
