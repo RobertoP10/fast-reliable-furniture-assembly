@@ -3,53 +3,46 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved?: boolean };
+  tasker?: {
+    full_name: string;
+    approved?: boolean;
+  };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 export type Task = TaskBase & {
-  offers?: Offer[] | null;
+  offers?: Offer[];
   client?: {
     full_name: string;
     location: string;
   };
 };
 
-// ✅ Fetch taskuri cu opțiune de filtrare după oferte
+// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
-  userRole: string,
-  onlyWithOffers: boolean = false
+  userRole: string
 ): Promise<Task[]> => {
-  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole, "onlyWithOffers:", onlyWithOffers);
+  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
 
-  // Construim interogarea
   let query = supabase
     .from("task_requests")
     .select(`
       *,
-      ${onlyWithOffers ? "offers!inner" : "offers"} (
-        id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
-        tasker:users(full_name, approved)
+      offers (
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .order("created_at", { ascending: false });
 
-  // Filtrare pe rol
   if (userRole === "client") {
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    // pentru tasker momentan nu e nevoie de filtrare
+    // return all tasks; filtering se face în frontend
   }
 
   const { data, error } = await query;
@@ -59,17 +52,7 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  const transformedData = (data || []).map((task) => ({
-    ...task,
-    offers: Array.isArray(task.offers)
-      ? task.offers
-      : task.offers
-        ? [task.offers]
-        : null,
-  }));
-
-  console.log("🔍 [TASKS] Transformed tasks:", transformedData);
-  return transformedData;
+  return data as Task[];
 };
 
 // ✅ Creează un nou task
@@ -109,15 +92,8 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .select(`
       *,
       offers (
-        id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
-        tasker:users(full_name, approved)
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
@@ -129,12 +105,5 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  return {
-    ...data,
-    offers: Array.isArray(data.offers)
-      ? data.offers
-      : data.offers
-        ? [data.offers]
-        : null,
-  };
+  return data as Task;
 };
