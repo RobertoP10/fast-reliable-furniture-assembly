@@ -2,8 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
-type OfferBase = Database["public"]["Tables"]["offers"]["Row"];
-type Offer = OfferBase & {
+type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string; approved?: boolean };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
@@ -18,7 +17,6 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -48,21 +46,18 @@ export const fetchTasks = async (
 
   if (userRole === "client") {
     query = query.eq("client_id", userId);
-  } else if (userRole === "tasker") {
-    query = query.eq("approved_offer_id", null); // poți adapta acest filtru dacă e necesar
   }
 
-  const { data, error } = await query;
+  const result = await query;
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching tasks:", error);
-    throw new Error(`Failed to fetch tasks: ${error.message}`);
+  if (result.error) {
+    console.error("❌ [TASKS] Error fetching tasks:", result.error);
+    throw new Error(`Failed to fetch tasks: ${result.error.message}`);
   }
 
-  return data as Task[];
+  return result.data ?? [];
 };
 
-// ✅ Creează un nou task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -76,7 +71,6 @@ export const createTask = async (
   return data;
 };
 
-// ✅ Update status (completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -92,9 +86,8 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch un singur task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
-  const { data, error } = await supabase
+  const result = await supabase
     .from("task_requests")
     .select(`
       *,
@@ -116,10 +109,10 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .eq("id", taskId)
     .single();
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching task:", error);
+  if (result.error) {
+    console.error("❌ [TASKS] Error fetching task:", result.error);
     return null;
   }
 
-  return data as Task;
+  return result.data;
 };
