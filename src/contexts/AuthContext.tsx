@@ -30,56 +30,74 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const handleRedirect = (profile: any) => {
-    if (profile?.role === 'admin') {
-      navigate('/admin-dashboard');
-    } else if (profile?.role === 'client') {
-      navigate('/client-dashboard');
-    } else if (profile?.role === 'tasker') {
+    if (profile?.role === "admin") {
+      navigate("/admin-dashboard");
+    } else if (profile?.role === "client") {
+      navigate("/client-dashboard");
+    } else if (profile?.role === "tasker") {
       if (profile?.approved) {
-        navigate('/tasker-dashboard');
+        navigate("/tasker-dashboard");
       } else {
-        navigate('/tasker-pending');
+        navigate("/tasker-pending");
       }
     } else {
-      console.warn("No role found, redirecting to /");
-      navigate('/');
+      console.warn("⚠️ No role found, redirecting to home.");
+      navigate("/");
     }
   };
 
   const syncSessionAndProfile = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error("❌ Error getting session:", error);
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     if (session?.user) {
-      const profile = await fetchUserProfile(session.user);
-      if (profile) {
-        setUser(profile);
-        handleRedirect(profile);
-      } else {
+      try {
+        const profile = await fetchUserProfile(session.user);
+        if (profile) {
+          setUser(profile);
+          handleRedirect(profile);
+        } else {
+          console.error("❌ No user profile found.");
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching profile:", err);
         setUser(null);
-        console.error("❌ No user profile found in DB.");
       }
     } else {
       setUser(null);
     }
+
     setLoading(false);
   };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const initialize = async () => {
       await syncSessionAndProfile();
     };
+    initialize();
 
-    fetchData();
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state change:", event);
-      if (event === 'INITIAL_SESSION') return;
-      if (session?.user) {
-        syncSessionAndProfile();
-      } else {
-        setUser(null);
-        setLoading(false);
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("🔁 Auth state change:", event);
+        if (session?.user) {
+          await syncSessionAndProfile();
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
       }
-    });
+    );
+
+    return () => {
+      subscription?.subscription?.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -88,32 +106,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email,
       password,
     });
-    if (error) throw new Error(error.message);
-    if (!data.session) throw new Error("No session returned");
+
+    if (error) {
+      setLoading(false);
+      throw new Error(error.message);
+    }
+
+    if (!data.session) {
+      setLoading(false);
+      throw new Error("No session returned.");
+    }
+
     await syncSessionAndProfile();
   };
 
   const register = async (data: any) => {
     setLoading(true);
     setWaitingForProfile(true);
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
       });
+
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("No user returned from signup");
 
-      const { error: insertError } = await supabase.from('users').insert({
+      const { error: insertError } = await supabase.from("users").insert({
         id: authData.user.id,
         email: data.email,
         full_name: data.full_name,
         role: data.role,
-        approved: data.role === 'client'
+        approved: data.role === "client",
       });
 
-      if (insertError) throw new Error("Failed to insert new user");
-      console.log("✅ User registered and inserted, proceeding to login...");
+      if (insertError) throw new Error("Failed to insert user profile");
+
+      console.log("✅ User registered successfully.");
       await login(data.email, data.password);
     } catch (err) {
       console.error("❌ Registration error:", err);
@@ -127,9 +157,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
-    if (error) console.error("❌ Logout error:", error);
+    if (error) {
+      console.error("❌ Logout error:", error);
+    }
     setUser(null);
-    navigate('/');
+    navigate("/");
     setLoading(false);
   };
 
@@ -141,7 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         register,
         logout,
         loading,
-        waitingForProfile
+        waitingForProfile,
       }}
     >
       {loading ? <LoadingScreen /> : children}
