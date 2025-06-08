@@ -8,7 +8,6 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   };
 };
 
-// ✅ Get offers for a task (with tasker full_name)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
@@ -20,7 +19,6 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -39,7 +37,6 @@ export const createOffer = async (offerData: {
   return data;
 };
 
-// ✅ Accept one offer, reject others, and update task status
 export const acceptOffer = async (
   taskId: string,
   offerId: string
@@ -70,7 +67,6 @@ export const acceptOffer = async (
   }
 };
 
-// ✅ Decline individual offer
 export const declineOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
@@ -79,10 +75,6 @@ export const declineOffer = async (
     .update({ is_accepted: false })
     .eq("id", offerId);
 
-  if (error) {
-    console.error("❌ Error declining offer:", error);
-    return { success: false, error };
-  }
-
+  if (error) return { success: false, error };
   return { success: true };
 };
