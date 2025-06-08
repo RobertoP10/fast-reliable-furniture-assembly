@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -50,16 +49,16 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
       toast({ title: "✅ Offer sent successfully!" });
 
-      // Close the dialog
+      // Închide dialogul doar după ce datele au fost procesate
       setOpen(false);
 
-      // Notify parent to reload data
+      // Notifică parentul (TasksList) să reîncarce datele
       if (onOfferCreated) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300)); // mic delay de siguranță
         onOfferCreated();
       }
 
-      // Reset fields
+      // Resetează câmpurile (opțional)
       setPrice("");
       setMessage("");
       setDate("");
@@ -71,18 +70,8 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
     }
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen && onOfferCreated) {
-      // Small delay to allow dialog to close smoothly
-      setTimeout(() => {
-        onOfferCreated();
-      }, 100);
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent aria-describedby="make-offer-description">
         <div id="make-offer-description" className="sr-only">
           Fill out the form below to submit your offer to the client.
