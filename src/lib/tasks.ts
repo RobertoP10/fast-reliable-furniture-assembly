@@ -17,7 +17,7 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte
+// ✅ Fetch taskuri cu relații corecte ca array
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -38,7 +38,7 @@ export const fetchTasks = async (
         proposed_time,
         is_accepted,
         tasker:users(full_name, approved)
-      ),
+      )[],
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("client_id", userId) // Filtrează doar taskurile clientului
@@ -55,20 +55,35 @@ export const fetchTasks = async (
   return data || [];
 };
 
-// Rămân restul funcțiilor neschimbate...
+// ✅ Creează un nou task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
   const { data, error } = await supabase
     .from("task_requests")
     .insert(taskData)
-    .select()
+    .select(`
+      *,
+      offers:offers(
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        tasker:users(full_name, approved)
+      )[],
+      client:users!task_requests_client_id_fkey(full_name, location)
+    `)
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
   return data;
 };
 
+// ✅ Update status (completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -84,6 +99,7 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
+// ✅ Fetch un singur task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("task_requests")
@@ -99,7 +115,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
         proposed_time,
         is_accepted,
         tasker:users(full_name, approved)
-      ),
+      )[],
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("id", taskId)
