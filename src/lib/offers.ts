@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -13,16 +14,16 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
     .select(
-      \`*,
+      `*,
        tasker:users!offers_tasker_id_fkey(full_name, approved)
-      \`
+      `
     )
     .eq("task_id", taskId)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("❌ [OFFERS] Error fetching offers:", error);
-    throw new Error(\`Failed to fetch offers: \${error.message}\`);
+    throw new Error(`Failed to fetch offers: ${error.message}`);
   }
 
   return data || [];
@@ -33,18 +34,18 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
     .select(
-      \`*,
+      `*,
        task:task_requests!offers_task_id_fkey(
          id, title, description, location, status, created_at
        )
-      \`
+      `
     )
     .eq("tasker_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("❌ [OFFERS] Error fetching user offers:", error);
-    throw new Error(\`Failed to fetch user offers: \${error.message}\`);
+    throw new Error(`Failed to fetch user offers: ${error.message}`);
   }
 
   return data || [];
@@ -67,7 +68,7 @@ export const createOffer = async (offerData: {
 
   if (error) {
     console.error("❌ [OFFERS] Error creating offer:", error);
-    throw new Error(\`Failed to create offer: \${error.message}\`);
+    throw new Error(`Failed to create offer: ${error.message}`);
   }
 
   return data;
