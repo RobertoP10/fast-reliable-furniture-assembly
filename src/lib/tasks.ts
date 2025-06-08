@@ -17,18 +17,19 @@ export type Task = TaskBase & {
   };
 };
 
+// ✅ Fetch tasks by user and role
 export const fetchTasks = async (
   userId: string,
   userRole: string
 ): Promise<Task[]> => {
-  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
-
   let query = supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers_task_id_fkey (
+      offers (
         id,
+        created_at,
+        updated_at,
         task_id,
         tasker_id,
         price,
@@ -36,11 +37,15 @@ export const fetchTasks = async (
         proposed_date,
         proposed_time,
         is_accepted,
-        created_at,
-        updated_at,
-        tasker:users(full_name, approved)
+        tasker:users (
+          full_name,
+          approved
+        )
       ),
-      client:users!task_requests_client_id_fkey(full_name, location)
+      client:users!task_requests_client_id_fkey (
+        full_name,
+        location
+      )
     `)
     .order("created_at", { ascending: false });
 
@@ -48,16 +53,17 @@ export const fetchTasks = async (
     query = query.eq("client_id", userId);
   }
 
-  const result = await query;
+  const { data, error } = await query;
 
-  if (result.error) {
-    console.error("❌ [TASKS] Error fetching tasks:", result.error);
-    throw new Error(`Failed to fetch tasks: ${result.error.message}`);
+  if (error) {
+    console.error("❌ Error fetching tasks:", error);
+    throw new Error("Failed to fetch tasks");
   }
 
-  return result.data ?? [];
+  return data as Task[];
 };
 
+// ✅ Create task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -71,6 +77,7 @@ export const createTask = async (
   return data;
 };
 
+// ✅ Update task status
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -86,13 +93,16 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
+// ✅ Fetch task by ID
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
-  const result = await supabase
+  const { data, error } = await supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers_task_id_fkey (
+      offers (
         id,
+        created_at,
+        updated_at,
         task_id,
         tasker_id,
         price,
@@ -100,19 +110,23 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
         proposed_date,
         proposed_time,
         is_accepted,
-        created_at,
-        updated_at,
-        tasker:users(full_name, approved)
+        tasker:users (
+          full_name,
+          approved
+        )
       ),
-      client:users!task_requests_client_id_fkey(full_name, location)
+      client:users!task_requests_client_id_fkey (
+        full_name,
+        location
+      )
     `)
     .eq("id", taskId)
     .single();
 
-  if (result.error) {
-    console.error("❌ [TASKS] Error fetching task:", result.error);
+  if (error) {
+    console.error("❌ Error fetching task:", error);
     return null;
   }
 
-  return result.data;
+  return data as Task;
 };
