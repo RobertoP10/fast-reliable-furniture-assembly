@@ -3,20 +3,21 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved?: boolean };
+  tasker?: { full_name: string; approved: boolean };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 export type Task = TaskBase & {
-  offers?: Offer[] | null;
+  offers?: Offer[];
   client?: {
     full_name: string;
     location: string;
   };
 };
 
+// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -27,37 +28,42 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers:offers_task_id_fkey (
-        id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
-        created_at,
-        updated_at,
-        tasker:users(full_name, approved)
+      offers:offers!offers_task_id_fkey(
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
-    `)
-    .order("created_at", { ascending: false });
+    `);
 
   if (userRole === "client") {
     query = query.eq("client_id", userId);
+  } else if (userRole === "tasker") {
+    query = query.neq("client_id", userId);
   }
 
-  const result = await query;
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
-  if (result.error) {
-    console.error("❌ [TASKS] Error fetching tasks:", result.error);
-    throw new Error(`Failed to fetch tasks: ${result.error.message}`);
+  if (error) {
+    console.error("❌ [TASKS] Error fetching tasks:", error);
+    throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  return result.data ?? [];
+  const normalizedData = (data || []).map((task: any) => ({
+    ...task,
+    offers: Array.isArray(task.offers)
+      ? task.offers
+      : task.offers
+      ? [task.offers]
+      : [],
+  }));
+
+  console.log("✅ [TASKS] Fetched and normalized tasks:", normalizedData);
+  return normalizedData;
 };
 
+// ✅ Creează un nou task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -71,6 +77,7 @@ export const createTask = async (
   return data;
 };
 
+// ✅ Update status (ex. completed)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -86,33 +93,35 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
+// ✅ Fetch un singur task cu relații
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
-  const result = await supabase
+  const { data, error } = await supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers_task_id_fkey (
-        id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
-        created_at,
-        updated_at,
-        tasker:users(full_name, approved)
+      offers:offers!offers_task_id_fkey(
+        *,
+        tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("id", taskId)
     .single();
 
-  if (result.error) {
-    console.error("❌ [TASKS] Error fetching task:", result.error);
+  if (error) {
+    console.error("❌ [TASKS] Error fetching task:", error);
     return null;
   }
 
-  return result.data;
+  const normalized = {
+    ...data,
+    offers: Array.isArray(data.offers)
+      ? data.offers
+      : data.offers
+      ? [data.offers]
+      : [],
+  };
+
+  console.log("✅ [TASKS] Fetched single task:", normalized);
+  return normalized;
 };

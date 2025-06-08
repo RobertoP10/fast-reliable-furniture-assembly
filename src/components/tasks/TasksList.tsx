@@ -10,12 +10,13 @@ import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
+// Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string; approved?: boolean };
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  offers?: Offer[] | null;
+  offers?: Offer[];
   client?: {
     full_name: string;
     location: string;
@@ -38,20 +39,22 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   const loadData = async () => {
     if (!user) return;
+
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
+      console.log("🔍 [TASKS] Fetched tasks:", fetchedTasks); // Verifică datele returnate
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            !(task.offers && task.offers.some(o => o.tasker_id === user.id))
+            !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.offers?.some(o => o.tasker_id === user.id)
+            task.offers?.some((offer) => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
           filteredTasks = fetchedTasks.filter(task => task.status === "completed");
@@ -66,8 +69,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         } else if (activeTab === "received-offers") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            task.offers && Array.isArray(task.offers) && task.offers.length > 0
+            task.offers && task.offers.length > 0
           );
+          console.log("🔍 [TASKS] Filtered tasks for received-offers:", filteredTasks); // Verifică filtrarea
         }
       }
 
@@ -115,32 +119,26 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-blue-900">
-          {{
-            completed: "Completed Tasks",
-            "my-tasks": userRole === "client" ? "Accepted Tasks" : "My Offers",
-            "received-offers": "Received Offers",
-            available: userRole === "client" ? "Pending Requests" : "Available Tasks"
-          }[activeTab]}
+          {activeTab === "completed"
+            ? "Completed Tasks"
+            : activeTab === "my-tasks"
+            ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+            : activeTab === "received-offers"
+            ? "Received Offers"
+            : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
         </h2>
         <div className="space-x-2">
-          {["available", "my-tasks", "completed"].map(tab => (
-            <Button
-              key={tab}
-              variant={activeTab === tab ? "default" : "outline"}
-              onClick={() => setActiveTab(tab as any)}
-            >
-              {{
-                available: userRole === "client" ? "Pending Requests" : "Available",
-                "my-tasks": userRole === "client" ? "Accepted Tasks" : "My Offers",
-                completed: "Completed"
-              }[tab]}
-            </Button>
-          ))}
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
+            {userRole === "client" ? "Pending Requests" : "Available"}
+          </Button>
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
+            {userRole === "client" ? "Accepted Tasks" : "My Offers"}
+          </Button>
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
+            Completed
+          </Button>
           {userRole === "client" && (
-            <Button
-              variant={activeTab === "received-offers" ? "default" : "outline"}
-              onClick={() => setActiveTab("received-offers")}
-            >
+            <Button variant={activeTab === "received-offers" ? "default" : "outline"} onClick={() => setActiveTab("received-offers")}>
               Received Offers
             </Button>
           )}
@@ -192,7 +190,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: () => void;
 }) {
-  const myOffer = task.offers?.find((o) => o.tasker_id === user.id);
+  const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
 
   return (
@@ -253,7 +251,10 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
                 <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
                 {!offer.is_accepted && (
-                  <Button className="mt-2" onClick={() => onAccept(task.id, offer.id)}>
+                  <Button
+                    className="mt-2"
+                    onClick={() => onAccept(task.id, offer.id)}
+                  >
                     Accept Offer
                   </Button>
                 )}
