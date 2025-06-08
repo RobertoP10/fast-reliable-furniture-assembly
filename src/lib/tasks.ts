@@ -10,7 +10,7 @@ type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 export type Task = TaskBase & {
-  offers?: Offer[];
+  offers?: Offer[] | null;
   client?: {
     full_name: string;
     location: string;
@@ -21,14 +21,14 @@ export const fetchTasks = async (
   userId: string,
   userRole: string
 ): Promise<Task[]> => {
+  console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
+
   let query = supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers (
+      offers:offers_task_id_fkey (
         id,
-        created_at,
-        updated_at,
         task_id,
         tasker_id,
         price,
@@ -36,6 +36,8 @@ export const fetchTasks = async (
         proposed_date,
         proposed_time,
         is_accepted,
+        created_at,
+        updated_at,
         tasker:users(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
@@ -46,14 +48,14 @@ export const fetchTasks = async (
     query = query.eq("client_id", userId);
   }
 
-  const { data, error } = await query;
+  const result = await query;
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching tasks:", error);
-    return [];
+  if (result.error) {
+    console.error("❌ [TASKS] Error fetching tasks:", result.error);
+    throw new Error(`Failed to fetch tasks: ${result.error.message}`);
   }
 
-  return (data as Task[]) || [];
+  return result.data ?? [];
 };
 
 export const createTask = async (
@@ -82,4 +84,35 @@ export const updateTaskStatus = async (
     .eq("id", taskId);
 
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
+};
+
+export const fetchTask = async (taskId: string): Promise<Task | null> => {
+  const result = await supabase
+    .from("task_requests")
+    .select(`
+      *,
+      offers:offers_task_id_fkey (
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        created_at,
+        updated_at,
+        tasker:users(full_name, approved)
+      ),
+      client:users!task_requests_client_id_fkey(full_name, location)
+    `)
+    .eq("id", taskId)
+    .single();
+
+  if (result.error) {
+    console.error("❌ [TASKS] Error fetching task:", result.error);
+    return null;
+  }
+
+  return result.data;
 };
