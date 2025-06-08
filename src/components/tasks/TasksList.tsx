@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -43,7 +44,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
-      console.log("🔍 [TASKS] Fetched tasks:", fetchedTasks); // Log pentru depanare
+      console.log("🔍 [TASKS] Fetched tasks:", fetchedTasks);
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
@@ -71,7 +72,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             task.status === "pending" &&
             task.offers && task.offers.length > 0
           );
-          console.log("🔍 [TASKS] Filtered tasks for received-offers:", filteredTasks); // Log pentru depanare
+          console.log("🔍 [TASKS] Filtered tasks for received-offers:", filteredTasks);
         }
       }
 
@@ -221,11 +222,13 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
         </div>
 
         {userRole === "tasker" && (
-          hasOffered ? (
-            <Badge>You already sent an offer</Badge>
-          ) : (
-            <Button onClick={onMakeOffer}>Make an Offer</Button>
-          )
+          <>
+            {hasOffered ? (
+              <Badge>You already sent an offer</Badge>
+            ) : (
+              <Button onClick={onMakeOffer}>Make an Offer</Button>
+            )}
+          </>
         )}
 
         {userRole === "tasker" && myOffer && (
@@ -243,7 +246,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
         {userRole === "client" && task.offers && task.offers.length > 0 && (
           <div className="mt-4 space-y-2">
             <h4 className="font-semibold">Received Offers:</h4>
-            {console.log("🔍 [TASKCARD] Offers for task", task.id, ":", task.offers)} // Log pentru depanare
+            {console.log("🔍 [TASKCARD] Offers for task", task.id, ":", task.offers)}
             {task.offers.map((offer) => (
               <div key={offer.id} className="border p-3 rounded shadow-sm">
                 <p><strong>Tasker:</strong> {offer.tasker?.full_name ?? offer.tasker_id}</p>

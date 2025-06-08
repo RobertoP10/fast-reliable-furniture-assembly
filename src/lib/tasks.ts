@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -17,7 +18,7 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte
+// ✅ Fetch tasks with correct relationships
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -28,13 +29,13 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers:offers(
+      offers(
         *,
         tasker:users(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
-    .eq("client_id", userId) // Filtrează doar taskurile clientului
+    .eq("client_id", userId) // Filter only client's tasks
     .order("created_at", { ascending: false });
 
   const { data, error } = await query;
@@ -44,10 +45,10 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []) as Task[];
 };
 
-// ✅ Creează un nou task
+// ✅ Create a new task
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -58,7 +59,7 @@ export const createTask = async (
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return data;
+  return data as Task;
 };
 
 // ✅ Update status (completed etc.)
@@ -77,13 +78,13 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch un singur task cu relații
+// ✅ Fetch a single task with relationships
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("task_requests")
     .select(`
       *,
-      offers:offers(
+      offers(
         *,
         tasker:users(full_name, approved)
       ),
@@ -97,5 +98,5 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  return data;
+  return data as Task;
 };
