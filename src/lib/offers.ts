@@ -8,6 +8,7 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   };
 };
 
+// ✅ Fetch offers for a specific task
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
@@ -19,6 +20,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
+// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -37,29 +39,44 @@ export const createOffer = async (offerData: {
   return data;
 };
 
+// ✅ Accept a specific offer and reject all others for the same task
 export const acceptOffer = async (
   taskId: string,
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
   try {
+    console.log("🔧 Accepting offer:", offerId, "for task:", taskId);
+
     const { error: acceptError } = await supabase
       .from("offers")
       .update({ is_accepted: true })
       .eq("id", offerId);
-    if (acceptError) throw acceptError;
+
+    if (acceptError) {
+      console.error("❌ acceptOffer -> acceptError", acceptError);
+      throw acceptError;
+    }
 
     const { error: rejectOthersError } = await supabase
       .from("offers")
       .update({ is_accepted: false })
       .eq("task_id", taskId)
       .neq("id", offerId);
-    if (rejectOthersError) throw rejectOthersError;
+
+    if (rejectOthersError) {
+      console.error("❌ acceptOffer -> rejectOthersError", rejectOthersError);
+      throw rejectOthersError;
+    }
 
     const { error: taskError } = await supabase
       .from("task_requests")
       .update({ status: "accepted" })
       .eq("id", taskId);
-    if (taskError) throw taskError;
+
+    if (taskError) {
+      console.error("❌ acceptOffer -> taskError", taskError);
+      throw taskError;
+    }
 
     return { success: true };
   } catch (error) {
@@ -67,6 +84,7 @@ export const acceptOffer = async (
   }
 };
 
+// ✅ Decline an individual offer
 export const declineOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
@@ -75,6 +93,10 @@ export const declineOffer = async (
     .update({ is_accepted: false })
     .eq("id", offerId);
 
-  if (error) return { success: false, error };
+  if (error) {
+    console.error("❌ Error declining offer:", error);
+    return { success: false, error };
+  }
+
   return { success: true };
 };
