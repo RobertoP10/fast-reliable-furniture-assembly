@@ -17,7 +17,7 @@ export type Task = TaskBase & {
   };
 };
 
-// ✅ Fetch taskuri cu relații corecte ca array
+// ✅ Fetch taskuri cu relații corecte
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -28,7 +28,7 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers:offers(
+      offers (
         id,
         task_id,
         tasker_id,
@@ -38,7 +38,7 @@ export const fetchTasks = async (
         proposed_time,
         is_accepted,
         tasker:users(full_name, approved)
-      )[],
+      ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("client_id", userId) // Filtrează doar taskurile clientului
@@ -64,7 +64,7 @@ export const createTask = async (
     .insert(taskData)
     .select(`
       *,
-      offers:offers(
+      offers (
         id,
         task_id,
         tasker_id,
@@ -74,7 +74,7 @@ export const createTask = async (
         proposed_time,
         is_accepted,
         tasker:users(full_name, approved)
-      )[],
+      ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .single();
@@ -105,7 +105,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .from("task_requests")
     .select(`
       *,
-      offers:offers(
+      offers (
         id,
         task_id,
         tasker_id,
@@ -115,7 +115,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
         proposed_time,
         is_accepted,
         tasker:users(full_name, approved)
-      )[],
+      ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .eq("id", taskId)
