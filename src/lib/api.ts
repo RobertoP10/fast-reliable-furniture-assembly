@@ -1,3 +1,4 @@
+
 // Re-export all API functions from their respective modules
 
 // 🔐 Auth
@@ -15,10 +16,9 @@ export {
 // 💼 Offers
 export {
   fetchOffers,
-  fetchUserOffers,
   createOffer,
   acceptOffer,
-  declineOffer // ✅ adăugat aici
+  declineOffer
 } from './offers';
 
 // 🛠️ Admin tools
