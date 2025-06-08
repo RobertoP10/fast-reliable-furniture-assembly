@@ -9,8 +9,9 @@ type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
+// Ajustăm tipul Task pentru a gestiona cazurile în care offers poate fi un obiect singular
 export type Task = TaskBase & {
-  offers?: Offer[];
+  offers?: Offer[] | null; // Permite null sau array
   client?: {
     full_name: string;
     location: string;
@@ -28,7 +29,7 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers (
+      offers!inner (
         id,
         task_id,
         tasker_id,
@@ -51,8 +52,14 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  console.log("🔍 [TASKS] Fetched tasks:", data); // Adaugă log pentru a verifica datele
-  return data || [];
+  // Transformăm offers într-un array dacă este un obiect singular
+  const transformedData = data.map((task) => ({
+    ...task,
+    offers: Array.isArray(task.offers) ? task.offers : task.offers ? [task.offers] : [],
+  }));
+
+  console.log("🔍 [TASKS] Fetched tasks:", transformedData); // Verifică datele transformate
+  return transformedData;
 };
 
 // ✅ Creează un nou task
@@ -64,7 +71,7 @@ export const createTask = async (
     .insert(taskData)
     .select(`
       *,
-      offers (
+      offers!inner (
         id,
         task_id,
         tasker_id,
@@ -80,7 +87,14 @@ export const createTask = async (
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return data;
+
+  // Transformăm offers într-un array dacă este un obiect singular
+  const transformedData = {
+    ...data,
+    offers: Array.isArray(data.offers) ? data.offers : data.offers ? [data.offers] : [],
+  };
+
+  return transformedData;
 };
 
 // ✅ Update status (completed etc.)
@@ -105,7 +119,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .from("task_requests")
     .select(`
       *,
-      offers (
+      offers!inner (
         id,
         task_id,
         tasker_id,
@@ -126,5 +140,11 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  return data;
+  // Transformăm offers într-un array dacă este un obiect singular
+  const transformedData = {
+    ...data,
+    offers: Array.isArray(data.offers) ? data.offers : data.offers ? [data.offers] : [],
+  };
+
+  return transformedData;
 };
