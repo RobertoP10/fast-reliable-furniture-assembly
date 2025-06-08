@@ -8,6 +8,7 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   };
 };
 
+// ✅ Get offers for a task (with tasker full_name)
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   const { data, error } = await supabase
     .from("offers")
@@ -19,22 +20,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
   return data || [];
 };
 
-export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
-  const { data, error } = await supabase
-    .from("offers")
-    .select(`
-      *,
-      task:task_requests!offers_task_id_fkey(
-        id, title, description, location, status, created_at
-      )
-    `)
-    .eq("tasker_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(`Failed to fetch user offers: ${error.message}`);
-  return data || [];
-};
-
+// ✅ Create a new offer
 export const createOffer = async (offerData: {
   task_id: string;
   tasker_id: string;
@@ -53,7 +39,7 @@ export const createOffer = async (offerData: {
   return data;
 };
 
-// ✅ Accept one offer & reject the rest
+// ✅ Accept one offer, reject others, and update task status
 export const acceptOffer = async (
   taskId: string,
   offerId: string
@@ -80,12 +66,11 @@ export const acceptOffer = async (
 
     return { success: true };
   } catch (error) {
-    console.error("❌ [OFFERS] Error in acceptOffer:", error);
     return { success: false, error };
   }
 };
 
-// ✅ Decline only one offer
+// ✅ Decline individual offer
 export const declineOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
@@ -95,7 +80,7 @@ export const declineOffer = async (
     .eq("id", offerId);
 
   if (error) {
-    console.error("❌ [OFFERS] Error declining offer:", error);
+    console.error("❌ Error declining offer:", error);
     return { success: false, error };
   }
 
