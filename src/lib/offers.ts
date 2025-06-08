@@ -1,73 +1,48 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: {
-    full_name: string;
-    approved?: boolean;
-  };
-};
+type OfferInsert = Database["public"]["Tables"]["offers"]["Insert"];
+type OfferUpdate = Database["public"]["Tables"]["offers"]["Update"];
 
-// ✅ Fetch offers for a specific task (with tasker full_name)
-export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
+export const createOffer = async (offer: OfferInsert) => {
   const { data, error } = await supabase
     .from("offers")
-    .select(
-      `*,
-       tasker:users!offers_tasker_id_fkey(full_name, approved)
-      `
-    )
-    .eq("task_id", taskId)
-    .order("created_at", { ascending: false });
+    .insert(offer)
+    .select()
+    .single();
 
   if (error) {
-    console.error("❌ Error fetching offers:", error);
-    return [];
+    console.error("❌ Error creating offer:", error);
+    return { success: false, error };
   }
 
-  return data ?? [];
+  return { success: true, data };
 };
 
-// ✅ Submit a new offer
-export const submitOffer = async (offer: {
-  task_id: string;
-  tasker_id: string;
-  price: number;
-  message?: string;
-  proposed_date: string;
-  proposed_time: string;
-}): Promise<{ success: boolean; error?: string }> => {
-  const { error } = await supabase.from("offers").insert([offer]);
+export const declineOffer = async (offerId: string) => {
+  const { data, error } = await supabase
+    .from("offers")
+    .update({ is_accepted: false })
+    .eq("id", offerId)
+    .select()
+    .single();
 
   if (error) {
-    return { success: false, error: error.message };
+    console.error("❌ Error declining offer:", error);
+    return { success: false, error };
   }
 
-  return { success: true };
+  return { success: true, data };
 };
 
-// ✅ Accept an offer
-export const acceptOffer = async (
-  taskId: string,
-  offerId: string
-): Promise<{ success: boolean; error?: string }> => {
-  const { error: taskUpdateError } = await supabase
+export const acceptOffer = async (taskId: string, offerId: string) => {
+  const { error } = await supabase
     .from("task_requests")
-    .update({ accepted_offer_id: offerId, status: "accepted" })
+    .update({ accepted_offer_id: offerId, status: "in_progress" })
     .eq("id", taskId);
 
-  if (taskUpdateError) {
-    return { success: false, error: taskUpdateError.message };
+  if (error) {
+    console.error("❌ Error accepting offer:", error);
+    throw error;
   }
-
-  const { error: offerUpdateError } = await supabase
-    .from("offers")
-    .update({ is_accepted: true })
-    .eq("id", offerId);
-
-  if (offerUpdateError) {
-    return { success: false, error: offerUpdateError.message };
-  }
-
-  return { success: true };
 };
