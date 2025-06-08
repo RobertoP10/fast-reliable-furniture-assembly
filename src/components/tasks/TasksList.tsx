@@ -12,7 +12,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 // Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string };
+  tasker?: { full_name: string; approved?: boolean };
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
@@ -43,6 +43,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
+      console.log("🔍 [TASKS] Fetched tasks:", fetchedTasks); // Log pentru depanare
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
@@ -68,9 +69,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         } else if (activeTab === "received-offers") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            Array.isArray(task.offers) &&
-            task.offers.length > 0
+            task.offers && task.offers.length > 0
           );
+          console.log("🔍 [TASKS] Filtered tasks for received-offers:", filteredTasks); // Log pentru depanare
         }
       }
 
@@ -242,14 +243,15 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
         {userRole === "client" && task.offers && task.offers.length > 0 && (
           <div className="mt-4 space-y-2">
             <h4 className="font-semibold">Received Offers:</h4>
+            {console.log("🔍 [TASKCARD] Offers for task", task.id, ":", task.offers)} // Log pentru depanare
             {task.offers.map((offer) => (
               <div key={offer.id} className="border p-3 rounded shadow-sm">
                 <p><strong>Tasker:</strong> {offer.tasker?.full_name ?? offer.tasker_id}</p>
                 <p><strong>Price:</strong> £{offer.price}</p>
                 {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
-                <p><strong>Status:</strong> {offer.is_accepted === true ? "✅ Accepted" : offer.is_accepted === false ? "❌ Rejected" : "⏳ Pending"}</p>
-                {offer.is_accepted !== true && (
+                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
+                {!offer.is_accepted && (
                   <Button
                     className="mt-2"
                     onClick={() => onAccept(task.id, offer.id)}
