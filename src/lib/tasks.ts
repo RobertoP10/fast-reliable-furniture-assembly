@@ -1,11 +1,10 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
+// Tipuri de date
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
-type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
-type Offer = OfferRow & {
-  tasker?: { full_name: string; approved?: boolean };
+type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
+  tasker?: { full_name: string };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
@@ -19,15 +18,7 @@ export type Task = TaskBase & {
   };
 };
 
-// Helper function to transform Supabase response to our Task type
-const transformSupabaseTaskToTask = (supabaseTask: any): Task => {
-  return {
-    ...supabaseTask,
-    offers: Array.isArray(supabaseTask.offers) ? supabaseTask.offers : (supabaseTask.offers ? [supabaseTask.offers] : [])
-  };
-};
-
-// ✅ Fetch tasks with correct relationships
+// ✅ Fetch taskuri cu toate relațiile (offers + client)
 export const fetchTasks = async (
   userId: string,
   userRole: string
@@ -38,27 +29,31 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers(
+      offers:offers!offers_task_id_fkey(
         *,
-        tasker:users(full_name, approved)
+        tasker:users!offers_tasker_id_fkey(full_name)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
-    `)
-    .eq("client_id", userId) // Filter only client's tasks
-    .order("created_at", { ascending: false });
+    `);
 
-  const { data, error } = await query;
+  // Filtrare după rol
+  if (userRole === "client") {
+    query = query.eq("client_id", userId);
+  }
+
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
   if (error) {
     console.error("❌ [TASKS] Error fetching tasks:", error);
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  // Transform the data to match our Task type
-  return (data || []).map(transformSupabaseTaskToTask);
+  return data || [];
 };
 
-// ✅ Create a new task
+// ✅ Creează un task nou
 export const createTask = async (
   taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
 ): Promise<Task> => {
@@ -69,10 +64,10 @@ export const createTask = async (
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return transformSupabaseTaskToTask(data);
+  return data;
 };
 
-// ✅ Update status (completed etc.)
+// ✅ Actualizează statusul taskului (accepted, completed etc.)
 export const updateTaskStatus = async (
   taskId: string,
   status: TaskStatus,
@@ -88,15 +83,15 @@ export const updateTaskStatus = async (
   if (error) throw new Error(`Failed to update task status: ${error.message}`);
 };
 
-// ✅ Fetch a single task with relationships
+// ✅ Fetch un singur task cu toate relațiile
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("task_requests")
     .select(`
       *,
-      offers(
+      offers:offers!offers_task_id_fkey(
         *,
-        tasker:users(full_name, approved)
+        tasker:users!offers_tasker_id_fkey(full_name)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
@@ -108,5 +103,5 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  return transformSupabaseTaskToTask(data);
+  return data;
 };
