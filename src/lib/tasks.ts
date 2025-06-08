@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
-type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
+type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
+type Offer = OfferRow & {
   tasker?: { full_name: string; approved?: boolean };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
@@ -15,6 +16,14 @@ export type Task = TaskBase & {
   client?: {
     full_name: string;
     location: string;
+  };
+};
+
+// Helper function to transform Supabase response to our Task type
+const transformSupabaseTaskToTask = (supabaseTask: any): Task => {
+  return {
+    ...supabaseTask,
+    offers: Array.isArray(supabaseTask.offers) ? supabaseTask.offers : (supabaseTask.offers ? [supabaseTask.offers] : [])
   };
 };
 
@@ -45,7 +54,8 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  return (data || []) as Task[];
+  // Transform the data to match our Task type
+  return (data || []).map(transformSupabaseTaskToTask);
 };
 
 // ✅ Create a new task
@@ -59,7 +69,7 @@ export const createTask = async (
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return data as Task;
+  return transformSupabaseTaskToTask(data);
 };
 
 // ✅ Update status (completed etc.)
@@ -98,5 +108,5 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     return null;
   }
 
-  return data as Task;
+  return transformSupabaseTaskToTask(data);
 };
