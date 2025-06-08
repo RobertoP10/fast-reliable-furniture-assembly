@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Card,
@@ -61,6 +62,10 @@ export default function TasksList({ userRole, showTab = "all" }: TasksListProps)
     setSelectedTaskId(taskId);
   };
 
+  const handleCloseOfferDialog = () => {
+    setSelectedTaskId(null);
+  };
+
   return (
     <div className="space-y-4">
       {tasks.map((task) => (
@@ -80,7 +85,11 @@ export default function TasksList({ userRole, showTab = "all" }: TasksListProps)
             </div>
             <div className="flex items-center gap-2">
               <PoundSterling size={16} />
-              <span>{task.budget ? `£${task.budget}` : "No budget specified"}</span>
+              <span>
+                {task.price_range_min && task.price_range_max 
+                  ? `£${task.price_range_min} - £${task.price_range_max}` 
+                  : "Price negotiable"}
+              </span>
             </div>
 
             {userRole === "tasker" && (
@@ -101,7 +110,7 @@ export default function TasksList({ userRole, showTab = "all" }: TasksListProps)
                     <p>
                       <strong>Status:</strong>{" "}
                       {offer.is_accepted ? (
-                        <Badge variant="success">Accepted</Badge>
+                        <Badge variant="default" className="bg-green-100 text-green-700">Accepted</Badge>
                       ) : (
                         <Badge variant="secondary">Pending</Badge>
                       )}
@@ -122,9 +131,10 @@ export default function TasksList({ userRole, showTab = "all" }: TasksListProps)
       {selectedTaskId && (
         <MakeOfferDialog
           taskId={selectedTaskId}
-          open={!!selectedTaskId}
-          onOpenChange={() => setSelectedTaskId(null)}
-          onOfferCreated={loadData}
+          onOfferCreated={async () => {
+            await loadData();
+            handleCloseOfferDialog();
+          }}
         />
       )}
     </div>
