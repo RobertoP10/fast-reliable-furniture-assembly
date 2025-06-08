@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchTasks, acceptOffer } from "@/lib/api";
+import { fetchTasks, acceptOffer } from "@/lib/tasks";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -15,7 +15,7 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  offers?: Offer[] | null;
+  offers?: Offer[];
   client?: {
     full_name: string;
     location: string;
@@ -47,16 +47,18 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            !(task.offers && task.offers.some(o => o.tasker_id === user.id))
+            !(task.offers?.some((o) => o.tasker_id === user.id))
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.offers?.some(o => o.tasker_id === user.id)
+            task.offers?.some((o) => o.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
           filteredTasks = fetchedTasks.filter(task => task.status === "completed");
         }
-      } else if (userRole === "client") {
+      }
+
+      if (userRole === "client") {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task => task.status === "pending");
         } else if (activeTab === "my-tasks") {
@@ -65,8 +67,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           filteredTasks = fetchedTasks.filter(task => task.status === "completed");
         } else if (activeTab === "received-offers") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.status === "pending" &&
-            task.offers && Array.isArray(task.offers) && task.offers.length > 0
+            task.status === "pending" && Array.isArray(task.offers) && task.offers.length > 0
           );
         }
       }
@@ -81,8 +82,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       setTasks(filteredTasks);
-    } catch (error) {
-      console.error("❌ Error loading tasks:", error);
+    } catch (err) {
+      console.error("❌ Failed to load tasks", err);
     } finally {
       setLoading(false);
     }
@@ -97,50 +98,37 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     }
   }, [user, activeTab]);
 
+  const handleAcceptOffer = async (taskId: string, offerId: string) => {
+    const res = await acceptOffer(taskId, offerId);
+    if (res.success) loadData();
+  };
+
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
     loadData();
-  };
-
-  const handleAcceptOffer = async (taskId: string, offerId: string) => {
-    const res = await acceptOffer(taskId, offerId);
-    if (res.success) {
-      loadData();
-    } else {
-      console.error("❌ Failed to accept offer:", res.error);
-    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-blue-900">
-          {{
-            completed: "Completed Tasks",
-            "my-tasks": userRole === "client" ? "Accepted Tasks" : "My Offers",
-            "received-offers": "Received Offers",
-            available: userRole === "client" ? "Pending Requests" : "Available Tasks"
-          }[activeTab]}
+          {activeTab === "completed" ? "Completed Tasks"
+            : activeTab === "my-tasks" ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+            : activeTab === "received-offers" ? "Received Offers"
+            : userRole === "client" ? "Pending Requests" : "Available Tasks"}
         </h2>
         <div className="space-x-2">
-          {["available", "my-tasks", "completed"].map(tab => (
-            <Button
-              key={tab}
-              variant={activeTab === tab ? "default" : "outline"}
-              onClick={() => setActiveTab(tab as any)}
-            >
-              {{
-                available: userRole === "client" ? "Pending Requests" : "Available",
-                "my-tasks": userRole === "client" ? "Accepted Tasks" : "My Offers",
-                completed: "Completed"
-              }[tab]}
-            </Button>
-          ))}
+          <Button variant={activeTab === "available" ? "default" : "outline"} onClick={() => setActiveTab("available")}>
+            {userRole === "client" ? "Pending Requests" : "Available"}
+          </Button>
+          <Button variant={activeTab === "my-tasks" ? "default" : "outline"} onClick={() => setActiveTab("my-tasks")}>
+            {userRole === "client" ? "Accepted Tasks" : "My Offers"}
+          </Button>
+          <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
+            Completed
+          </Button>
           {userRole === "client" && (
-            <Button
-              variant={activeTab === "received-offers" ? "default" : "outline"}
-              onClick={() => setActiveTab("received-offers")}
-            >
+            <Button variant={activeTab === "received-offers" ? "default" : "outline"} onClick={() => setActiveTab("received-offers")}>
               Received Offers
             </Button>
           )}
@@ -174,10 +162,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       )}
 
       {selectedTaskId && (
-        <MakeOfferDialog
-          taskId={selectedTaskId}
-          onOfferCreated={handleOfferCreated}
-        />
+        <MakeOfferDialog taskId={selectedTaskId} onOfferCreated={handleOfferCreated} />
       )}
     </div>
   );
@@ -193,7 +178,6 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   onMakeOffer: () => void;
 }) {
   const myOffer = task.offers?.find((o) => o.tasker_id === user.id);
-  const hasOffered = !!myOffer;
 
   return (
     <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
@@ -208,36 +192,19 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
       </CardHeader>
       <CardContent>
         <div className="grid md:grid-cols-3 gap-4 mb-4 text-sm text-gray-600">
-          <div className="flex items-center space-x-2">
-            <PoundSterling className="h-4 w-4" />
-            <span>£{task.price_range_min} – £{task.price_range_max}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <MapPin className="h-4 w-4" />
-            <span>{task.location}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="h-4 w-4" />
-            <span>{new Date(task.created_at).toLocaleString()}</span>
-          </div>
+          <div className="flex items-center space-x-2"><PoundSterling className="h-4 w-4" /><span>£{task.price_range_min} – £{task.price_range_max}</span></div>
+          <div className="flex items-center space-x-2"><MapPin className="h-4 w-4" /><span>{task.location}</span></div>
+          <div className="flex items-center space-x-2"><Clock className="h-4 w-4" /><span>{new Date(task.created_at).toLocaleString()}</span></div>
         </div>
 
-        {userRole === "tasker" && (
-          hasOffered ? (
-            <Badge>You already sent an offer</Badge>
-          ) : (
-            <Button onClick={onMakeOffer}>Make an Offer</Button>
-          )
+        {userRole === "tasker" && !myOffer && (
+          <Button onClick={onMakeOffer}>Make an Offer</Button>
         )}
 
         {userRole === "tasker" && myOffer && (
           <div className="text-sm text-gray-700 mt-2">
             Your Offer: <strong>£{myOffer.price}</strong> – Status: <strong>
-              {myOffer.is_accepted === true
-                ? "Accepted"
-                : myOffer.is_accepted === false
-                ? "Rejected"
-                : "Pending"}
+              {myOffer.is_accepted ? "Accepted" : myOffer.is_accepted === false ? "Rejected" : "Pending"}
             </strong>
           </div>
         )}
