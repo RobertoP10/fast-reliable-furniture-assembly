@@ -68,7 +68,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         } else if (activeTab === "received-offers") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            task.offers && task.offers.length > 0
+            Array.isArray(task.offers) &&
+            task.offers.length > 0
           );
         }
       }
@@ -247,8 +248,8 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
                 <p><strong>Price:</strong> £{offer.price}</p>
                 {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
-                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
-                {!offer.is_accepted && (
+                <p><strong>Status:</strong> {offer.is_accepted === true ? "✅ Accepted" : offer.is_accepted === false ? "❌ Rejected" : "⏳ Pending"}</p>
+                {offer.is_accepted !== true && (
                   <Button
                     className="mt-2"
                     onClick={() => onAccept(task.id, offer.id)}
