@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, PoundSterling } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchTasks, acceptOffer, declineOffer } from "@/lib/api";
+import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import type { Database } from "@/integrations/supabase/types";
 
+// Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string };
 };
@@ -31,7 +32,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed">("available");
+  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
   const [completedCount, setCompletedCount] = useState(0);
   const [completedTotal, setCompletedTotal] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -64,6 +65,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           filteredTasks = fetchedTasks.filter(task => task.status === "accepted");
         } else if (activeTab === "completed") {
           filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+        } else if (activeTab === "received-offers") {
+          filteredTasks = fetchedTasks.filter(task =>
+            task.status === "pending" &&
+            task.offers && task.offers.length > 0
+          );
         }
       }
 
@@ -99,22 +105,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   };
 
   const handleAcceptOffer = async (taskId: string, offerId: string) => {
-    console.log("👉 Accepting offer", offerId, "for task", taskId);
     const res = await acceptOffer(taskId, offerId);
     if (res.success) {
       loadData();
     } else {
       console.error("❌ Failed to accept offer:", res.error);
-    }
-  };
-
-  const handleDeclineOffer = async (offerId: string) => {
-    console.log("👉 Declining offer", offerId);
-    const res = await declineOffer(offerId);
-    if (res.success) {
-      loadData();
-    } else {
-      console.error("❌ Failed to decline offer:", res.error);
     }
   };
 
@@ -126,6 +121,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             ? "Completed Tasks"
             : activeTab === "my-tasks"
             ? (userRole === "client" ? "Accepted Tasks" : "My Offers")
+            : activeTab === "received-offers"
+            ? "Received Offers"
             : (userRole === "client" ? "Pending Requests" : "Available Tasks")}
         </h2>
         <div className="space-x-2">
@@ -138,6 +135,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           <Button variant={activeTab === "completed" ? "default" : "outline"} onClick={() => setActiveTab("completed")}>
             Completed
           </Button>
+          {userRole === "client" && (
+            <Button variant={activeTab === "received-offers" ? "default" : "outline"} onClick={() => setActiveTab("received-offers")}>
+              Received Offers
+            </Button>
+          )}
         </div>
       </div>
 
@@ -161,7 +163,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               userRole={userRole}
               user={user}
               onAccept={handleAcceptOffer}
-              onDecline={handleDeclineOffer}
               onMakeOffer={() => setSelectedTaskId(task.id)}
             />
           ))}
@@ -180,12 +181,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
 export default TasksList;
 
-function TaskCard({ task, userRole, user, onAccept, onDecline, onMakeOffer }: {
+function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
   task: Task;
   userRole: "client" | "tasker";
   user: any;
   onAccept: (taskId: string, offerId: string) => void;
-  onDecline: (offerId: string) => void;
   onMakeOffer: () => void;
 }) {
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
@@ -247,16 +247,14 @@ function TaskCard({ task, userRole, user, onAccept, onDecline, onMakeOffer }: {
                 <p><strong>Price:</strong> £{offer.price}</p>
                 {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
-                <p><strong>Status:</strong> {
-                  offer.is_accepted === true ? "✅ Accepted"
-                    : offer.is_accepted === false ? "❌ Declined"
-                    : "Pending"
-                }</p>
-                {offer.is_accepted === null && (
-                  <div className="flex gap-2 mt-2">
-                    <Button onClick={() => onAccept(task.id, offer.id)}>Accept Offer</Button>
-                    <Button variant="destructive" onClick={() => onDecline(offer.id)}>Decline</Button>
-                  </div>
+                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
+                {!offer.is_accepted && (
+                  <Button
+                    className="mt-2"
+                    onClick={() => onAccept(task.id, offer.id)}
+                  >
+                    Accept Offer
+                  </Button>
                 )}
               </div>
             ))}
