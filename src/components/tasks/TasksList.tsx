@@ -12,11 +12,11 @@ import type { Database } from "@/integrations/supabase/types";
 
 // Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved?: boolean };
+  tasker?: { full_name: string; approved?: boolean; created_at?: string; updated_at?: string; accepted_offer_id?: string };
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  offers?: Offer[];
+  offers?: Offer[] | null; // Permite null
   client?: {
     full_name: string;
     location: string;
@@ -43,18 +43,18 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     try {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole);
-      console.log("🔍 [TASKS] Fetched tasks:", fetchedTasks); // Verifică datele returnate
+      console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2)); // Log detaliat
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
         if (activeTab === "available") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            !(task.offers && task.offers.some((offer) => offer.tasker_id === user.id))
+            !(task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id))
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = fetchedTasks.filter(task =>
-            task.offers?.some((offer) => offer.tasker_id === user.id)
+            task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
           filteredTasks = fetchedTasks.filter(task => task.status === "completed");
@@ -69,15 +69,17 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         } else if (activeTab === "received-offers") {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
-            task.offers && task.offers.length > 0
+            task.offers &&
+            Array.isArray(task.offers) && // Verifică explicit tipul array
+            task.offers.length > 0
           );
-          console.log("🔍 [TASKS] Filtered tasks for received-offers:", filteredTasks); // Verifică filtrarea
+          console.log("🔍 [TASKS] Filtered tasks for received-offers:", JSON.stringify(filteredTasks, null, 2)); // Log detaliat
         }
       }
 
       if (activeTab === "completed") {
         const total = filteredTasks.reduce((sum, task) => {
-          const accepted = task.offers?.find(o => o.is_accepted);
+          const accepted = task.offers?.find(o => o?.is_accepted);
           return sum + (accepted?.price ?? 0);
         }, 0);
         setCompletedCount(filteredTasks.length);
@@ -240,7 +242,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
           </div>
         )}
 
-        {userRole === "client" && task.offers && task.offers.length > 0 && (
+        {userRole === "client" && task.offers && Array.isArray(task.offers) && task.offers.length > 0 && ( // Adaugă Array.isArray
           <div className="mt-4 space-y-2">
             <h4 className="font-semibold">Received Offers:</h4>
             {task.offers.map((offer) => (
