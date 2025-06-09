@@ -42,8 +42,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
     try {
       setLoading(true);
-      const fetchedTasks = await fetchTasks(user.id, userRole);
-      console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2)); // Log detaliat
+      const fetchedTasks = await fetchTasks(user.id, userRole).catch((error) => {
+        console.error("❌ [TASKS] Fetch failed:", error);
+        return []; // Returnează un array gol în caz de eroare
+      });
+      console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2));
       let filteredTasks = fetchedTasks;
 
       if (userRole === "tasker") {
@@ -70,10 +73,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
           filteredTasks = fetchedTasks.filter(task =>
             task.status === "pending" &&
             task.offers &&
-            Array.isArray(task.offers) && // Verifică explicit tipul array
+            Array.isArray(task.offers) &&
             task.offers.length > 0
           );
-          console.log("🔍 [TASKS] Filtered tasks for received-offers:", JSON.stringify(filteredTasks, null, 2)); // Log detaliat
+          console.log("🔍 [TASKS] Filtered tasks for received-offers:", JSON.stringify(filteredTasks, null, 2));
         }
       }
 
@@ -89,6 +92,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setTasks(filteredTasks);
     } catch (error) {
       console.error("❌ Error loading tasks:", error);
+      setTasks([]); // Setează tasks la un array gol în caz de eroare
     } finally {
       setLoading(false);
     }
@@ -242,7 +246,7 @@ function TaskCard({ task, userRole, user, onAccept, onMakeOffer }: {
           </div>
         )}
 
-        {userRole === "client" && task.offers && Array.isArray(task.offers) && task.offers.length > 0 && ( // Adaugă Array.isArray
+        {userRole === "client" && task.offers && Array.isArray(task.offers) && task.offers.length > 0 && (
           <div className="mt-4 space-y-2">
             <h4 className="font-semibold">Received Offers:</h4>
             {task.offers.map((offer) => (
