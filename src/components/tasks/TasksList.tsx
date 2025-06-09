@@ -3,7 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks, acceptOffer } from "@/lib/api";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
-import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { CompletedTasksStats } from "@/components/tasks/CompletedTasksStats";
 import type { Database } from "@/integrations/supabase/types";
@@ -27,6 +26,61 @@ interface TasksListProps {
   userRole: "client" | "tasker";
   tasks?: Task[];
 }
+
+// Componentă TaskCard integrată
+const TaskCard = ({ task, userRole, user, activeTab, onAccept, onMakeOffer }: {
+  task: Task;
+  userRole: "client" | "tasker";
+  user: any;
+  activeTab: "pending" | "accepted-tasks" | "completed" | "received-offers";
+  onAccept: (taskId: string, offerId: string) => void;
+  onMakeOffer: () => void;
+}) => {
+  return (
+    <Card>
+      <CardContent>
+        <h3>{task.title}</h3>
+        <p>{task.description}</p>
+        <p>Price: £{task.price_range_min} - £{task.price_range_max}</p>
+        <p>Location: {task.location}</p>
+        <p>Status: {task.status}</p>
+        <p>Created at: {new Date(task.created_at).toLocaleString()}</p>
+
+        {task.offers && Array.isArray(task.offers) && task.offers.length > 0 && (
+          <div>
+            <h4>Offers Received:</h4>
+            {task.offers.map((offer) => (
+              <div key={offer.id}>
+                <p>Tasker: {offer.tasker?.full_name}</p>
+                <p>Price: £{offer.price}</p>
+                <p>Message: {offer.message}</p>
+                <p>Proposed Date: {offer.proposed_date}</p>
+                <p>Proposed Time: {offer.proposed_time}</p>
+                {userRole === "client" && activeTab === "received-offers" && !task.accepted_offer_id && (
+                  <button
+                    onClick={() => onAccept(task.id, offer.id)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded mt-2"
+                  >
+                    Accept Offer
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {userRole === "tasker" && task.status === "pending" && activeTab === "available" && (
+          <button
+            onClick={onMakeOffer}
+            className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+          >
+            Make Offer
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const { user, signOut } = useAuth();
@@ -162,7 +216,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               task={task}
               userRole={userRole}
               user={user}
-              activeTab={activeTab} // Trece activeTab ca prop
+              activeTab={activeTab}
               onAccept={handleAcceptOffer}
               onMakeOffer={() => setSelectedTaskId(task.id)}
             />
