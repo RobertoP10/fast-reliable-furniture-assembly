@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -34,7 +35,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
   const [completedCount, setCompletedCount] = useState<number>(0);
-  const [completedTotal, setCompletedTotal] = useState<number>(0); // Explicit ca number
+  const [completedTotal, setCompletedTotal] = useState<number>(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -81,7 +82,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce((sum: number, task: Task): number => { // Explicit return type
+        const total = filteredTasks.reduce<number>((sum: number, task: Task): number => {
           const accepted = task.offers?.find(o => o?.is_accepted);
           return sum + (accepted?.price ?? 0);
         }, 0);
@@ -97,9 +98,6 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setLoading(false);
     }
   };
-
-  // Restul codului (useEffect, handleOfferCreated, handleAcceptOffer, return) rămâne neschimbat
-};
 
   useEffect(() => {
     if (!propTasks) {
