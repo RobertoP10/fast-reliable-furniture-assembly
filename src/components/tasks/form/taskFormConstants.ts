@@ -1,4 +1,8 @@
 
+import type { Database } from '@/integrations/supabase/types';
+
+type PaymentMethod = Database['public']['Enums']['payment_method'];
+
 export const categories = {
   "wardrobe": ["PAX", "HEMNES", "BRIMNES", "MALM", "Other"],
   "desk": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Other"],
@@ -24,7 +28,7 @@ export const initialFormData = {
   minBudget: "",
   maxBudget: "",
   address: "",
-  paymentMethod: "cash" as const,
+  paymentMethod: "cash" as PaymentMethod,
   requiredDate: "",
   requiredTime: ""
 };
