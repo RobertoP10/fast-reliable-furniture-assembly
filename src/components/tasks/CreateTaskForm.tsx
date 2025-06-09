@@ -1,160 +1,16 @@
-import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { createTask } from "@/lib/api";
-import type { Database } from '@/integrations/supabase/types';
-
-type PaymentMethod = Database['public']['Enums']['payment_method'];
+import { useTaskForm } from "./form/useTaskForm";
+import { TaskBasicInfo } from "./form/TaskBasicInfo";
+import { TaskCategory } from "./form/TaskCategory";
+import { TaskBudget } from "./form/TaskBudget";
+import { TaskLocation } from "./form/TaskLocation";
+import { TaskSchedule } from "./form/TaskSchedule";
+import { TaskPayment } from "./form/TaskPayment";
 
 const CreateTaskForm = () => {
-  const { user } = useAuth();
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    subcategory: "",
-    minBudget: "",
-    maxBudget: "",
-    address: "",
-    paymentMethod: "cash" as PaymentMethod,
-    requiredDate: "",
-    requiredTime: ""
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  const categories = {
-    "wardrobe": ["PAX", "HEMNES", "BRIMNES", "MALM", "Other"],
-    "desk": ["LINNMON", "BEKANT", "GALANT", "MICKE", "Other"],
-    "bed": ["MALM", "HEMNES", "BRIMNES", "TARVA", "Other"],
-    "chest": ["HEMNES", "MALM", "RAST", "KOPPANG", "Other"],
-    "table": ["INGATORP", "BJURSTA", "LERHAMN", "MÖRBYLÅNGA", "Other"],
-    "shelf": ["BILLY", "HEMNES", "FJÄLKINGE", "IVAR", "Other"]
-  };
-
-  const locations = [
-    "Birmingham, West Midlands",
-    "Telford, Shropshire", 
-    "Wolverhampton, West Midlands",
-    "Stoke on Trent, Staffordshire",
-    "Shrewsbury, Shropshire"
-  ];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to create a task.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.category || !formData.subcategory) {
-      toast({
-        title: "Error",
-        description: "Please select category and subcategory.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.minBudget || !formData.maxBudget) {
-      toast({
-        title: "Error",
-        description: "Please enter both minimum and maximum budget.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.address) {
-      toast({
-        title: "Error",
-        description: "Please select your location.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.requiredDate || !formData.requiredTime) {
-      toast({
-        title: "Error",
-        description: "Please specify when you need the task completed. This helps taskers plan their schedule.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate that the required date is not in the past
-    const selectedDate = new Date(`${formData.requiredDate}T${formData.requiredTime}`);
-    const now = new Date();
-    if (selectedDate <= now) {
-      toast({
-        title: "Error",
-        description: "Please select a future date and time for task completion.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const taskData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        subcategory: formData.subcategory,
-        price_range_min: Number(formData.minBudget),
-        price_range_max: Number(formData.maxBudget),
-        location: formData.address,
-        payment_method: formData.paymentMethod,
-        required_date: formData.requiredDate,
-        required_time: formData.requiredTime,
-        client_id: user.id,
-      };
-
-      const newTask = await createTask(taskData);
-
-      toast({
-        title: "Task created successfully!",
-        description: "Your task has been posted and will be visible to taskers.",
-      });
-
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        category: "",
-        subcategory: "",
-        minBudget: "",
-        maxBudget: "",
-        address: "",
-        paymentMethod: "cash",
-        requiredDate: "",
-        requiredTime: ""
-      });
-    } catch (error) {
-      console.error("❌ [FORM] Error creating task:", error);
-      toast({
-        title: "Error",
-        description: `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const { formData, isSubmitting, handleSubmit, updateFormData } = useTaskForm();
 
   return (
     <Card className="shadow-lg border-0">
@@ -166,153 +22,39 @@ const CreateTaskForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Task Title</Label>
-            <Input
-              id="title"
-              placeholder="e.g. IKEA PAX Wardrobe Assembly"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="mt-1"
-            />
-          </div>
+          <TaskBasicInfo
+            title={formData.title}
+            description={formData.description}
+            onUpdate={updateFormData}
+          />
 
-          <div>
-            <Label htmlFor="description">Detailed Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe what needs to be assembled, dimensions, special requirements..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="mt-1 min-h-[100px]"
-            />
-          </div>
+          <TaskCategory
+            category={formData.category}
+            subcategory={formData.subcategory}
+            onUpdate={updateFormData}
+          />
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value, subcategory: "" })}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wardrobe">Wardrobe</SelectItem>
-                  <SelectItem value="desk">Desk</SelectItem>
-                  <SelectItem value="bed">Bed</SelectItem>
-                  <SelectItem value="chest">Chest of Drawers</SelectItem>
-                  <SelectItem value="table">Table</SelectItem>
-                  <SelectItem value="shelf">Shelf</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <TaskBudget
+            minBudget={formData.minBudget}
+            maxBudget={formData.maxBudget}
+            onUpdate={updateFormData}
+          />
 
-            <div>
-              <Label>Subcategory / Model</Label>
-              <Select 
-                value={formData.subcategory} 
-                onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
-                disabled={!formData.category}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.category && categories[formData.category as keyof typeof categories]?.map((sub) => (
-                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <TaskLocation
+            address={formData.address}
+            onUpdate={updateFormData}
+          />
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="minBudget">Minimum Budget (£)</Label>
-              <Input
-                id="minBudget"
-                type="number"
-                placeholder="50"
-                value={formData.minBudget}
-                onChange={(e) => setFormData({ ...formData, minBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="maxBudget">Maximum Budget (£)</Label>
-              <Input
-                id="maxBudget"
-                type="number"
-                placeholder="120"
-                value={formData.maxBudget}
-                onChange={(e) => setFormData({ ...formData, maxBudget: e.target.value })}
-                required
-                className="mt-1"
-              />
-            </div>
-          </div>
+          <TaskSchedule
+            requiredDate={formData.requiredDate}
+            requiredTime={formData.requiredTime}
+            onUpdate={updateFormData}
+          />
 
-          <div>
-            <Label>Location</Label>
-            <Select value={formData.address} onValueChange={(value) => setFormData({ ...formData, address: value })}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select your location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location} value={location}>{location}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="requiredDate">Required Date <span className="text-red-500">*</span></Label>
-              <Input
-                id="requiredDate"
-                type="date"
-                value={formData.requiredDate}
-                onChange={(e) => setFormData({ ...formData, requiredDate: e.target.value })}
-                required
-                className="mt-1"
-                min={new Date().toISOString().split('T')[0]}
-              />
-              <p className="text-xs text-gray-500 mt-1">Taskers will follow this schedule</p>
-            </div>
-            <div>
-              <Label htmlFor="requiredTime">Required Time <span className="text-red-500">*</span></Label>
-              <Input
-                id="requiredTime"
-                type="time"
-                value={formData.requiredTime}
-                onChange={(e) => setFormData({ ...formData, requiredTime: e.target.value })}
-                required
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">Preferred start time</p>
-            </div>
-          </div>
-
-          <div>
-            <Label>Payment Method</Label>
-            <RadioGroup 
-              value={formData.paymentMethod} 
-              onValueChange={(value: PaymentMethod) => setFormData({ ...formData, paymentMethod: value })}
-              className="mt-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash">Cash</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="bank_transfer" id="bank" />
-                <Label htmlFor="bank">Bank Transfer</Label>
-              </div>
-            </RadioGroup>
-          </div>
+          <TaskPayment
+            paymentMethod={formData.paymentMethod}
+            onUpdate={updateFormData}
+          />
 
           <Button 
             type="submit" 
