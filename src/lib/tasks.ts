@@ -42,7 +42,7 @@ export const fetchTasks = async (
       status,
       accepted_offer_id,
       created_at,
-      offers (
+      offers:offers_task_id_fkey (
         id,
         task_id,
         tasker_id,
@@ -62,7 +62,9 @@ export const fetchTasks = async (
   if (userRole === "client") {
     query = query.eq("client_id", userId);
   } else if (userRole === "tasker") {
-    query = query.eq("status", "pending"); // Fără filtrul recursiv pe offers
+    query = query
+      .not("offers.tasker_id", "eq", userId) // Task-uri fără oferte de la utilizator
+      .eq("status", "pending"); // Limitare la task-uri disponibile
   }
 
   const { data, error } = await query;
@@ -110,7 +112,7 @@ export const createTask = async (
       status,
       accepted_offer_id,
       created_at,
-      offers (
+      offers:offers_task_id_fkey (
         id,
         task_id,
         tasker_id,
@@ -164,7 +166,7 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
       status,
       accepted_offer_id,
       created_at,
-      offers (
+      offers:offers_task_id_fkey (
         id,
         task_id,
         tasker_id,
