@@ -198,8 +198,12 @@ export type Database = {
       task_requests: {
         Row: {
           accepted_offer_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           category: string
           client_id: string
+          completed_at: string | null
+          completion_proof_urls: string[] | null
           created_at: string
           description: string
           id: string
@@ -207,6 +211,8 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           price_range_max: number
           price_range_min: number
+          required_date: string | null
+          required_time: string | null
           status: Database["public"]["Enums"]["task_status"]
           subcategory: string | null
           title: string
@@ -214,8 +220,12 @@ export type Database = {
         }
         Insert: {
           accepted_offer_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           category: string
           client_id: string
+          completed_at?: string | null
+          completion_proof_urls?: string[] | null
           created_at?: string
           description: string
           id?: string
@@ -223,6 +233,8 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           price_range_max: number
           price_range_min: number
+          required_date?: string | null
+          required_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           subcategory?: string | null
           title: string
@@ -230,8 +242,12 @@ export type Database = {
         }
         Update: {
           accepted_offer_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           category?: string
           client_id?: string
+          completed_at?: string | null
+          completion_proof_urls?: string[] | null
           created_at?: string
           description?: string
           id?: string
@@ -239,6 +255,8 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           price_range_max?: number
           price_range_min?: number
+          required_date?: string | null
+          required_time?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           subcategory?: string | null
           title?: string
@@ -495,8 +513,20 @@ export type Database = {
       }
     }
     Functions: {
+      accept_offer_and_reject_others: {
+        Args: { offer_id_param: string; task_id_param: string }
+        Returns: boolean
+      }
       can_chat_on_task: {
         Args: { task_id: string }
+        Returns: boolean
+      }
+      cancel_task: {
+        Args: { task_id_param: string; reason?: string }
+        Returns: boolean
+      }
+      complete_task: {
+        Args: { task_id_param: string; proof_urls?: string[] }
         Returns: boolean
       }
       get_current_user_role: {

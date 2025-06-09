@@ -47,22 +47,22 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         console.error("❌ [TASKS] Fetch failed:", error);
         return [];
       });
-      console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2));
+      
       let filteredTasks = fetchedTasks as Task[];
 
       // Filter tasks based on user role and active tab
       if (userRole === "client") {
         switch (activeTab) {
           case "available":
-            // Pending tab: show only their own tasks where status = 'pending' and accepted_offer_id IS NULL
+            // Pending tab: show only their own tasks where status = 'pending'
             filteredTasks = filteredTasks.filter(task =>
-              task.status === "pending" && task.accepted_offer_id === null
+              task.status === "pending"
             );
             break;
           case "my-tasks":
-            // Accepted Tasks tab: show only their own tasks where accepted_offer_id IS NOT NULL
+            // Accepted Tasks tab: show only their own tasks where status = 'accepted'
             filteredTasks = filteredTasks.filter(task =>
-              task.accepted_offer_id !== null
+              task.status === "accepted"
             );
             break;
           case "completed":
@@ -85,6 +85,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             // Available tab: show tasks with status = 'pending' where the current tasker has NOT submitted an offer yet
             filteredTasks = filteredTasks.filter(task =>
               task.status === "pending" &&
+              task.client_id !== user.id && // Don't show own tasks
               (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
             );
             break;
@@ -161,6 +162,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     }
   };
 
+  const handleTaskUpdate = () => {
+    loadData();
+  };
+
   return (
     <div className="space-y-6">
       <TaskFilters
@@ -190,6 +195,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               user={user}
               onAccept={handleAcceptOffer}
               onMakeOffer={() => setSelectedTaskId(task.id)}
+              onTaskUpdate={handleTaskUpdate}
             />
           ))}
         </div>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,9 @@ const CreateTaskForm = () => {
     minBudget: "",
     maxBudget: "",
     address: "",
-    paymentMethod: "cash" as PaymentMethod
+    paymentMethod: "cash" as PaymentMethod,
+    requiredDate: "",
+    requiredTime: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -48,11 +51,7 @@ const CreateTaskForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🔍 [FORM] Submit attempt with user:', user?.id);
-    console.log('🔍 [FORM] Form data:', formData);
-    
     if (!user) {
-      console.error('❌ [FORM] No user found');
       toast({
         title: "Error",
         description: "You must be logged in to create a task.",
@@ -62,7 +61,6 @@ const CreateTaskForm = () => {
     }
 
     if (!formData.category || !formData.subcategory) {
-      console.error('❌ [FORM] Missing category or subcategory');
       toast({
         title: "Error",
         description: "Please select category and subcategory.",
@@ -72,7 +70,6 @@ const CreateTaskForm = () => {
     }
 
     if (!formData.minBudget || !formData.maxBudget) {
-      console.error('❌ [FORM] Missing budget values');
       toast({
         title: "Error",
         description: "Please enter both minimum and maximum budget.",
@@ -82,10 +79,18 @@ const CreateTaskForm = () => {
     }
 
     if (!formData.address) {
-      console.error('❌ [FORM] Missing address');
       toast({
         title: "Error",
         description: "Please select your location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.requiredDate || !formData.requiredTime) {
+      toast({
+        title: "Error",
+        description: "Please specify when you need the task completed.",
         variant: "destructive",
       });
       return;
@@ -103,14 +108,12 @@ const CreateTaskForm = () => {
         price_range_max: Number(formData.maxBudget),
         location: formData.address,
         payment_method: formData.paymentMethod,
+        required_date: formData.requiredDate,
+        required_time: formData.requiredTime,
         client_id: user.id,
       };
 
-      console.log('📝 [FORM] Creating task with data:', taskData);
-      
       const newTask = await createTask(taskData);
-      
-      console.log('✅ [FORM] Task created successfully:', newTask);
 
       toast({
         title: "Task created successfully!",
@@ -126,7 +129,9 @@ const CreateTaskForm = () => {
         minBudget: "",
         maxBudget: "",
         address: "",
-        paymentMethod: "cash"
+        paymentMethod: "cash",
+        requiredDate: "",
+        requiredTime: ""
       });
     } catch (error) {
       console.error("❌ [FORM] Error creating task:", error);
@@ -250,6 +255,32 @@ const CreateTaskForm = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="requiredDate">Required Date</Label>
+              <Input
+                id="requiredDate"
+                type="date"
+                value={formData.requiredDate}
+                onChange={(e) => setFormData({ ...formData, requiredDate: e.target.value })}
+                required
+                className="mt-1"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="requiredTime">Required Time</Label>
+              <Input
+                id="requiredTime"
+                type="time"
+                value={formData.requiredTime}
+                onChange={(e) => setFormData({ ...formData, requiredTime: e.target.value })}
+                required
+                className="mt-1"
+              />
+            </div>
           </div>
 
           <div>

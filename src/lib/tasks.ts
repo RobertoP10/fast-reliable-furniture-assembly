@@ -1,6 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { PostgrestError } from "@supabase/supabase-js";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 
@@ -41,6 +41,12 @@ export const fetchTasks = async (
       payment_method,
       status,
       accepted_offer_id,
+      required_date,
+      required_time,
+      completion_proof_urls,
+      completed_at,
+      cancelled_at,
+      cancellation_reason,
       created_at,
       offers:offers_task_id_fkey (
         id,
@@ -58,9 +64,6 @@ export const fetchTasks = async (
       client:users!task_requests_client_id_fkey(full_name, location)
     `)
     .order("created_at", { ascending: false });
-
-  // The RLS policies will handle the filtering, so we don't need to add client-side filters here
-  // This allows the backend to properly enforce security rules
 
   const { data, error } = await query;
 
@@ -106,6 +109,12 @@ export const createTask = async (
       payment_method,
       status,
       accepted_offer_id,
+      required_date,
+      required_time,
+      completion_proof_urls,
+      completed_at,
+      cancelled_at,
+      cancellation_reason,
       created_at,
       offers:offers_task_id_fkey (
         id,
@@ -160,6 +169,12 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
       payment_method,
       status,
       accepted_offer_id,
+      required_date,
+      required_time,
+      completion_proof_urls,
+      completed_at,
+      cancelled_at,
+      cancellation_reason,
       created_at,
       offers:offers_task_id_fkey (
         id,
@@ -204,30 +219,65 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
 
 export const acceptOffer = async (taskId: string, offerId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    const { error } = await supabase
-      .from("offers")
-      .update({ is_accepted: true })
-      .eq("id", offerId)
-      .eq("task_id", taskId);
+    const { data, error } = await supabase.rpc('accept_offer_and_reject_others', {
+      offer_id_param: offerId,
+      task_id_param: taskId
+    });
 
     if (error) {
       console.error("❌ [TASKS] Error accepting offer:", error);
       return { success: false, error: error.message };
     }
 
-    const { error: updateTaskError } = await supabase
-      .from("task_requests")
-      .update({ status: "accepted", accepted_offer_id: offerId })
-      .eq("id", taskId);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ [TASKS] Unexpected error accepting offer:", error);
+    return { success: false, error: (error as Error).message };
+  }
+};
 
-    if (updateTaskError) {
-      console.error("❌ [TASKS] Error updating task status:", updateTaskError);
-      return { success: false, error: updateTaskError.message };
+export const cancelTask = async (taskId: string, reason?: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data, error } = await supabase.rpc('cancel_task', {
+      task_id_param: taskId,
+      reason: reason
+    });
+
+    if (error) {
+      console.error("❌ [TASKS] Error cancelling task:", error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: "Cannot cancel task - offer already accepted" };
     }
 
     return { success: true };
   } catch (error) {
-    console.error("❌ [TASKS] Unexpected error accepting offer:", error);
+    console.error("❌ [TASKS] Unexpected error cancelling task:", error);
+    return { success: false, error: (error as Error).message };
+  }
+};
+
+export const completeTask = async (taskId: string, proofUrls?: string[]): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data, error } = await supabase.rpc('complete_task', {
+      task_id_param: taskId,
+      proof_urls: proofUrls
+    });
+
+    if (error) {
+      console.error("❌ [TASKS] Error completing task:", error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data) {
+      return { success: false, error: "Cannot complete task - invalid state" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("❌ [TASKS] Unexpected error completing task:", error);
     return { success: false, error: (error as Error).message };
   }
 };

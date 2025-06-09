@@ -2,8 +2,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, PoundSterling } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, X } from "lucide-react";
 import { getStatusBadge } from "./getStatusBadge";
+import { cancelTask, completeTask } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -24,11 +26,45 @@ interface TaskCardProps {
   user: any;
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: () => void;
+  onTaskUpdate?: () => void;
 }
 
-export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer }: TaskCardProps) => {
+export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUpdate }: TaskCardProps) => {
+  const { toast } = useToast();
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
+
+  const handleCancelTask = async () => {
+    if (!confirm("Are you sure you want to cancel this task?")) return;
+
+    const result = await cancelTask(task.id, "Cancelled by client");
+    if (result.success) {
+      toast({ title: "✅ Task cancelled successfully" });
+      onTaskUpdate?.();
+    } else {
+      toast({ 
+        title: "❌ Failed to cancel task", 
+        description: result.error,
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!confirm("Mark this task as completed?")) return;
+
+    const result = await completeTask(task.id);
+    if (result.success) {
+      toast({ title: "✅ Task marked as completed" });
+      onTaskUpdate?.();
+    } else {
+      toast({ 
+        title: "❌ Failed to complete task", 
+        description: result.error,
+        variant: "destructive" 
+      });
+    }
+  };
 
   return (
     <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
@@ -38,7 +74,20 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer }: TaskCa
             <CardTitle className="text-blue-900 mb-2">{task.title}</CardTitle>
             <CardDescription>{task.description}</CardDescription>
           </div>
-          {getStatusBadge(task.status)}
+          <div className="flex gap-2">
+            {getStatusBadge(task.status)}
+            {userRole === "client" && task.status === "pending" && !task.accepted_offer_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelTask}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -57,7 +106,16 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer }: TaskCa
           </div>
         </div>
 
-        {userRole === "tasker" && (
+        {task.required_date && task.required_time && (
+          <div className="flex items-center space-x-2 mb-4 text-sm text-blue-700 bg-blue-50 p-2 rounded">
+            <Calendar className="h-4 w-4" />
+            <span>
+              Required: {new Date(task.required_date).toLocaleDateString()} at {task.required_time}
+            </span>
+          </div>
+        )}
+
+        {userRole === "tasker" && task.status === "pending" && (
           hasOffered ? (
             <Badge>You already sent an offer</Badge>
           ) : (
@@ -86,9 +144,8 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer }: TaskCa
                 <p><strong>Price:</strong> £{offer.price}</p>
                 {offer.message && <p><strong>Message:</strong> {offer.message}</p>}
                 <p><strong>Date:</strong> {offer.proposed_date} at {offer.proposed_time}</p>
-                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : "Pending"}</p>
-                {/* Only show Accept Offer button for tasks with status pending and offers exist */}
-                {task.status === "pending" && !offer.is_accepted && (
+                <p><strong>Status:</strong> {offer.is_accepted ? "✅ Accepted" : offer.is_accepted === false ? "❌ Rejected" : "Pending"}</p>
+                {task.status === "pending" && !offer.is_accepted && offer.is_accepted !== false && (
                   <Button
                     className="mt-2"
                     onClick={() => onAccept(task.id, offer.id)}
@@ -98,6 +155,25 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer }: TaskCa
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {userRole === "client" && task.status === "accepted" && (
+          <div className="mt-4">
+            <Button onClick={handleCompleteTask} className="bg-green-600 hover:bg-green-700">
+              Mark as Completed
+            </Button>
+          </div>
+        )}
+
+        {task.completion_proof_urls && task.completion_proof_urls.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-semibold mb-2">Completion Photos:</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {task.completion_proof_urls.map((url, index) => (
+                <img key={index} src={url} alt={`Completion proof ${index + 1}`} className="rounded border" />
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

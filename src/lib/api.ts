@@ -10,14 +10,16 @@ export {
 export {
   fetchTasks,
   createTask,
-  updateTaskStatus
+  updateTaskStatus,
+  acceptOffer,
+  cancelTask,
+  completeTask
 } from './tasks';
 
 // 💼 Offers
 export {
   fetchOffers,
   createOffer,
-  acceptOffer,
   declineOffer
 } from './offers';
 
