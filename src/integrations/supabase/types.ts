@@ -519,12 +519,20 @@ export type Database = {
         Args: { task_id: string }
         Returns: boolean
       }
-      is_task_participant: {
-        Args: { task_id: string; user_id: string }
-        Returns: boolean
-      }
       is_tasker_on_task: {
         Args: { task_id: string }
+        Returns: boolean
+      }
+      user_can_see_offer: {
+        Args: { offer_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_can_see_profile: {
+        Args: { profile_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_can_see_task: {
+        Args: { task_id: string; user_id: string }
         Returns: boolean
       }
     }

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
@@ -51,6 +52,8 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
 export const fetchUserProfile = async (authUser: any) => {
   try {
     console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
+    
+    // Use maybeSingle() to avoid errors when no data is found
     const { data, error } = await supabase
       .from('users')
       .select('id, email, full_name, role, approved, created_at, updated_at')
@@ -59,6 +62,13 @@ export const fetchUserProfile = async (authUser: any) => {
 
     if (error) {
       console.error('❌ [AUTH] Error fetching user profile:', error);
+      
+      // Handle specific RLS or policy errors
+      if (error.code === '42P17' || error.message.includes('infinite recursion') || error.message.includes('policy')) {
+        console.log('🔄 [AUTH] RLS policy error detected, this should be resolved with new policies');
+        throw new Error('RLS policy error - please check database policies');
+      }
+      
       if (error.code === 'PGRST301' || error.message.includes('not found')) {
         console.warn('⚠️ [AUTH] User profile not found, creating default profile...');
         const { error: insertError } = await supabase
@@ -76,7 +86,7 @@ export const fetchUserProfile = async (authUser: any) => {
           console.error('❌ [AUTH] Failed to create default profile:', insertError);
           return null;
         }
-        return await fetchUserProfile(authUser); // Reîncercare după creare
+        return await fetchUserProfile(authUser); // Retry after creation
       }
       return null;
     }
@@ -88,8 +98,14 @@ export const fetchUserProfile = async (authUser: any) => {
 
     console.log('✅ [AUTH] Fetched user profile:', data);
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
+    
+    // Re-throw RLS errors so they can be handled upstream
+    if (error.message?.includes('RLS policy error') || error.message?.includes('infinite recursion')) {
+      throw error;
+    }
+    
     return null;
   }
 };

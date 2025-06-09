@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,30 +48,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const syncSessionAndProfile = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-    if (error) {
-      console.error("❌ Error getting session:", error);
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+      if (error) {
+        console.error("❌ Error getting session:", error);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-    if (session?.user) {
-      try {
-        const profile = await fetchUserProfile(session.user);
-        if (profile) {
-          setUser(profile);
-          handleRedirect(profile);
-        } else {
-          console.error("❌ No user profile found.");
-          setUser(null);
+      if (session?.user) {
+        try {
+          const profile = await fetchUserProfile(session.user);
+          if (profile) {
+            setUser(profile);
+            handleRedirect(profile);
+          } else {
+            console.error("❌ No user profile found.");
+            setUser(null);
+          }
+        } catch (err: any) {
+          console.error("❌ Error fetching profile:", err);
+          
+          // If it's an RLS error, try a fallback approach
+          if (err.message?.includes('infinite recursion') || err.message?.includes('policy')) {
+            console.log("🔄 RLS error detected, trying fallback profile fetch...");
+            try {
+              // Fallback: try to get basic user info directly
+              const { data: basicProfile, error: basicError } = await supabase
+                .from('users')
+                .select('id, email, full_name, role, approved')
+                .eq('id', session.user.id)
+                .maybeSingle();
+              
+              if (basicProfile && !basicError) {
+                console.log("✅ Fallback profile fetch successful");
+                setUser(basicProfile);
+                handleRedirect(basicProfile);
+              } else {
+                console.error("❌ Fallback profile fetch failed:", basicError);
+                setUser(null);
+              }
+            } catch (fallbackErr) {
+              console.error("❌ Fallback profile fetch error:", fallbackErr);
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
         }
-      } catch (err) {
-        console.error("❌ Error fetching profile:", err);
+      } else {
         setUser(null);
       }
-    } else {
+    } catch (err) {
+      console.error("❌ Unexpected error in syncSessionAndProfile:", err);
       setUser(null);
     }
 
