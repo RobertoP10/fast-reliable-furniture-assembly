@@ -13,7 +13,9 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: { full_name: string; approved?: boolean; created_at?: string; updated_at?: string };
 };
 
-type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
+type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
+
+type Task = TaskBase & {
   offers?: Offer[] | null;
   client?: {
     full_name: string;
@@ -45,30 +47,30 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         return [];
       });
       console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2));
-      let filteredTasks = fetchedTasks;
+      let filteredTasks = fetchedTasks as Task[];
 
       if (userRole === "tasker") {
         if (activeTab === "available") {
-          filteredTasks = fetchedTasks.filter(task =>
+          filteredTasks = filteredTasks.filter(task =>
             task.status === "pending" &&
-            !(task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id))
+            (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
           );
         } else if (activeTab === "my-tasks") {
-          filteredTasks = fetchedTasks.filter(task =>
+          filteredTasks = filteredTasks.filter(task =>
             task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
-          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+          filteredTasks = filteredTasks.filter(task => task.status === "completed");
         }
       } else if (userRole === "client") {
         if (activeTab === "available") {
-          filteredTasks = fetchedTasks.filter(task => task.status === "pending");
+          filteredTasks = filteredTasks.filter(task => task.status === "pending");
         } else if (activeTab === "my-tasks") {
-          filteredTasks = fetchedTasks.filter(task => task.status === "accepted");
+          filteredTasks = filteredTasks.filter(task => task.status === "accepted");
         } else if (activeTab === "completed") {
-          filteredTasks = fetchedTasks.filter(task => task.status === "completed");
+          filteredTasks = filteredTasks.filter(task => task.status === "completed");
         } else if (activeTab === "received-offers") {
-          filteredTasks = fetchedTasks.filter(task =>
+          filteredTasks = filteredTasks.filter(task =>
             task.status === "pending" &&
             task.offers &&
             Array.isArray(task.offers) &&
@@ -103,7 +105,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setTasks(propTasks);
       setLoading(false);
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, propTasks]);
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
@@ -121,14 +123,14 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
 
   return (
     <div className="space-y-6">
-      <TaskFilters 
+      <TaskFilters
         activeTab={activeTab}
         userRole={userRole}
         onTabChange={setActiveTab}
       />
 
       {activeTab === "completed" && (
-        <CompletedTasksStats 
+        <CompletedTasksStats
           completedCount={completedCount}
           completedTotal={completedTotal}
         />
@@ -140,7 +142,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <Card><CardContent className="text-center py-8">No tasks found.</CardContent></Card>
       ) : (
         <div className="grid gap-6">
-          {tasks.map(task => (
+          {tasks.map((task, index) => (
             <TaskCard
               key={task.id}
               task={task}
