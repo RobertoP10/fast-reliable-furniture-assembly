@@ -81,13 +81,14 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce<number>((sum, task) => {
-          const accepted = task.offers?.find(o => o?.is_accepted);
-          return sum + (accepted?.price ?? 0);
-        }, 0);
-        setCompletedCount(filteredTasks.length);
-        setCompletedTotal(total);
-      }
+  const total = filteredTasks.reduce((sum, task) => {
+    const accepted = task.offers?.find(o => o?.is_accepted);
+    return sum + (accepted?.price ?? 0);
+  }, 0); // ✅ fără <number>
+  setCompletedCount(filteredTasks.length);
+  setCompletedTotal(total);
+}
+
 
       setTasks(filteredTasks);
     } catch (error) {
