@@ -33,8 +33,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
-  const [completedCount, setCompletedCount] = useState(0);
-  const [completedTotal, setCompletedTotal] = useState(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
+  const [completedTotal, setCompletedTotal] = useState<number>(0); // Explicit ca number
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -81,15 +81,13 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-  const total = filteredTasks.reduce((sum, task) => {
-  const accepted = task.offers?.find(o => o?.is_accepted);
-  return sum + (accepted?.price ?? 0);
-}, 0);
- // ✅ fără <number>
-  setCompletedCount(filteredTasks.length);
-  setCompletedTotal(total);
-}
-
+        const total = filteredTasks.reduce((sum: number, task: Task): number => { // Explicit return type
+          const accepted = task.offers?.find(o => o?.is_accepted);
+          return sum + (accepted?.price ?? 0);
+        }, 0);
+        setCompletedCount(filteredTasks.length);
+        setCompletedTotal(total);
+      }
 
       setTasks(filteredTasks);
     } catch (error) {
@@ -99,6 +97,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setLoading(false);
     }
   };
+
+  // Restul codului (useEffect, handleOfferCreated, handleAcceptOffer, return) rămâne neschimbat
+};
 
   useEffect(() => {
     if (!propTasks) {
