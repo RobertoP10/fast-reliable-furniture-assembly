@@ -83,8 +83,8 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       if (activeTab === "completed") {
         const total = filteredTasks.reduce((sum: number, task: Task) => {
           const accepted = task.offers?.find(o => o?.is_accepted);
-          return sum + (accepted?.price ?? 0); // Tip explicit pentru sum și price
-        }, 0); // Valoare inițială number
+          return sum + (accepted?.price ?? 0);
+        }, 0); // Provide initial value of 0
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
       }
