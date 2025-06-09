@@ -29,10 +29,10 @@ interface TasksListProps {
 }
 
 const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
+  const [activeTab, setActiveTab] = useState<"pending" | "accepted-tasks" | "completed" | "received-offers">("pending");
   const [completedCount, setCompletedCount] = useState<number>(0);
   const [completedTotal, setCompletedTotal] = useState<number>(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -53,30 +53,30 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         if (activeTab === "available") {
           filteredTasks = filteredTasks.filter(task =>
             task.status === "pending" &&
-            (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
+            (!task.offers || !Array.isArray(task.offers) || !task.offers.some(offer => offer.tasker_id === user.id))
           );
         } else if (activeTab === "my-tasks") {
           filteredTasks = filteredTasks.filter(task =>
-            task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
+            task.offers && Array.isArray(task.offers) && task.offers.some(offer => offer.tasker_id === user.id)
           );
         } else if (activeTab === "completed") {
           filteredTasks = filteredTasks.filter(task => task.status === "completed");
         }
       } else if (userRole === "client") {
-        if (activeTab === "available") {
-          filteredTasks = filteredTasks.filter(task => task.status === "pending");
-        } else if (activeTab === "my-tasks") {
-          filteredTasks = filteredTasks.filter(task => task.status === "accepted");
+        if (activeTab === "pending") {
+          filteredTasks = filteredTasks.filter(task => task.status === "pending" && task.client_id === user.id);
+        } else if (activeTab === "accepted-tasks") {
+          filteredTasks = filteredTasks.filter(task => task.status === "accepted" && task.client_id === user.id);
         } else if (activeTab === "completed") {
-          filteredTasks = filteredTasks.filter(task => task.status === "completed");
+          filteredTasks = filteredTasks.filter(task => task.status === "completed" && task.client_id === user.id);
         } else if (activeTab === "received-offers") {
           filteredTasks = filteredTasks.filter(task =>
             task.status === "pending" &&
+            task.client_id === user.id &&
             task.offers &&
             Array.isArray(task.offers) &&
             task.offers.length > 0
           );
-          console.log("🔍 [TASKS] Filtered tasks for received-offers:", JSON.stringify(filteredTasks, null, 2));
         }
       }
 
@@ -121,6 +121,17 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      setLoading(true);
+      await signOut();
+      setTasks([]); // Resetează task-urile la deconectare
+    } catch (error) {
+      console.error("❌ Error signing out:", error);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <TaskFilters
@@ -128,6 +139,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         userRole={userRole}
         onTabChange={setActiveTab}
       />
+      <button onClick={handleSignOut} className="bg-red-500 text-white px-4 py-2 rounded">
+        Sign Out
+      </button>
 
       {activeTab === "completed" && (
         <CompletedTasksStats
@@ -148,6 +162,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               task={task}
               userRole={userRole}
               user={user}
+              activeTab={activeTab} // Trece activeTab ca prop
               onAccept={handleAcceptOffer}
               onMakeOffer={() => setSelectedTaskId(task.id)}
             />
