@@ -1,9 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { PostgrestError } from "@supabase/supabase-js"; // Import explicit pentru tipul erorii
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved: boolean; created_at?: string; updated_at?: string };
+  tasker?: { full_name: string; approved: boolean; created_at?: string; updated_at?: string; accepted_offer_id?: string };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
@@ -58,13 +59,18 @@ export const fetchTasks = async (
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  const normalizedData = (data || []).map((task: any) => ({
+  if (!data) {
+    console.warn("⚠️ [TASKS] No data returned from Supabase");
+    return [];
+  }
+
+  const normalizedData = data.map((task: any) => ({
     ...task,
     offers: Array.isArray(task.offers)
       ? task.offers
       : task.offers
       ? [task.offers]
-      : null, // Folosește null în loc de array gol
+      : null,
   }));
 
   console.log("✅ [TASKS] Fetched and normalized tasks:", JSON.stringify(normalizedData, null, 2));
@@ -128,6 +134,11 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
 
   if (error) {
     console.error("❌ [TASKS] Error fetching task:", error);
+    return null;
+  }
+
+  if (!data) {
+    console.warn("⚠️ [TASKS] No data returned for task:", taskId);
     return null;
   }
 
