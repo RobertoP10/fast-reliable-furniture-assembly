@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -80,7 +79,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce((sum: number, task: Task) => {
+        const total = filteredTasks.reduce((sum, task) => {
           const accepted = task.offers?.find(o => o?.is_accepted);
           return sum + (accepted?.price ?? 0);
         }, 0);

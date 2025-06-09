@@ -253,6 +253,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_requests_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
