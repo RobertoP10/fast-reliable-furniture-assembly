@@ -3,9 +3,11 @@ import type { Database } from "@/integrations/supabase/types";
 import { PostgrestError } from "@supabase/supabase-js";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
+
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved: boolean; created_at?: string; updated_at?: string };
+  tasker?: { full_name: string; approved?: boolean; created_at?: string; updated_at?: string };
 };
+
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
@@ -28,14 +30,18 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       id,
+      client_id,
       title,
       description,
-      status,
-      client_id,
-      location,
-      created_at,
+      category,
+      subcategory,
       price_range_min,
       price_range_max,
+      location,
+      payment_method,
+      status,
+      accepted_offer_id,
+      created_at,
       offers:offers_task_id_fkey (
         id,
         task_id,
@@ -73,27 +79,39 @@ export const fetchTasks = async (
     return [];
   }
 
-  const normalizedData = data.map((task: any) => ({
+  const normalizedData = data.map((task) => ({
     ...task,
     offers: Array.isArray(task.offers)
       ? task.offers
       : task.offers
       ? [task.offers]
       : null,
-  }));
+  })) as Task[];
 
   console.log("✅ [TASKS] Fetched and normalized tasks:", JSON.stringify(normalizedData, null, 2));
   return normalizedData;
 };
 
 export const createTask = async (
-  taskData: Omit<TaskInsert, "id" | "created_at" | "updated_at">
+  taskData: Omit<TaskInsert, "id" | "created_at">
 ): Promise<Task> => {
   const { data, error } = await supabase
     .from("task_requests")
     .insert(taskData)
     .select(`
-      *,
+      id,
+      client_id,
+      title,
+      description,
+      category,
+      subcategory,
+      price_range_min,
+      price_range_max,
+      location,
+      payment_method,
+      status,
+      accepted_offer_id,
+      created_at,
       offers:offers_task_id_fkey (
         id,
         task_id,
@@ -112,7 +130,7 @@ export const createTask = async (
     .single();
 
   if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return data;
+  return data as Task;
 };
 
 export const updateTaskStatus = async (
@@ -136,14 +154,18 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .from("task_requests")
     .select(`
       id,
+      client_id,
       title,
       description,
-      status,
-      client_id,
-      location,
-      created_at,
+      category,
+      subcategory,
       price_range_min,
       price_range_max,
+      location,
+      payment_method,
+      status,
+      accepted_offer_id,
+      created_at,
       offers:offers_task_id_fkey (
         id,
         task_id,
@@ -179,8 +201,38 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
       : data.offers
       ? [data.offers]
       : null,
-  };
+  } as Task;
 
   console.log("✅ [TASKS] Fetched single task:", JSON.stringify(normalized, null, 2));
   return normalized;
+};
+
+export const acceptOffer = async (taskId: string, offerId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase
+      .from("offers")
+      .update({ is_accepted: true })
+      .eq("id", offerId)
+      .eq("task_id", taskId);
+
+    if (error) {
+      console.error("❌ [TASKS] Error accepting offer:", error);
+      return { success: false, error: error.message };
+    }
+
+    const { error: updateTaskError } = await supabase
+      .from("task_requests")
+      .update({ status: "accepted", accepted_offer_id: offerId })
+      .eq("id", taskId);
+
+    if (updateTaskError) {
+      console.error("❌ [TASKS] Error updating task status:", updateTaskError);
+      return { success: false, error: updateTaskError.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("❌ [TASKS] Unexpected error accepting offer:", error);
+    return { success: false, error: (error as Error).message };
+  }
 };
