@@ -59,13 +59,8 @@ export const fetchTasks = async (
     `)
     .order("created_at", { ascending: false });
 
-  if (userRole === "client") {
-    query = query.eq("client_id", userId);
-  } else if (userRole === "tasker") {
-    query = query
-      .not("offers.tasker_id", "eq", userId) // Task-uri fără oferte de la utilizator
-      .eq("status", "pending"); // Limitare la task-uri disponibile
-  }
+  // The RLS policies will handle the filtering, so we don't need to add client-side filters here
+  // This allows the backend to properly enforce security rules
 
   const { data, error } = await query;
 

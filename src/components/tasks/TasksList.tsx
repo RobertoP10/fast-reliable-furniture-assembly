@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,42 +50,81 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2));
       let filteredTasks = fetchedTasks as Task[];
 
-      if (userRole === "tasker") {
-        if (activeTab === "available") {
-          filteredTasks = filteredTasks.filter(task =>
-            task.status === "pending" &&
-            (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
-          );
-        } else if (activeTab === "my-tasks") {
-          filteredTasks = filteredTasks.filter(task =>
-            task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
-          );
-        } else if (activeTab === "completed") {
-          filteredTasks = filteredTasks.filter(task => task.status === "completed");
+      // Filter tasks based on user role and active tab
+      if (userRole === "client") {
+        switch (activeTab) {
+          case "available":
+            // Pending tab: show only their own tasks where status = 'pending' and accepted_offer_id IS NULL
+            filteredTasks = filteredTasks.filter(task =>
+              task.status === "pending" && task.accepted_offer_id === null
+            );
+            break;
+          case "my-tasks":
+            // Accepted Tasks tab: show only their own tasks where accepted_offer_id IS NOT NULL
+            filteredTasks = filteredTasks.filter(task =>
+              task.accepted_offer_id !== null
+            );
+            break;
+          case "completed":
+            // Completed tab: show only their own tasks with status = 'completed'
+            filteredTasks = filteredTasks.filter(task => task.status === "completed");
+            break;
+          case "received-offers":
+            // Received Offers tab: show only their own tasks with status = 'pending' and at least one offer
+            filteredTasks = filteredTasks.filter(task =>
+              task.status === "pending" &&
+              task.offers &&
+              Array.isArray(task.offers) &&
+              task.offers.length > 0
+            );
+            break;
         }
-      } else if (userRole === "client") {
-        if (activeTab === "available") {
-          filteredTasks = filteredTasks.filter(task => task.status === "pending");
-        } else if (activeTab === "my-tasks") {
-          filteredTasks = filteredTasks.filter(task => task.status === "accepted");
-        } else if (activeTab === "completed") {
-          filteredTasks = filteredTasks.filter(task => task.status === "completed");
-        } else if (activeTab === "received-offers") {
-          filteredTasks = filteredTasks.filter(task =>
-            task.status === "pending" &&
-            task.offers &&
-            Array.isArray(task.offers) &&
-            task.offers.length > 0
-          );
-          console.log("🔍 [TASKS] Filtered tasks for received-offers:", JSON.stringify(filteredTasks, null, 2));
+      } else if (userRole === "tasker") {
+        switch (activeTab) {
+          case "available":
+            // Available tab: show tasks with status = 'pending' where the current tasker has NOT submitted an offer yet
+            filteredTasks = filteredTasks.filter(task =>
+              task.status === "pending" &&
+              (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
+            );
+            break;
+          case "my-tasks":
+            // My Tasks tab: show tasks where the current tasker has submitted an offer
+            filteredTasks = filteredTasks.filter(task =>
+              task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
+            );
+            break;
+          case "completed":
+            // Completed tab: show tasks where status = 'completed' and accepted_offer_id is linked to one of the tasker's offers
+            filteredTasks = filteredTasks.filter(task => {
+              if (task.status !== "completed") return false;
+              if (!task.offers || !Array.isArray(task.offers)) return false;
+              
+              const taskerOffer = task.offers.find(offer => offer.tasker_id === user.id);
+              return taskerOffer && task.accepted_offer_id === taskerOffer.id;
+            });
+            break;
         }
       }
 
+      // Calculate completed stats for completed tab
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce((sum, task) => {
-          const accepted = task.offers?.find(o => o?.is_accepted);
-          return sum + (accepted?.price ?? 0);
-        }, 0);
+        let total = 0;
+        
+        if (userRole === "client") {
+          // For clients, sum the price of accepted offers
+          total = filteredTasks.reduce((sum: number, task: Task) => {
+            const acceptedOffer = task.offers?.find(o => o?.id === task.accepted_offer_id);
+            return sum + (acceptedOffer?.price ? Number(acceptedOffer.price) : 0);
+          }, 0);
+        } else if (userRole === "tasker") {
+          // For taskers, sum the price of their accepted offers
+          total = filteredTasks.reduce((sum: number, task: Task) => {
+            const taskerOffer = task.offers?.find(o => o?.tasker_id === user.id && o?.id === task.accepted_offer_id);
+            return sum + (taskerOffer?.price ? Number(taskerOffer.price) : 0);
+          }, 0);
+        }
+
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
       }
@@ -142,7 +182,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         <Card><CardContent className="text-center py-8">No tasks found.</CardContent></Card>
       ) : (
         <div className="grid gap-6">
-          {tasks.map((task, index) => (
+          {tasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}

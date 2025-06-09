@@ -503,12 +503,24 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
       is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_client_offer_accessible: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
       is_task_owner: {
         Args: { task_id: string }
+        Returns: boolean
+      }
+      is_task_participant: {
+        Args: { task_id: string; user_id: string }
         Returns: boolean
       }
       is_tasker_on_task: {
