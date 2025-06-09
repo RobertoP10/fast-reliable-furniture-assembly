@@ -1,7 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
-// Enhanced session validation with detailed logging
 export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
   try {
     console.log('🔍 [AUTH] Starting session validation...');
@@ -50,20 +48,45 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
   }
 };
 
-// Fetch user profile by user ID
 export const fetchUserProfile = async (authUser: any) => {
   try {
+    console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
     const { data, error } = await supabase
       .from('users')
       .select('id, email, full_name, role, approved, created_at, updated_at')
       .eq('id', authUser.id)
       .maybeSingle();
 
-    if (error || !data) {
-      console.warn("⚠️ User profile not found.");
+    if (error) {
+      console.error('❌ [AUTH] Error fetching user profile:', error);
+      if (error.code === 'PGRST301' || error.message.includes('not found')) {
+        console.warn('⚠️ [AUTH] User profile not found, creating default profile...');
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: authUser.id,
+            email: authUser.email || 'no-email@default.com',
+            full_name: 'Default User',
+            role: 'client',
+            approved: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        if (insertError) {
+          console.error('❌ [AUTH] Failed to create default profile:', insertError);
+          return null;
+        }
+        return await fetchUserProfile(authUser); // Reîncercare după creare
+      }
       return null;
     }
 
+    if (!data) {
+      console.warn('⚠️ [AUTH] No profile data returned for user:', authUser.id);
+      return null;
+    }
+
+    console.log('✅ [AUTH] Fetched user profile:', data);
     return data;
   } catch (error) {
     console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
@@ -71,7 +94,6 @@ export const fetchUserProfile = async (authUser: any) => {
   }
 };
 
-// Get current user role
 export const getCurrentUserRole = async (): Promise<string | null> => {
   try {
     const { data, error } = await supabase.rpc('get_current_user_role');
