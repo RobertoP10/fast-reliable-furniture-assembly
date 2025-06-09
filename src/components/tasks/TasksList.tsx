@@ -12,11 +12,11 @@ import type { Database } from "@/integrations/supabase/types";
 
 // Types
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved?: boolean; created_at?: string; updated_at?: string; accepted_offer_id?: string };
+  tasker?: { full_name: string; approved?: boolean; created_at?: string; updated_at?: string };
 };
 
 type Task = Database["public"]["Tables"]["task_requests"]["Row"] & {
-  offers?: Offer[] | null; // Permite null
+  offers?: Offer[] | null;
   client?: {
     full_name: string;
     location: string;
@@ -44,7 +44,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setLoading(true);
       const fetchedTasks = await fetchTasks(user.id, userRole).catch((error) => {
         console.error("❌ [TASKS] Fetch failed:", error);
-        return []; // Returnează un array gol în caz de eroare
+        return [];
       });
       console.log("🔍 [TASKS] Fetched tasks:", JSON.stringify(fetchedTasks, null, 2));
       let filteredTasks = fetchedTasks;
@@ -81,9 +81,9 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce((sum, task) => {
+        const total = filteredTasks.reduce((sum: number, task: Task) => {
           const accepted = task.offers?.find(o => o?.is_accepted);
-          return sum + (accepted?.price ?? 0);
+          return sum + (accepted?.price ?? 0); // Asigură-te că sum este number și price este number
         }, 0);
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
@@ -92,7 +92,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       setTasks(filteredTasks);
     } catch (error) {
       console.error("❌ Error loading tasks:", error);
-      setTasks([]); // Setează tasks la un array gol în caz de eroare
+      setTasks([]);
     } finally {
       setLoading(false);
     }
