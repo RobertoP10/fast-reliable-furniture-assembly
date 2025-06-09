@@ -3,14 +3,14 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TaskBase = Database["public"]["Tables"]["task_requests"]["Row"];
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
-  tasker?: { full_name: string; approved: boolean };
+  tasker?: { full_name: string; approved: boolean; created_at?: string; updated_at?: string };
 };
 type TaskInsert = Database["public"]["Tables"]["task_requests"]["Insert"];
 type TaskUpdate = Database["public"]["Tables"]["task_requests"]["Update"];
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 export type Task = TaskBase & {
-  offers?: Offer[];
+  offers?: Offer[] | null; // Permite null pentru task-urile fără oferte
   client?: {
     full_name: string;
     location: string;
@@ -28,8 +28,18 @@ export const fetchTasks = async (
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(
-        *,
+      offers:offers_task_id_fkey (
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        created_at,
+        updated_at,
+        accepted_offer_id,
         tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
@@ -41,9 +51,7 @@ export const fetchTasks = async (
     query = query.neq("client_id", userId);
   }
 
-  const { data, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("❌ [TASKS] Error fetching tasks:", error);
@@ -56,10 +64,10 @@ export const fetchTasks = async (
       ? task.offers
       : task.offers
       ? [task.offers]
-      : [],
+      : null, // Folosește null în loc de array gol
   }));
 
-  console.log("✅ [TASKS] Fetched and normalized tasks:", normalizedData);
+  console.log("✅ [TASKS] Fetched and normalized tasks:", JSON.stringify(normalizedData, null, 2));
   return normalizedData;
 };
 
@@ -99,8 +107,18 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     .from("task_requests")
     .select(`
       *,
-      offers:offers!offers_task_id_fkey(
-        *,
+      offers:offers_task_id_fkey (
+        id,
+        task_id,
+        tasker_id,
+        price,
+        message,
+        proposed_date,
+        proposed_time,
+        is_accepted,
+        created_at,
+        updated_at,
+        accepted_offer_id,
         tasker:users!offers_tasker_id_fkey(full_name, approved)
       ),
       client:users!task_requests_client_id_fkey(full_name, location)
@@ -119,9 +137,9 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
       ? data.offers
       : data.offers
       ? [data.offers]
-      : [],
+      : null,
   };
 
-  console.log("✅ [TASKS] Fetched single task:", normalized);
+  console.log("✅ [TASKS] Fetched single task:", JSON.stringify(normalized, null, 2));
   return normalized;
 };
