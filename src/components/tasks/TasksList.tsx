@@ -85,10 +85,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       }
 
       if (activeTab === "completed") {
-        const total = filteredTasks.reduce<number>((sum: number, task: Task): number => {
-          const accepted = task.offers?.find(o => o?.is_accepted);
-          return sum + (accepted?.price ?? 0);
-        }, 0);
+        const total = filteredTasks.reduce((sum, task) => {
+  const accepted = task.offers?.find(o => o?.is_accepted);
+  return sum + (accepted?.price ?? 0);
+}, 0);
         setCompletedCount(filteredTasks.length);
         setCompletedTotal(total);
       }
