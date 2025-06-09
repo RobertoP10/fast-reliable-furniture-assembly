@@ -31,7 +31,7 @@ export const TaskFilters = ({ activeTab, userRole, onTabChange }: TaskFiltersPro
           variant={activeTab === "available" ? "default" : "outline"} 
           onClick={() => onTabChange("available")}
         >
-          {userRole === "client" ? "Pending Requests" : "Available"}
+          {userRole === "client" ? "Pending Requests" : "Available Tasks"}
         </Button>
         <Button 
           variant={activeTab === "my-tasks" ? "default" : "outline"} 

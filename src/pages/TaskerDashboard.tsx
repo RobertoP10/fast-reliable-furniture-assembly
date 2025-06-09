@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import RoleProtection from "@/components/auth/RoleProtection";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'chat'>('available');
+  const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'completed' | 'chat'>('available');
 
   if (!user?.approved) {
     return (
@@ -84,7 +85,14 @@ const TaskerDashboard = () => {
                     className="w-full justify-start"
                     onClick={() => setActiveTab('my-tasks')}
                   >
-                    My Tasks
+                    My Offers
+                  </Button>
+                  <Button
+                    variant={activeTab === 'completed' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('completed')}
+                  >
+                    Completed Tasks
                   </Button>
                   <Button
                     variant={activeTab === 'chat' ? 'default' : 'ghost'}
@@ -135,6 +143,7 @@ const TaskerDashboard = () => {
             <div className="lg:col-span-3">
               {activeTab === 'available' && <TasksList userRole="tasker" />}
               {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
+              {activeTab === 'completed' && <TasksList userRole="tasker" />}
               {activeTab === 'chat' && <Chat />}
             </div>
           </div>

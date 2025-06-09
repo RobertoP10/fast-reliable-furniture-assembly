@@ -54,24 +54,27 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       if (userRole === "client") {
         switch (activeTab) {
           case "available":
-            // Pending tab: show only their own tasks where status = 'pending'
+            // Pending Requests: show only their own tasks where status = 'pending'
             filteredTasks = filteredTasks.filter(task =>
-              task.status === "pending"
+              task.client_id === user.id && task.status === "pending"
             );
             break;
           case "my-tasks":
-            // Accepted Tasks tab: show only their own tasks where status = 'accepted'
+            // Accepted Tasks: show only their own tasks where status = 'accepted'
             filteredTasks = filteredTasks.filter(task =>
-              task.status === "accepted"
+              task.client_id === user.id && task.status === "accepted"
             );
             break;
           case "completed":
-            // Completed tab: show only their own tasks with status = 'completed'
-            filteredTasks = filteredTasks.filter(task => task.status === "completed");
+            // Completed: show only their own tasks with status = 'completed'
+            filteredTasks = filteredTasks.filter(task => 
+              task.client_id === user.id && task.status === "completed"
+            );
             break;
           case "received-offers":
-            // Received Offers tab: show only their own tasks with status = 'pending' and at least one offer
+            // Received Offers: show only their own tasks with status = 'pending' and at least one offer
             filteredTasks = filteredTasks.filter(task =>
+              task.client_id === user.id &&
               task.status === "pending" &&
               task.offers &&
               Array.isArray(task.offers) &&
@@ -82,7 +85,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
       } else if (userRole === "tasker") {
         switch (activeTab) {
           case "available":
-            // Available tab: show tasks with status = 'pending' where the current tasker has NOT submitted an offer yet
+            // Available Tasks: show tasks with status = 'pending' where the current tasker has NOT submitted an offer yet
             filteredTasks = filteredTasks.filter(task =>
               task.status === "pending" &&
               task.client_id !== user.id && // Don't show own tasks
@@ -90,13 +93,13 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
             );
             break;
           case "my-tasks":
-            // My Tasks tab: show tasks where the current tasker has submitted an offer
+            // My Offers: show tasks where the current tasker has submitted an offer
             filteredTasks = filteredTasks.filter(task =>
               task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
             );
             break;
           case "completed":
-            // Completed tab: show tasks where status = 'completed' and accepted_offer_id is linked to one of the tasker's offers
+            // Completed: show tasks where status = 'completed' and accepted_offer_id is linked to one of the tasker's offers
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "completed") return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
@@ -196,6 +199,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
               onAccept={handleAcceptOffer}
               onMakeOffer={() => setSelectedTaskId(task.id)}
               onTaskUpdate={handleTaskUpdate}
+              activeTab={activeTab}
             />
           ))}
         </div>

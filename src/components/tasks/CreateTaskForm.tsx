@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,7 +89,19 @@ const CreateTaskForm = () => {
     if (!formData.requiredDate || !formData.requiredTime) {
       toast({
         title: "Error",
-        description: "Please specify when you need the task completed.",
+        description: "Please specify when you need the task completed. This helps taskers plan their schedule.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that the required date is not in the past
+    const selectedDate = new Date(`${formData.requiredDate}T${formData.requiredTime}`);
+    const now = new Date();
+    if (selectedDate <= now) {
+      toast({
+        title: "Error",
+        description: "Please select a future date and time for task completion.",
         variant: "destructive",
       });
       return;
@@ -259,7 +270,7 @@ const CreateTaskForm = () => {
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="requiredDate">Required Date</Label>
+              <Label htmlFor="requiredDate">Required Date <span className="text-red-500">*</span></Label>
               <Input
                 id="requiredDate"
                 type="date"
@@ -269,9 +280,10 @@ const CreateTaskForm = () => {
                 className="mt-1"
                 min={new Date().toISOString().split('T')[0]}
               />
+              <p className="text-xs text-gray-500 mt-1">Taskers will follow this schedule</p>
             </div>
             <div>
-              <Label htmlFor="requiredTime">Required Time</Label>
+              <Label htmlFor="requiredTime">Required Time <span className="text-red-500">*</span></Label>
               <Input
                 id="requiredTime"
                 type="time"
@@ -280,6 +292,7 @@ const CreateTaskForm = () => {
                 required
                 className="mt-1"
               />
+              <p className="text-xs text-gray-500 mt-1">Preferred start time</p>
             </div>
           </div>
 
