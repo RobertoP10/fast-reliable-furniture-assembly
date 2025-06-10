@@ -167,11 +167,17 @@ export const TaskTaskerActions = ({
     }
   };
 
-  const getOfferStatus = (offer: Offer) => {
+  const getOfferStatusDisplay = (offer: Offer) => {
     // Use offer.status directly from database for accurate status
-    if (offer.status === 'accepted') return "Accepted";
-    if (offer.status === 'rejected') return "Rejected";
-    return "Pending";
+    switch (offer.status) {
+      case 'accepted':
+        return { text: "Accepted", color: "bg-green-50 text-green-700" };
+      case 'rejected':
+        return { text: "Not Selected", color: "bg-red-50 text-red-700" };
+      case 'pending':
+      default:
+        return { text: "Pending", color: "bg-yellow-50 text-yellow-700" };
+    }
   };
 
   const handleChatWithClient = () => {
@@ -189,17 +195,13 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // My Offers tab - show offer status and details with accurate status
+  // My Offers tab - show offer status and details (only pending/rejected offers)
   if (activeTab === "my-tasks" && myOffer) {
-    const status = getOfferStatus(myOffer);
+    const statusDisplay = getOfferStatusDisplay(myOffer);
     return (
       <div className="space-y-3">
-        <div className={`p-3 rounded-lg ${
-          status === "Accepted" ? "bg-green-50 text-green-700" :
-          status === "Rejected" ? "bg-red-50 text-red-700" :
-          "bg-yellow-50 text-yellow-700"
-        }`}>
-          <p className="font-medium">Your Offer: {status}</p>
+        <div className={`p-3 rounded-lg ${statusDisplay.color}`}>
+          <p className="font-medium">Your Offer: {statusDisplay.text}</p>
           <p className="text-sm">Price: £{myOffer.price}</p>
           {myOffer.proposed_date && (
             <p className="text-sm">Date: {myOffer.proposed_date} at {myOffer.proposed_time}</p>
@@ -208,17 +210,6 @@ export const TaskTaskerActions = ({
             <p className="text-sm italic mt-1">"{myOffer.message}"</p>
           )}
         </div>
-        
-        {status === "Accepted" && (
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={handleChatWithClient}
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Chat with Client
-          </Button>
-        )}
       </div>
     );
   }

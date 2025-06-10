@@ -87,11 +87,14 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
             break;
           case "my-tasks":
             // My Offers: show all tasks where current tasker has submitted an offer
-            // Group by actual offer status - no mixed statuses
+            // BUT exclude tasks where this tasker's offer was accepted (those go to appointments)
             filteredTasks = filteredTasks.filter(task => {
               if (!task.offers || !Array.isArray(task.offers)) return false;
               const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
-              return myOffer !== undefined;
+              if (!myOffer) return false;
+              
+              // Only show if offer is pending or rejected, NOT if accepted
+              return myOffer.status === 'pending' || myOffer.status === 'rejected';
             });
             break;
           case "appointments":
