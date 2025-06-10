@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-import { cancelTask } from "@/lib/api";
+import { cancelTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -64,7 +64,7 @@ export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdat
   // Only render if this is the client's task
   if (task.client_id !== user.id) return null;
 
-  // Pending Requests tab - show cancel button
+  // Pending Requests tab - show cancel button for pending tasks
   if (activeTab === "available" && task.status === "pending") {
     return (
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
@@ -116,7 +116,7 @@ export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdat
     );
   }
 
-  // Received Offers tab - show all offers with accept buttons
+  // Received Offers tab - show all offers with accept buttons (only if no offer accepted yet)
   if (activeTab === "received-offers" && task.offers && Array.isArray(task.offers) && task.offers.length > 0) {
     return (
       <div className="mt-4 space-y-3">
@@ -135,7 +135,7 @@ export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdat
                 )}
               </div>
               <div className="ml-4">
-                {task.status === "pending" && !offer.is_accepted && offer.is_accepted !== false && (
+                {task.status === "pending" && !task.accepted_offer_id && (
                   <Button
                     onClick={() => onAccept(task.id, offer.id)}
                     className="bg-green-600 hover:bg-green-700"
@@ -143,11 +143,11 @@ export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdat
                     Accept Offer
                   </Button>
                 )}
-                {offer.is_accepted === true && (
+                {task.accepted_offer_id === offer.id && (
                   <Badge className="bg-green-100 text-green-700">Accepted</Badge>
                 )}
-                {offer.is_accepted === false && (
-                  <Badge className="bg-red-100 text-red-700">Rejected</Badge>
+                {task.accepted_offer_id && task.accepted_offer_id !== offer.id && (
+                  <Badge className="bg-red-100 text-red-700">Not Selected</Badge>
                 )}
               </div>
             </div>

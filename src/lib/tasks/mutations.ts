@@ -67,6 +67,8 @@ export const updateTaskStatus = async (
 
 export const acceptOffer = async (taskId: string, offerId: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log("🔄 [TASKS] Accepting offer:", offerId, "for task:", taskId);
+    
     const { data, error } = await supabase.rpc('accept_offer_and_reject_others', {
       offer_id_param: offerId,
       task_id_param: taskId
@@ -77,6 +79,7 @@ export const acceptOffer = async (taskId: string, offerId: string): Promise<{ su
       return { success: false, error: error.message };
     }
 
+    console.log("✅ [TASKS] Offer accepted successfully");
     return { success: true };
   } catch (error) {
     console.error("❌ [TASKS] Unexpected error accepting offer:", error);
@@ -86,6 +89,8 @@ export const acceptOffer = async (taskId: string, offerId: string): Promise<{ su
 
 export const cancelTask = async (taskId: string, reason?: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log("🔄 [TASKS] Cancelling task:", taskId, "with reason:", reason);
+    
     const { data, error } = await supabase.rpc('cancel_task', {
       task_id_param: taskId,
       reason: reason
@@ -97,9 +102,11 @@ export const cancelTask = async (taskId: string, reason?: string): Promise<{ suc
     }
 
     if (!data) {
+      console.log("⚠️ [TASKS] Cannot cancel task - offer already accepted");
       return { success: false, error: "Cannot cancel task - offer already accepted" };
     }
 
+    console.log("✅ [TASKS] Task cancelled successfully");
     return { success: true };
   } catch (error) {
     console.error("❌ [TASKS] Unexpected error cancelling task:", error);

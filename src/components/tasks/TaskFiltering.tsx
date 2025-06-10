@@ -47,25 +47,25 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       if (userRole === "client") {
         switch (activeTab) {
           case "available":
-            // Pending Requests: show only their own tasks where status = 'pending'
+            // Pending Requests: show only client's tasks with status = 'pending'
             filteredTasks = filteredTasks.filter(task =>
               task.client_id === user.id && task.status === "pending"
             );
             break;
           case "my-tasks":
-            // Accepted Tasks: show only their own tasks where status = 'accepted'
+            // Accepted Tasks: show only client's tasks with status = 'accepted'
             filteredTasks = filteredTasks.filter(task =>
               task.client_id === user.id && task.status === "accepted"
             );
             break;
           case "completed":
-            // Completed: show only their own tasks with status = 'completed'
+            // Completed Tasks: show only client's tasks with status = 'completed'
             filteredTasks = filteredTasks.filter(task => 
               task.client_id === user.id && task.status === "completed"
             );
             break;
           case "received-offers":
-            // Received Offers: show only their own tasks with status = 'pending' and at least one offer
+            // Received Offers: show only client's tasks with status = 'pending' and at least one offer
             filteredTasks = filteredTasks.filter(task =>
               task.client_id === user.id &&
               task.status === "pending" &&
@@ -126,6 +126,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
         setCompletedTotal(total);
       }
 
+      console.log(`✅ [TASKS] Filtered tasks for ${activeTab}:`, filteredTasks.length);
       setTasks(filteredTasks);
     } catch (error) {
       console.error("❌ Error loading tasks:", error);

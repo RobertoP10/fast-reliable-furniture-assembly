@@ -1,6 +1,8 @@
 
 import { useState } from "react";
-import { acceptOffer } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { acceptOffer } from "@/lib/tasks";
+import { useToast } from "@/hooks/use-toast";
 import MakeOfferDialog from "@/components/tasks/MakeOfferDialog";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { CompletedTasksStats } from "@/components/tasks/CompletedTasksStats";
@@ -29,6 +31,8 @@ interface TasksListProps {
 }
 
 const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -46,11 +50,18 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   };
 
   const handleAcceptOffer = async (taskId: string, offerId: string) => {
-    const res = await acceptOffer(taskId, offerId);
-    if (res.success) {
-      loadData();
+    console.log("🔄 [CLIENT] Accepting offer:", offerId, "for task:", taskId);
+    
+    const result = await acceptOffer(taskId, offerId);
+    if (result.success) {
+      toast({ title: "✅ Offer accepted successfully!" });
+      loadData(); // Refresh the data
     } else {
-      console.error("❌ Failed to accept offer:", res.error);
+      toast({ 
+        title: "❌ Failed to accept offer", 
+        description: result.error,
+        variant: "destructive" 
+      });
     }
   };
 
@@ -61,6 +72,10 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const handleMakeOffer = (taskId: string) => {
     setSelectedTaskId(taskId);
   };
+
+  if (!user) {
+    return <div>Please log in to view tasks.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -81,7 +96,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         tasks={tasks}
         loading={loading}
         userRole={userRole}
-        user={{ id: "dummy" }} // This will be passed from parent or context
+        user={user}
         activeTab={activeTab}
         onAccept={handleAcceptOffer}
         onMakeOffer={handleMakeOffer}
