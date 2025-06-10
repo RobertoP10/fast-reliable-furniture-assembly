@@ -22,7 +22,7 @@ interface TasksGridProps {
   loading: boolean;
   userRole: "client" | "tasker";
   user: any;
-  activeTab: "available" | "my-tasks" | "completed" | "received-offers";
+  activeTab: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: (taskId: string) => void;
   onTaskUpdate: () => void;
