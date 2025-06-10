@@ -1,42 +1,35 @@
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createOffer } from "@/lib/offers";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { fetchTask } from "@/lib/tasks";
-import { useEffect } from "react";
-import type { Database } from "@/integrations/supabase/types";
-
-type Task = Database["public"]["Tables"]["task_requests"]["Row"];
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface MakeOfferDialogProps {
   taskId: string;
-  onOfferCreated?: () => void;
+  onOfferCreated: () => void;
 }
 
 const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [task, setTask] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    price: "",
+    message: "",
+    proposedDate: "",
+    proposedTime: "",
+  });
 
-  const [open, setOpen] = useState(true);
-  const [price, setPrice] = useState("");
-  const [message, setMessage] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [task, setTask] = useState<Task | null>(null);
-
-  useEffect(() => {
+  // Load task details when dialog opens
+  useState(() => {
     const loadTask = async () => {
       try {
         const taskData = await fetchTask(taskId);
@@ -45,130 +38,167 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
         console.error("Error loading task:", error);
       }
     };
-    loadTask();
-  }, [taskId]);
-
-  const validateDate = () => {
-    if (!date || !time || !task?.required_date || !task?.required_time) return true;
     
-    const proposedDateTime = new Date(`${date}T${time}`);
-    const requiredDateTime = new Date(`${task.required_date}T${task.required_time}`);
+    if (taskId) {
+      loadTask();
+    }
+  });
+
+  const validateDateTime = () => {
+    if (!formData.proposedDate || !formData.proposedTime) {
+      return "Please select both date and time";
+    }
+
+    const proposedDateTime = new Date(`${formData.proposedDate}T${formData.proposedTime}`);
     const now = new Date();
     
-    if (proposedDateTime < now) {
-      toast({ title: "Cannot propose a date/time in the past", variant: "destructive" });
-      return false;
+    // Check if proposed date/time is in the past
+    if (proposedDateTime <= now) {
+      return "Proposed date and time must be in the future";
     }
-    
-    if (proposedDateTime > requiredDateTime) {
-      toast({ 
-        title: "Proposed date/time must be before or on the required date/time", 
-        variant: "destructive" 
-      });
-      return false;
+
+    // Check if proposed date/time is before task's required date
+    if (task?.required_date) {
+      const requiredDateTime = new Date(task.required_date);
+      if (task.required_time) {
+        const [hours, minutes] = task.required_time.split(':');
+        requiredDateTime.setHours(parseInt(hours), parseInt(minutes));
+      }
+      
+      if (proposedDateTime > requiredDateTime) {
+        return "Proposed date and time must be on or before the task's required date";
+      }
     }
-    
-    return true;
+
+    return null;
   };
 
-  const handleSubmit = async () => {
-    if (!price || !date || !time) {
-      toast({ title: "All fields are required", variant: "destructive" });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id) {
+      toast({ title: "Please log in to make an offer", variant: "destructive" });
       return;
     }
 
-    if (!validateDate()) {
+    // Validate date/time
+    const validationError = validateDateTime();
+    if (validationError) {
+      toast({ title: validationError, variant: "destructive" });
       return;
     }
 
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      toast({ title: "Please enter a valid price", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      setLoading(true);
-
       await createOffer({
         task_id: taskId,
-        tasker_id: user!.id,
-        price: Number(price),
-        message,
-        proposed_date: date,
-        proposed_time: time,
+        tasker_id: user.id,
+        price: parseFloat(formData.price),
+        message: formData.message || undefined,
+        proposed_date: formData.proposedDate,
+        proposed_time: formData.proposedTime,
       });
 
-      toast({ title: "✅ Offer sent successfully!" });
-
-      setOpen(false);
-
-      if (onOfferCreated) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        onOfferCreated();
-      }
-
-      setPrice("");
-      setMessage("");
-      setDate("");
-      setTime("");
+      toast({ title: "✅ Offer submitted successfully!" });
+      setIsOpen(false);
+      onOfferCreated();
     } catch (error) {
-      toast({ title: "❌ Failed to send offer", variant: "destructive" });
+      console.error("Error creating offer:", error);
+      toast({ 
+        title: "❌ Failed to submit offer", 
+        description: "Please try again",
+        variant: "destructive" 
+      });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onOfferCreated();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent aria-describedby="make-offer-description">
-        <div id="make-offer-description" className="sr-only">
-          Fill out the form below to submit your offer to the client.
-        </div>
-
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Submit Your Offer</DialogTitle>
+          <DialogTitle>Make an Offer</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          {task && (
-            <div className="bg-blue-50 p-3 rounded-lg text-sm">
-              <p><strong>Task:</strong> {task.title}</p>
-              <p><strong>Budget:</strong> £{task.price_range_min} - £{task.price_range_max}</p>
-              {task.required_date && task.required_time && (
-                <p><strong>Required by:</strong> {new Date(task.required_date).toLocaleDateString()} at {task.required_time}</p>
-              )}
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Offer Price (£)</Label>
+            <Label htmlFor="price">Your Price (£)</Label>
             <Input
+              id="price"
               type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter your offer"
-              min={1}
+              step="0.01"
+              min="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              placeholder="Enter your price"
+              required
             />
           </div>
 
           <div>
-            <Label>Message (optional)</Label>
+            <Label htmlFor="proposed-date">Proposed Date</Label>
+            <Input
+              id="proposed-date"
+              type="date"
+              value={formData.proposedDate}
+              onChange={(e) => setFormData({ ...formData, proposedDate: e.target.value })}
+              min={new Date().toISOString().split('T')[0]}
+              max={task?.required_date || undefined}
+              required
+            />
+            {task?.required_date && (
+              <p className="text-xs text-gray-500 mt-1">
+                Must be on or before: {new Date(task.required_date).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="proposed-time">Proposed Time</Label>
+            <Input
+              id="proposed-time"
+              type="time"
+              value={formData.proposedTime}
+              onChange={(e) => setFormData({ ...formData, proposedTime: e.target.value })}
+              required
+            />
+            {task?.required_time && (
+              <p className="text-xs text-gray-500 mt-1">
+                Task required by: {task.required_time}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="message">Message (Optional)</Label>
             <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Message to client"
+              id="message"
+              value={formData.message}
+              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+              placeholder="Add a message to explain your approach..."
+              rows={3}
             />
           </div>
 
-          <div>
-            <Label>Available Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? "Submitting..." : "Submit Offer"}
+            </Button>
           </div>
-
-          <div>
-            <Label>Available Time</Label>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-          </div>
-
-          <Button disabled={loading} onClick={handleSubmit} className="w-full mt-2">
-            {loading ? "Sending..." : "Submit Offer"}
-          </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

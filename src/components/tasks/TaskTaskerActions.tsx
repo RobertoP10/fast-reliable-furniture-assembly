@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle, Upload } from "lucide-react";
-import { completeTask } from "@/lib/api";
+import { completeTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -37,6 +37,7 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
 
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
+  const isMyOfferAccepted = myOffer && task.accepted_offer_id === myOffer.id;
 
   const handleCompleteTask = async () => {
     if (proofFiles.length === 0) {
@@ -84,7 +85,7 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
     return "Pending";
   };
 
-  // Available Tasks tab
+  // Available Tasks tab - show Make Offer button only if no offer submitted yet
   if (activeTab === "available" && !hasOffered) {
     return (
       <Button onClick={onMakeOffer} className="bg-blue-600 hover:bg-blue-700">
@@ -93,7 +94,7 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
     );
   }
 
-  // My Offers tab
+  // My Offers tab - show offer details and completion option if accepted
   if (activeTab === "my-tasks" && myOffer) {
     const offerStatus = getOfferStatus(myOffer);
     
@@ -114,7 +115,8 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
           )}
         </div>
         
-        {task.status === "accepted" && myOffer.is_accepted && (
+        {/* Show completion option only for accepted tasks where this tasker's offer was accepted */}
+        {task.status === "accepted" && isMyOfferAccepted && (
           <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">
@@ -163,6 +165,16 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
             </DialogContent>
           </Dialog>
         )}
+      </div>
+    );
+  }
+
+  // Completed tab - just show the proof if available
+  if (activeTab === "completed" && task.status === "completed" && isMyOfferAccepted) {
+    return (
+      <div className="bg-green-50 p-4 rounded-lg">
+        <p className="text-sm text-green-700 font-medium">✅ Task Completed</p>
+        <p className="text-sm text-gray-600">Completed at: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
       </div>
     );
   }

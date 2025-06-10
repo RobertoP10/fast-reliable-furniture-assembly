@@ -92,11 +92,12 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
             );
             break;
           case "completed":
-            // Completed: show tasks where status = 'completed' and accepted_offer_id is linked to one of the tasker's offers
+            // Completed: show tasks where status = 'completed' and current tasker was the one who marked it completed
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "completed") return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
               
+              // Check if current tasker was the accepted tasker for this completed task
               const taskerOffer = task.offers.find(offer => offer.tasker_id === user.id);
               return taskerOffer && task.accepted_offer_id === taskerOffer.id;
             });

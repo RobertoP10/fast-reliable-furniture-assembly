@@ -141,10 +141,11 @@ const TaskerDashboard = () => {
             </div>
 
             <div className="lg:col-span-3">
-              {activeTab === 'available' && <TasksList userRole="tasker" />}
-              {activeTab === 'my-tasks' && <TasksList userRole="tasker" />}
-              {activeTab === 'completed' && <TasksList userRole="tasker" />}
-              {activeTab === 'chat' && <Chat />}
+              {activeTab === 'chat' ? (
+                <Chat />
+              ) : (
+                <TasksList userRole="tasker" />
+              )}
             </div>
           </div>
         </div>
