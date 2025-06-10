@@ -8,10 +8,13 @@ import { Wrench, Bell, User, LogOut, Star, DollarSign, CheckCircle } from "lucid
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import RoleProtection from "@/components/auth/RoleProtection";
+import { NotificationBadge } from "@/components/ui/notification-badge";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'completed' | 'chat'>('available');
+  const { unreadCount } = useNotifications();
 
   if (!user?.approved) {
     return (
@@ -47,10 +50,7 @@ const TaskerDashboard = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                </Button>
+                <NotificationBadge count={unreadCount} />
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium">{user?.full_name}</span>

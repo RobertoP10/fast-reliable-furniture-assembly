@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Dialog,
@@ -12,6 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { createOffer } from "@/lib/offers";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchTask } from "@/lib/tasks";
+import { useEffect } from "react";
+import type { Database } from "@/integrations/supabase/types";
+
+type Task = Database["public"]["Tables"]["task_requests"]["Row"];
 
 interface MakeOfferDialogProps {
   taskId: string;
@@ -28,10 +34,50 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const [task, setTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    const loadTask = async () => {
+      try {
+        const taskData = await fetchTask(taskId);
+        setTask(taskData);
+      } catch (error) {
+        console.error("Error loading task:", error);
+      }
+    };
+    loadTask();
+  }, [taskId]);
+
+  const validateDate = () => {
+    if (!date || !time || !task?.required_date || !task?.required_time) return true;
+    
+    const proposedDateTime = new Date(`${date}T${time}`);
+    const requiredDateTime = new Date(`${task.required_date}T${task.required_time}`);
+    const now = new Date();
+    
+    if (proposedDateTime < now) {
+      toast({ title: "Cannot propose a date/time in the past", variant: "destructive" });
+      return false;
+    }
+    
+    if (proposedDateTime > requiredDateTime) {
+      toast({ 
+        title: "Proposed date/time must be before or on the required date/time", 
+        variant: "destructive" 
+      });
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleSubmit = async () => {
     if (!price || !date || !time) {
       toast({ title: "All fields are required", variant: "destructive" });
+      return;
+    }
+
+    if (!validateDate()) {
       return;
     }
 
@@ -49,16 +95,13 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
 
       toast({ title: "✅ Offer sent successfully!" });
 
-      // Închide dialogul doar după ce datele au fost procesate
       setOpen(false);
 
-      // Notifică parentul (TasksList) să reîncarce datele
       if (onOfferCreated) {
-        await new Promise((resolve) => setTimeout(resolve, 300)); // mic delay de siguranță
+        await new Promise((resolve) => setTimeout(resolve, 300));
         onOfferCreated();
       }
 
-      // Resetează câmpurile (opțional)
       setPrice("");
       setMessage("");
       setDate("");
@@ -82,6 +125,16 @@ const MakeOfferDialog = ({ taskId, onOfferCreated }: MakeOfferDialogProps) => {
         </DialogHeader>
 
         <div className="space-y-4">
+          {task && (
+            <div className="bg-blue-50 p-3 rounded-lg text-sm">
+              <p><strong>Task:</strong> {task.title}</p>
+              <p><strong>Budget:</strong> £{task.price_range_min} - £{task.price_range_max}</p>
+              {task.required_date && task.required_time && (
+                <p><strong>Required by:</strong> {new Date(task.required_date).toLocaleDateString()} at {task.required_time}</p>
+              )}
+            </div>
+          )}
+
           <div>
             <Label>Offer Price (£)</Label>
             <Input

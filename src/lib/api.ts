@@ -39,3 +39,11 @@ export {
   sendMessage,
   markMessagesAsRead
 } from './chat';
+
+// 🔔 Notifications
+export {
+  fetchNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
+} from './notifications';

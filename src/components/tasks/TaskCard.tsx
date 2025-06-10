@@ -2,10 +2,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, PoundSterling, Calendar, X, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { MapPin, Clock, PoundSterling, Calendar, X, CheckCircle, Upload, Camera } from "lucide-react";
 import { getStatusBadge } from "./getStatusBadge";
 import { cancelTask, completeTask } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -32,16 +36,28 @@ interface TaskCardProps {
 
 export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUpdate, activeTab }: TaskCardProps) => {
   const { toast } = useToast();
+  const [showProofDialog, setShowProofDialog] = useState(false);
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
   const acceptedOffer = task.offers?.find((offer) => offer.id === task.accepted_offer_id);
 
   const handleCancelTask = async () => {
-    if (!confirm("Are you sure you want to cancel this task?")) return;
+    if (!cancelReason.trim()) {
+      toast({ title: "Please provide a reason for cancellation", variant: "destructive" });
+      return;
+    }
 
-    const result = await cancelTask(task.id, "Cancelled by client");
+    setIsSubmitting(true);
+    const result = await cancelTask(task.id, cancelReason);
     if (result.success) {
       toast({ title: "✅ Task cancelled successfully" });
+      setShowCancelDialog(false);
+      setCancelReason("");
       onTaskUpdate?.();
     } else {
       toast({ 
@@ -50,22 +66,53 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUp
         variant: "destructive" 
       });
     }
+    setIsSubmitting(false);
   };
 
   const handleCompleteTask = async () => {
-    if (!confirm("Mark this task as completed? This will notify the client.")) return;
+    if (proofFiles.length === 0) {
+      toast({ title: "Please upload at least one proof photo", variant: "destructive" });
+      return;
+    }
 
-    const result = await completeTask(task.id);
-    if (result.success) {
-      toast({ title: "✅ Task marked as completed and client notified" });
-      onTaskUpdate?.();
-    } else {
+    setIsSubmitting(true);
+    try {
+      // TODO: Implement file upload to Supabase storage
+      // For now, we'll just complete without proof URLs
+      const result = await completeTask(task.id);
+      if (result.success) {
+        toast({ title: "✅ Task marked as completed" });
+        setShowProofDialog(false);
+        setProofFiles([]);
+        onTaskUpdate?.();
+      } else {
+        toast({ 
+          title: "❌ Failed to complete task", 
+          description: result.error,
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
       toast({ 
-        title: "❌ Failed to complete task", 
-        description: result.error,
+        title: "❌ Error completing task", 
+        description: "Please try again",
         variant: "destructive" 
       });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setProofFiles(Array.from(e.target.files));
+    }
+  };
+
+  const getOfferStatus = (offer: Offer) => {
+    if (offer.is_accepted === true) return "Accepted";
+    if (offer.is_accepted === false) return "Rejected";
+    return "Pending";
   };
 
   const renderTaskerView = () => {
@@ -80,8 +127,7 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUp
 
     // My Offers tab
     if (activeTab === "my-tasks" && myOffer) {
-      const offerStatus = myOffer.is_accepted === true ? "Accepted" : 
-                         myOffer.is_accepted === false ? "Rejected" : "Pending";
+      const offerStatus = getOfferStatus(myOffer);
       
       return (
         <div className="space-y-4">
@@ -101,10 +147,53 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUp
           </div>
           
           {task.status === "accepted" && myOffer.is_accepted && (
-            <Button onClick={handleCompleteTask} className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Completed
-            </Button>
+            <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark as Completed
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Complete Task</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="proof-photos">Upload Proof Photos</Label>
+                    <Input
+                      id="proof-photos"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload photos showing the completed work
+                    </p>
+                  </div>
+                  
+                  {proofFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected files:</p>
+                      {proofFiles.map((file, index) => (
+                        <p key={index} className="text-sm text-gray-600">{file.name}</p>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <Button 
+                    onClick={handleCompleteTask} 
+                    disabled={isSubmitting || proofFiles.length === 0}
+                    className="w-full"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isSubmitting ? "Completing..." : "Complete Task"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       );
@@ -117,15 +206,52 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUp
     // Pending Requests tab - show cancel button
     if (activeTab === "available" && task.status === "pending") {
       return (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleCancelTask}
-          className="text-red-600 border-red-200 hover:bg-red-50"
-        >
-          <X className="h-4 w-4 mr-1" />
-          Cancel Task
-        </Button>
+        <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel Task
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cancel Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="cancel-reason">Reason for Cancellation</Label>
+                <Input
+                  id="cancel-reason"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Please provide a reason..."
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelDialog(false)}
+                  className="flex-1"
+                >
+                  Keep Task
+                </Button>
+                <Button
+                  onClick={handleCancelTask}
+                  disabled={isSubmitting || !cancelReason.trim()}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  {isSubmitting ? "Cancelling..." : "Cancel Task"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       );
     }
 

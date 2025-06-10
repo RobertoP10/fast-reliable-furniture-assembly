@@ -1,56 +1,20 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Plus, MessageSquare, Bell, User, LogOut, Star } from "lucide-react";
+import { Wrench, Plus, MessageSquare, User, LogOut, Star } from "lucide-react";
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
-import { fetchTasks } from "@/lib/tasks";
-import { acceptOffer } from "@/lib/offers";
-import type { Database } from "@/integrations/supabase/types";
-
-// Define simple type alias
-type TaskRow = Database["public"]["Tables"]["task_requests"]["Row"];
-type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
-
-type TaskWithOffers = TaskRow & {
-  offers?: OfferRow[];
-  client?: {
-    full_name: string;
-    location: string;
-  };
-};
+import { NotificationBadge } from "@/components/ui/notification-badge";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const [tasksWithOffers, setTasksWithOffers] = useState<TaskWithOffers[]>([]);
-
-  const loadClientOffers = async () => {
-    if (!user?.id) return;
-    try {
-      const allTasks = await fetchTasks(user.id, "client");
-      const withOffers = allTasks.filter((t) => Array.isArray(t.offers) && t.offers.length > 0);
-      setTasksWithOffers(withOffers as TaskWithOffers[]);
-    } catch (error) {
-      console.error("Error loading client offers:", error);
-    }
-  };
-
-  const handleAccept = async (taskId: string, offerId: string) => {
-    try {
-      await acceptOffer(taskId, offerId);
-      await loadClientOffers();
-    } catch (error) {
-      console.error("Failed to accept offer:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.id) loadClientOffers();
-  }, [user]);
+  const { unreadCount } = useNotifications();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -64,10 +28,7 @@ const ClientDashboard = () => {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-              </Button>
+              <NotificationBadge count={unreadCount} />
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
                 <span className="text-sm font-medium">{user?.full_name}</span>
@@ -143,30 +104,6 @@ const ClientDashboard = () => {
             {activeTab === 'tasks' && <TasksList userRole="client" />}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
-
-            {activeTab === 'tasks' && tasksWithOffers.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold text-blue-800">Offers Received</h3>
-                {tasksWithOffers.map((task) => (
-                  task.offers?.map((offer) => (
-                    <Card key={offer.id} className="border border-blue-100 shadow-sm">
-                      <CardHeader>
-                        <CardTitle className="text-blue-900">{task.title}</CardTitle>
-                        <CardDescription>{task.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div>Proposed: £{offer.price} on {offer.proposed_date} at {offer.proposed_time}</div>
-                        {!offer.is_accepted && (
-                          <Button size="sm" onClick={() => handleAccept(task.id, offer.id)}>
-                            Accept Offer
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

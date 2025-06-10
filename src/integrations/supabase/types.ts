@@ -89,6 +89,57 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string | null
+          offer_id: string | null
+          task_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          offer_id?: string | null
+          task_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          offer_id?: string | null
+          task_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           created_at: string
@@ -98,6 +149,7 @@ export type Database = {
           price: number
           proposed_date: string | null
           proposed_time: string | null
+          status: string | null
           task_id: string
           tasker_id: string
           updated_at: string
@@ -110,6 +162,7 @@ export type Database = {
           price: number
           proposed_date?: string | null
           proposed_time?: string | null
+          status?: string | null
           task_id: string
           tasker_id: string
           updated_at?: string
@@ -122,6 +175,7 @@ export type Database = {
           price?: number
           proposed_date?: string | null
           proposed_time?: string | null
+          status?: string | null
           task_id?: string
           tasker_id?: string
           updated_at?: string
@@ -532,6 +586,10 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_unread_notification_count: {
+        Args: { user_id_param: string }
+        Returns: number
       }
       get_user_role: {
         Args: { user_id: string }
