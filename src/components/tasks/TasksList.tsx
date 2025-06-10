@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { acceptOffer } from "@/lib/tasks";
@@ -33,7 +32,7 @@ interface TasksListProps {
 const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers">("available");
+  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers" | "appointments">("available");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const {
