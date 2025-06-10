@@ -611,18 +611,6 @@ export type Database = {
         Args: { task_id: string }
         Returns: boolean
       }
-      tasker_can_chat_on_task: {
-        Args: { task_id: string; user_id: string }
-        Returns: boolean
-      }
-      tasker_can_see_client_profile: {
-        Args: { client_id: string; tasker_id: string }
-        Returns: boolean
-      }
-      tasker_can_see_task: {
-        Args: { task_id: string; user_id: string }
-        Returns: boolean
-      }
       user_can_see_offer: {
         Args: { offer_id: string; user_id: string }
         Returns: boolean
