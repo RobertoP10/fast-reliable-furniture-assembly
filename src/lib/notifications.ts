@@ -21,7 +21,7 @@ export const fetchNotifications = async (userId: string): Promise<Notification[]
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Failed to fetch notifications: ${error.message}`);
-  return data || [];
+  return (data || []) as Notification[];
 };
 
 export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
