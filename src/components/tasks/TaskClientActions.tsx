@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, X, MessageCircle } from "lucide-react";
@@ -72,7 +72,7 @@ export const TaskClientActions = ({
   };
 
   // Auto-show review modal for completed tasks
-  useState(() => {
+  useEffect(() => {
     if (needsReview && acceptedOffer) {
       setReviewTaskerId(acceptedOffer.tasker_id);
       setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
