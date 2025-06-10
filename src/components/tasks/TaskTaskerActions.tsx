@@ -83,6 +83,15 @@ export const TaskTaskerActions = ({
       return;
     }
 
+    if (task.status !== 'accepted') {
+      toast({ 
+        title: "❌ Cannot complete task", 
+        description: "Task must be in 'accepted' status to be completed",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       console.log('🔄 [TASK] Uploading proof images...');
@@ -132,6 +141,20 @@ export const TaskTaskerActions = ({
         });
         return;
       }
+      
+      // Validate file types
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      const invalidFiles = files.filter(file => !validTypes.includes(file.type));
+      
+      if (invalidFiles.length > 0) {
+        toast({ 
+          title: "⚠️ Invalid file type", 
+          description: "Please select only JPG or PNG images",
+          variant: "destructive" 
+        });
+        return;
+      }
+      
       setProofFiles(files);
     }
   };
@@ -181,7 +204,7 @@ export const TaskTaskerActions = ({
   }
 
   // Appointments tab - show appointment details and chat/completion options
-  if (activeTab === "appointments" && isMyOfferAccepted) {
+  if (activeTab === "appointments" && isMyOfferAccepted && task.status === "accepted") {
     return (
       <div className="space-y-4">
         <div className="bg-green-50 p-4 rounded-lg">
@@ -229,12 +252,12 @@ export const TaskTaskerActions = ({
                     id="proof-photos"
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png"
                     onChange={handleFileChange}
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Upload 1-5 photos showing the completed work (JPG, PNG)
+                    Upload 1-5 photos showing the completed work (JPG, PNG only)
                   </p>
                 </div>
                 

@@ -1,13 +1,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
-import { cancelTask } from "@/lib/tasks";
+import { CheckCircle, X, MessageCircle } from "lucide-react";
+import { acceptOffer, cancelTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
+import { TaskReviewModal } from "./TaskReviewModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -30,26 +28,32 @@ interface TaskClientActionsProps {
   onTaskUpdate?: () => void;
 }
 
-export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdate }: TaskClientActionsProps) => {
+export const TaskClientActions = ({ 
+  task, 
+  user, 
+  activeTab, 
+  onAccept, 
+  onTaskUpdate 
+}: TaskClientActionsProps) => {
   const { toast } = useToast();
-  const [cancelReason, setCancelReason] = useState("");
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewTaskerId, setReviewTaskerId] = useState<string | null>(null);
+  const [reviewTaskerName, setReviewTaskerName] = useState<string>("");
 
-  const acceptedOffer = task.offers?.find((offer) => offer.id === task.accepted_offer_id);
+  const isMyTask = task.client_id === user?.id;
+  const acceptedOffer = task.offers?.find(offer => offer.id === task.accepted_offer_id);
+
+  // Check if task was just completed and needs review
+  const needsReview = task.status === 'completed' && acceptedOffer && !showReviewModal;
 
   const handleCancelTask = async () => {
-    if (!cancelReason.trim()) {
-      toast({ title: "Please provide a reason for cancellation", variant: "destructive" });
+    if (!confirm("Are you sure you want to cancel this task? This action cannot be undone.")) {
       return;
     }
 
-    setIsSubmitting(true);
-    const result = await cancelTask(task.id, cancelReason);
+    const result = await cancelTask(task.id, "Cancelled by client");
     if (result.success) {
       toast({ title: "✅ Task cancelled successfully" });
-      setShowCancelDialog(false);
-      setCancelReason("");
       onTaskUpdate?.();
     } else {
       toast({ 
@@ -58,117 +62,129 @@ export const TaskClientActions = ({ task, user, activeTab, onAccept, onTaskUpdat
         variant: "destructive" 
       });
     }
-    setIsSubmitting(false);
   };
 
-  // Only render if this is the client's task
-  if (task.client_id !== user.id) return null;
+  const handleReviewSubmitted = () => {
+    setShowReviewModal(false);
+    setReviewTaskerId(null);
+    setReviewTaskerName("");
+    onTaskUpdate?.();
+  };
 
-  // Pending Requests tab - show cancel button for pending tasks
+  // Auto-show review modal for completed tasks
+  useState(() => {
+    if (needsReview && acceptedOffer) {
+      setReviewTaskerId(acceptedOffer.tasker_id);
+      setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
+      setShowReviewModal(true);
+    }
+  }, [needsReview, acceptedOffer]);
+
+  if (!isMyTask) return null;
+
+  // Pending Requests tab
   if (activeTab === "available" && task.status === "pending") {
     return (
-      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-red-600 border-red-200 hover:bg-red-50"
-          >
-            <X className="h-4 w-4 mr-1" />
-            Cancel Task
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancel Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="cancel-reason">Reason for Cancellation</Label>
-              <Input
-                id="cancel-reason"
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Please provide a reason..."
-                className="mt-1"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowCancelDialog(false)}
-                className="flex-1"
-              >
-                Keep Task
-              </Button>
-              <Button
-                onClick={handleCancelTask}
-                disabled={isSubmitting || !cancelReason.trim()}
-                variant="destructive"
-                className="flex-1"
-              >
-                {isSubmitting ? "Cancelling..." : "Cancel Task"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <div className="flex gap-2">
+        <Button 
+          onClick={handleCancelTask}
+          variant="outline"
+          className="text-red-600 hover:text-red-700"
+        >
+          <X className="h-4 w-4 mr-2" />
+          Cancel Task
+        </Button>
+      </div>
     );
   }
 
-  // Received Offers tab - show all offers with accept buttons (only if no offer accepted yet)
-  if (activeTab === "received-offers" && task.offers && Array.isArray(task.offers) && task.offers.length > 0) {
+  // Received Offers tab
+  if (activeTab === "received-offers" && task.status === "pending" && task.offers && task.offers.length > 0) {
     return (
-      <div className="mt-4 space-y-3">
-        <h4 className="font-semibold text-gray-800">Received Offers ({task.offers.length})</h4>
+      <div className="space-y-3">
+        <h4 className="font-semibold">Offers Received:</h4>
         {task.offers.map((offer) => (
-          <div key={offer.id} className="border border-gray-200 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <p className="font-medium text-gray-800">{offer.tasker?.full_name || 'Unknown Tasker'}</p>
-                <p className="text-lg font-bold text-green-600">£{offer.price}</p>
-                <p className="text-sm text-gray-600">
-                  Proposed: {offer.proposed_date} at {offer.proposed_time}
-                </p>
-                {offer.message && (
-                  <p className="text-sm text-gray-700 mt-2 italic">"{offer.message}"</p>
+          <div key={offer.id} className="border rounded-lg p-3 bg-blue-50">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="font-medium">{offer.tasker?.full_name || "Tasker"}</p>
+                <p className="text-sm text-gray-600">Price: £{offer.price}</p>
+                {offer.proposed_date && (
+                  <p className="text-sm text-gray-600">
+                    Date: {offer.proposed_date} at {offer.proposed_time}
+                  </p>
                 )}
               </div>
-              <div className="ml-4">
-                {task.status === "pending" && !task.accepted_offer_id && (
-                  <Button
-                    onClick={() => onAccept(task.id, offer.id)}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Accept Offer
-                  </Button>
-                )}
-                {task.accepted_offer_id === offer.id && (
-                  <Badge className="bg-green-100 text-green-700">Accepted</Badge>
-                )}
-                {task.accepted_offer_id && task.accepted_offer_id !== offer.id && (
-                  <Badge className="bg-red-100 text-red-700">Not Selected</Badge>
-                )}
-              </div>
+              <Badge className="bg-yellow-100 text-yellow-700">
+                {offer.tasker?.approved ? "Verified" : "Unverified"}
+              </Badge>
             </div>
+            {offer.message && (
+              <p className="text-sm text-gray-700 mb-3 italic">"{offer.message}"</p>
+            )}
+            <Button 
+              onClick={() => onAccept(task.id, offer.id)}
+              className="bg-green-600 hover:bg-green-700 w-full"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Accept Offer
+            </Button>
           </div>
         ))}
       </div>
     );
   }
 
-  // Accepted Tasks tab - show accepted offer details
+  // Accepted Tasks tab
   if (activeTab === "my-tasks" && task.status === "accepted" && acceptedOffer) {
     return (
-      <div className="mt-4 bg-green-50 p-4 rounded-lg">
-        <h4 className="font-semibold text-green-800 mb-2">Accepted Offer</h4>
-        <p><strong>Tasker:</strong> {acceptedOffer.tasker?.full_name || 'Unknown'}</p>
-        <p><strong>Price:</strong> £{acceptedOffer.price}</p>
-        <p><strong>Scheduled:</strong> {acceptedOffer.proposed_date} at {acceptedOffer.proposed_time}</p>
-        {acceptedOffer.message && (
-          <p className="mt-2 italic">"{acceptedOffer.message}"</p>
+      <div className="bg-green-50 p-4 rounded-lg">
+        <p className="text-sm text-green-700 font-medium">✅ Offer Accepted</p>
+        <p className="text-sm text-gray-600">Tasker: {acceptedOffer.tasker?.full_name}</p>
+        <p className="text-sm text-gray-600">Price: £{acceptedOffer.price}</p>
+        {acceptedOffer.proposed_date && (
+          <p className="text-sm text-gray-600">
+            Scheduled: {acceptedOffer.proposed_date} at {acceptedOffer.proposed_time}
+          </p>
         )}
       </div>
+    );
+  }
+
+  // Completed Tasks tab
+  if (activeTab === "completed" && task.status === "completed" && acceptedOffer) {
+    return (
+      <>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <p className="text-sm text-green-700 font-medium">✅ Task Completed</p>
+          <p className="text-sm text-gray-600">Completed at: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
+          <p className="text-sm text-gray-600">Tasker: {acceptedOffer.tasker?.full_name}</p>
+          <p className="text-sm text-gray-600">Total Paid: £{acceptedOffer.price}</p>
+          
+          <Button 
+            onClick={() => {
+              setReviewTaskerId(acceptedOffer.tasker_id);
+              setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
+              setShowReviewModal(true);
+            }}
+            variant="outline"
+            className="mt-2 w-full"
+          >
+            Leave a Review
+          </Button>
+        </div>
+        
+        {reviewTaskerId && (
+          <TaskReviewModal
+            isOpen={showReviewModal}
+            onClose={() => setShowReviewModal(false)}
+            taskId={task.id}
+            taskerId={reviewTaskerId}
+            taskerName={reviewTaskerName}
+            onReviewSubmitted={handleReviewSubmitted}
+          />
+        )}
+      </>
     );
   }
 
