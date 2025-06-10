@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -53,35 +54,32 @@ export const createOffer = async (offerData: {
   return data;
 };
 
-// ✅ Accept one offer & reject the rest
+// ✅ Accept one offer & reject the rest with proper status handling
 export const acceptOffer = async (
   taskId: string,
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
   try {
-    const { error: acceptError } = await supabase
-      .from("offers")
-      .update({ is_accepted: true })
-      .eq("id", offerId);
-    if (acceptError) throw acceptError;
+    // Use the RPC function to handle the entire accept/reject flow atomically
+    const { data, error } = await supabase.rpc('accept_offer_and_reject_others', {
+      offer_id_param: offerId,
+      task_id_param: taskId
+    });
 
-    const { error: rejectOthersError } = await supabase
-      .from("offers")
-      .update({ is_accepted: false })
-      .eq("task_id", taskId)
-      .neq("id", offerId);
-    if (rejectOthersError) throw rejectOthersError;
+    if (error) {
+      console.error("❌ [OFFERS] Error in acceptOffer:", error);
+      return { success: false, error: error.message };
+    }
 
-    const { error: taskError } = await supabase
-      .from("task_requests")
-      .update({ status: "accepted" })
-      .eq("id", taskId);
-    if (taskError) throw taskError;
+    if (!data) {
+      return { success: false, error: "Failed to accept offer" };
+    }
 
+    console.log("✅ [OFFERS] Offer accepted successfully via RPC");
     return { success: true };
   } catch (error) {
-    console.error("❌ [OFFERS] Error in acceptOffer:", error);
-    return { success: false, error };
+    console.error("❌ [OFFERS] Unexpected error in acceptOffer:", error);
+    return { success: false, error: (error as Error).message };
   }
 };
 
@@ -91,7 +89,7 @@ export const declineOffer = async (
 ): Promise<{ success: boolean; error?: any }> => {
   const { error } = await supabase
     .from("offers")
-    .update({ is_accepted: false })
+    .update({ is_accepted: false, status: 'rejected' })
     .eq("id", offerId);
 
   if (error) {

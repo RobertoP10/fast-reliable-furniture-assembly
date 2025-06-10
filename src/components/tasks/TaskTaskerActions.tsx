@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +45,7 @@ export const TaskTaskerActions = ({
 
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
-  const isMyOfferAccepted = myOffer && task.accepted_offer_id === myOffer.id;
+  const isMyOfferAccepted = myOffer && task.accepted_offer_id === myOffer.id && myOffer.status === 'accepted';
 
   const uploadProofImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file) => {
@@ -169,11 +168,9 @@ export const TaskTaskerActions = ({
   };
 
   const getOfferStatus = (offer: Offer) => {
-    // Check if this offer is the accepted one for the task
-    if (task.accepted_offer_id === offer.id) return "Accepted";
-    // If task has an accepted offer but it's not this one, then this offer is rejected
-    if (task.accepted_offer_id && task.accepted_offer_id !== offer.id) return "Rejected";
-    // Otherwise it's still pending
+    // Use offer.status directly from database for accurate status
+    if (offer.status === 'accepted') return "Accepted";
+    if (offer.status === 'rejected') return "Rejected";
     return "Pending";
   };
 
@@ -192,7 +189,7 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // My Offers tab - show offer status and details
+  // My Offers tab - show offer status and details with accurate status
   if (activeTab === "my-tasks" && myOffer) {
     const status = getOfferStatus(myOffer);
     return (
@@ -226,7 +223,7 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // Appointments tab - show appointment details and actions
+  // Appointments tab - show appointment details and actions (only for accepted offers)
   if (activeTab === "appointments" && isMyOfferAccepted && task.status === "accepted") {
     return (
       <div className="space-y-4">
@@ -309,7 +306,7 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // Completed tab - show completion details
+  // Completed tab - show completion details (only for completed tasks where this tasker was accepted)
   if (activeTab === "completed" && task.status === "completed" && isMyOfferAccepted) {
     return (
       <div className="bg-green-50 p-4 rounded-lg">

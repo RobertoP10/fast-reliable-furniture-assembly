@@ -87,31 +87,34 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
             break;
           case "my-tasks":
             // My Offers: show all tasks where current tasker has submitted an offer
+            // Group by actual offer status - no mixed statuses
             filteredTasks = filteredTasks.filter(task => {
               if (!task.offers || !Array.isArray(task.offers)) return false;
-              return task.offers.some(offer => offer.tasker_id === user.id);
+              const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
+              return myOffer !== undefined;
             });
             break;
           case "appointments":
             // Appointments: show tasks where current tasker's offer was accepted
+            // Filter strictly by: task.status = 'accepted' AND current tasker's offer is the accepted one
             filteredTasks = filteredTasks.filter(task => {
-              if (task.status !== "accepted") return false;
+              if (task.status !== "accepted" || !task.accepted_offer_id) return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
               
-              // Check if current tasker was the accepted tasker
-              const taskerOffer = task.offers.find(offer => offer.tasker_id === user.id);
-              return taskerOffer && task.accepted_offer_id === taskerOffer.id;
+              // Check if current tasker's offer is the accepted one
+              const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
+              return myOffer && task.accepted_offer_id === myOffer.id && myOffer.status === 'accepted';
             });
             break;
           case "completed":
             // Completed: show tasks where status = 'completed' and current tasker was the accepted tasker
             filteredTasks = filteredTasks.filter(task => {
-              if (task.status !== "completed") return false;
+              if (task.status !== "completed" || !task.accepted_offer_id) return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
               
               // Check if current tasker was the accepted tasker for this completed task
-              const taskerOffer = task.offers.find(offer => offer.tasker_id === user.id);
-              return taskerOffer && task.accepted_offer_id === taskerOffer.id;
+              const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
+              return myOffer && task.accepted_offer_id === myOffer.id;
             });
             break;
         }

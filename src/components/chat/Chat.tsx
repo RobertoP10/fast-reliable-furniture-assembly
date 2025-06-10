@@ -26,10 +26,10 @@ const Chat = ({ selectedTaskId }: ChatProps) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-select chat if selectedTaskId is provided
+  // Auto-select chat if selectedTaskId is provided - only for tasks with accepted offers
   useEffect(() => {
     if (selectedTaskId && chatRooms.length > 0) {
-      const targetRoom = chatRooms.find(room => room.id === selectedTaskId);
+      const targetRoom = chatRooms.find(room => room.id === selectedTaskId && room.status === 'active');
       if (targetRoom) {
         setSelectedChat(selectedTaskId);
       }
@@ -80,6 +80,11 @@ const Chat = ({ selectedTaskId }: ChatProps) => {
           {selectedChat && selectedRoom && selectedRoom.status === 'closed' && (
             <div className="border-t p-4 text-center text-gray-500">
               <p className="text-sm">This task has been completed. Chat is now read-only.</p>
+            </div>
+          )}
+          {!selectedChat && (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              <p>Select a chat to start messaging</p>
             </div>
           )}
         </div>
