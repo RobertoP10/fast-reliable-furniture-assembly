@@ -20,7 +20,7 @@ type Task = TaskBase & {
 
 interface UseTaskFilteringProps {
   userRole: "client" | "tasker";
-  activeTab: "available" | "my-tasks" | "completed" | "received-offers";
+  activeTab: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
   propTasks?: Task[];
 }
 
@@ -85,11 +85,16 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               (!task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id))
             );
             break;
-          case "my-tasks":
-            // My Offers: show tasks where the current tasker has submitted an offer
-            filteredTasks = filteredTasks.filter(task =>
-              task.offers && Array.isArray(task.offers) && task.offers.some((offer) => offer.tasker_id === user.id)
-            );
+          case "appointments":
+            // Appointments: show tasks where status = 'accepted' and current tasker was the one whose offer was accepted
+            filteredTasks = filteredTasks.filter(task => {
+              if (task.status !== "accepted") return false;
+              if (!task.offers || !Array.isArray(task.offers)) return false;
+              
+              // Check if current tasker was the accepted tasker
+              const taskerOffer = task.offers.find(offer => offer.tasker_id === user.id);
+              return taskerOffer && task.accepted_offer_id === taskerOffer.id;
+            });
             break;
           case "completed":
             // Completed: show tasks where status = 'completed' and current tasker was the one who marked it completed

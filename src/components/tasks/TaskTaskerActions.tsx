@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle, Upload } from "lucide-react";
+import { CheckCircle, Upload, MessageCircle, Calendar, Clock } from "lucide-react";
 import { completeTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -80,8 +79,11 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
   };
 
   const getOfferStatus = (offer: Offer) => {
-    if (offer.is_accepted === true) return "Accepted";
-    if (offer.is_accepted === false) return "Rejected";
+    // Check if this offer is the accepted one for the task
+    if (task.accepted_offer_id === offer.id) return "Accepted";
+    // If task has an accepted offer but it's not this one, then this offer is rejected
+    if (task.accepted_offer_id && task.accepted_offer_id !== offer.id) return "Rejected";
+    // Otherwise it's still pending
     return "Pending";
   };
 
@@ -94,34 +96,38 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
     );
   }
 
-  // My Offers tab - show offer details and completion option if accepted
-  if (activeTab === "my-tasks" && myOffer) {
-    const offerStatus = getOfferStatus(myOffer);
-    
+  // Appointments tab - show appointment details and chat/completion options
+  if (activeTab === "appointments" && isMyOfferAccepted) {
     return (
       <div className="space-y-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm text-gray-700">
-            <strong>Your Offer:</strong> £{myOffer.price} on {myOffer.proposed_date} at {myOffer.proposed_time}
-          </p>
-          <p className="text-sm mt-1">
-            <strong>Status:</strong> <span className={`font-medium ${
-              offerStatus === "Accepted" ? "text-green-600" : 
-              offerStatus === "Rejected" ? "text-red-600" : "text-yellow-600"
-            }`}>{offerStatus}</span>
-          </p>
-          {myOffer.message && (
-            <p className="text-sm mt-1"><strong>Message:</strong> {myOffer.message}</p>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <p className="text-sm text-green-700 font-medium">✅ Appointment Scheduled</p>
+          {myOffer && (
+            <div className="text-sm text-gray-700 mt-2">
+              <div className="flex items-center space-x-2 mb-1">
+                <Calendar className="h-4 w-4" />
+                <span>Date: {myOffer.proposed_date}</span>
+              </div>
+              <div className="flex items-center space-x-2 mb-1">
+                <Clock className="h-4 w-4" />
+                <span>Time: {myOffer.proposed_time}</span>
+              </div>
+              <div>Price: £{myOffer.price}</div>
+            </div>
           )}
         </div>
         
-        {/* Show completion option only for accepted tasks where this tasker's offer was accepted */}
-        {task.status === "accepted" && isMyOfferAccepted && (
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Chat with Client
+          </Button>
+          
           <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700">
+              <Button className="bg-green-600 hover:bg-green-700 flex-1">
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Mark as Completed
+                Complete Task
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -164,17 +170,20 @@ export const TaskTaskerActions = ({ task, user, activeTab, onMakeOffer, onTaskUp
               </div>
             </DialogContent>
           </Dialog>
-        )}
+        </div>
       </div>
     );
   }
 
-  // Completed tab - just show the proof if available
+  // Completed tab - just show the completion details
   if (activeTab === "completed" && task.status === "completed" && isMyOfferAccepted) {
     return (
       <div className="bg-green-50 p-4 rounded-lg">
         <p className="text-sm text-green-700 font-medium">✅ Task Completed</p>
         <p className="text-sm text-gray-600">Completed at: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
+        {myOffer && (
+          <p className="text-sm text-gray-600">Earned: £{myOffer.price}</p>
+        )}
       </div>
     );
   }

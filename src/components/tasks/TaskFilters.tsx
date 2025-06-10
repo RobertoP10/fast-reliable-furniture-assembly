@@ -2,9 +2,9 @@
 import { Button } from "@/components/ui/button";
 
 interface TaskFiltersProps {
-  activeTab: "available" | "my-tasks" | "completed" | "received-offers";
+  activeTab: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
   userRole: "client" | "tasker";
-  onTabChange: (tab: "available" | "my-tasks" | "completed" | "received-offers") => void;
+  onTabChange: (tab: "available" | "my-tasks" | "completed" | "received-offers" | "appointments") => void;
 }
 
 export const TaskFilters = ({ activeTab, userRole, onTabChange }: TaskFiltersProps) => {
@@ -16,6 +16,8 @@ export const TaskFilters = ({ activeTab, userRole, onTabChange }: TaskFiltersPro
         return userRole === "client" ? "Accepted Tasks" : "My Offers";
       case "received-offers":
         return "Received Offers";
+      case "appointments":
+        return "Appointments";
       default:
         return userRole === "client" ? "Pending Requests" : "Available Tasks";
     }
@@ -33,25 +35,42 @@ export const TaskFilters = ({ activeTab, userRole, onTabChange }: TaskFiltersPro
         >
           {userRole === "client" ? "Pending Requests" : "Available Tasks"}
         </Button>
-        <Button 
-          variant={activeTab === "my-tasks" ? "default" : "outline"} 
-          onClick={() => onTabChange("my-tasks")}
-        >
-          {userRole === "client" ? "Accepted Tasks" : "My Offers"}
-        </Button>
-        <Button 
-          variant={activeTab === "completed" ? "default" : "outline"} 
-          onClick={() => onTabChange("completed")}
-        >
-          Completed
-        </Button>
-        {userRole === "client" && (
-          <Button 
-            variant={activeTab === "received-offers" ? "default" : "outline"} 
-            onClick={() => onTabChange("received-offers")}
-          >
-            Received Offers
-          </Button>
+        {userRole === "tasker" ? (
+          <>
+            <Button 
+              variant={activeTab === "appointments" ? "default" : "outline"} 
+              onClick={() => onTabChange("appointments")}
+            >
+              Appointments
+            </Button>
+            <Button 
+              variant={activeTab === "completed" ? "default" : "outline"} 
+              onClick={() => onTabChange("completed")}
+            >
+              Completed
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button 
+              variant={activeTab === "my-tasks" ? "default" : "outline"} 
+              onClick={() => onTabChange("my-tasks")}
+            >
+              Accepted Tasks
+            </Button>
+            <Button 
+              variant={activeTab === "completed" ? "default" : "outline"} 
+              onClick={() => onTabChange("completed")}
+            >
+              Completed
+            </Button>
+            <Button 
+              variant={activeTab === "received-offers" ? "default" : "outline"} 
+              onClick={() => onTabChange("received-offers")}
+            >
+              Received Offers
+            </Button>
+          </>
         )}
       </div>
     </div>

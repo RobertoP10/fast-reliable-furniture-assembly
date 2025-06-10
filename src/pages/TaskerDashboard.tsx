@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Bell, User, LogOut, Star, DollarSign, CheckCircle } from "lucide-react";
+import { Wrench, Bell, User, LogOut, Star, PoundSterling, CheckCircle, Calendar } from "lucide-react";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import RoleProtection from "@/components/auth/RoleProtection";
@@ -13,7 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'available' | 'my-tasks' | 'completed' | 'chat'>('available');
+  const [activeTab, setActiveTab] = useState<'available' | 'appointments' | 'completed' | 'chat'>('available');
   const { unreadCount } = useNotifications();
 
   if (!user?.approved) {
@@ -81,11 +81,12 @@ const TaskerDashboard = () => {
                     Available Tasks
                   </Button>
                   <Button
-                    variant={activeTab === 'my-tasks' ? 'default' : 'ghost'}
+                    variant={activeTab === 'appointments' ? 'default' : 'ghost'}
                     className="w-full justify-start"
-                    onClick={() => setActiveTab('my-tasks')}
+                    onClick={() => setActiveTab('appointments')}
                   >
-                    My Offers
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Appointments
                   </Button>
                   <Button
                     variant={activeTab === 'completed' ? 'default' : 'ghost'}
@@ -123,7 +124,7 @@ const TaskerDashboard = () => {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">This month earnings</span>
                     <div className="flex items-center space-x-1">
-                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <PoundSterling className="h-4 w-4 text-green-600" />
                       <span className="text-sm font-medium">£0</span>
                     </div>
                   </div>
