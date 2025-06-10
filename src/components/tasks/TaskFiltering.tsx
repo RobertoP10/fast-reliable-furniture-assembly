@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchTasks } from "@/lib/api";
+import { fetchTasks } from "@/lib/tasks";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
