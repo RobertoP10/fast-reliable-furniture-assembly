@@ -26,10 +26,20 @@ interface TaskCardProps {
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: () => void;
   onTaskUpdate?: () => void;
+  onChatWithClient?: (taskId: string, clientId: string) => void;
   activeTab?: string;
 }
 
-export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUpdate, activeTab }: TaskCardProps) => {
+export const TaskCard = ({ 
+  task, 
+  userRole, 
+  user, 
+  onAccept, 
+  onMakeOffer, 
+  onTaskUpdate, 
+  onChatWithClient,
+  activeTab 
+}: TaskCardProps) => {
   return (
     <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
       <TaskCardHeader task={task} />
@@ -53,6 +63,7 @@ export const TaskCard = ({ task, userRole, user, onAccept, onMakeOffer, onTaskUp
             activeTab={activeTab} 
             onMakeOffer={onMakeOffer} 
             onTaskUpdate={onTaskUpdate} 
+            onChatWithClient={onChatWithClient}
           />
         )}
 

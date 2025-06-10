@@ -26,6 +26,7 @@ interface TasksGridProps {
   onAccept: (taskId: string, offerId: string) => void;
   onMakeOffer: (taskId: string) => void;
   onTaskUpdate: () => void;
+  onChatWithClient?: (taskId: string, clientId: string) => void;
 }
 
 export const TasksGrid = ({
@@ -36,7 +37,8 @@ export const TasksGrid = ({
   activeTab,
   onAccept,
   onMakeOffer,
-  onTaskUpdate
+  onTaskUpdate,
+  onChatWithClient
 }: TasksGridProps) => {
   if (loading) {
     return (
@@ -65,6 +67,7 @@ export const TasksGrid = ({
           onAccept={onAccept}
           onMakeOffer={() => onMakeOffer(task.id)}
           onTaskUpdate={onTaskUpdate}
+          onChatWithClient={onChatWithClient}
           activeTab={activeTab}
         />
       ))}

@@ -13,8 +13,20 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'available' | 'appointments' | 'completed' | 'chat'>('available');
-  const { unreadCount } = useNotifications();
+  const [activeTab, setActiveTab] = useState<'available' | 'appointments' | 'my-offers' | 'completed' | 'chat'>('available');
+  const [selectedChatTask, setSelectedChatTask] = useState<{ taskId: string; clientId: string } | null>(null);
+  const { unreadCount, refreshNotifications } = useNotifications();
+
+  const handleNotificationClick = () => {
+    // Redirect to chat and refresh notifications
+    setActiveTab('chat');
+    refreshNotifications();
+  };
+
+  const handleChatWithClient = (taskId: string, clientId: string) => {
+    setSelectedChatTask({ taskId, clientId });
+    setActiveTab('chat');
+  };
 
   if (!user?.approved) {
     return (
@@ -37,6 +49,16 @@ const TaskerDashboard = () => {
     );
   }
 
+  const getTabMapping = () => {
+    switch (activeTab) {
+      case 'available': return 'available';
+      case 'my-offers': return 'my-tasks';
+      case 'appointments': return 'appointments';
+      case 'completed': return 'completed';
+      default: return 'available';
+    }
+  };
+
   return (
     <RoleProtection allowedRoles={['tasker']}>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -50,7 +72,7 @@ const TaskerDashboard = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-4">
-                <NotificationBadge count={unreadCount} />
+                <NotificationBadge count={unreadCount} onClick={handleNotificationClick} />
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium">{user?.full_name}</span>
@@ -79,6 +101,13 @@ const TaskerDashboard = () => {
                     onClick={() => setActiveTab('available')}
                   >
                     Available Tasks
+                  </Button>
+                  <Button
+                    variant={activeTab === 'my-offers' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('my-offers')}
+                  >
+                    My Offers
                   </Button>
                   <Button
                     variant={activeTab === 'appointments' ? 'default' : 'ghost'}
@@ -143,9 +172,13 @@ const TaskerDashboard = () => {
 
             <div className="lg:col-span-3">
               {activeTab === 'chat' ? (
-                <Chat />
+                <Chat selectedTaskId={selectedChatTask?.taskId} />
               ) : (
-                <TasksList userRole="tasker" />
+                <TasksList 
+                  userRole="tasker" 
+                  activeTab={getTabMapping()}
+                  onChatWithClient={handleChatWithClient}
+                />
               )}
             </div>
           </div>

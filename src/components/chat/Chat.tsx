@@ -4,7 +4,11 @@ import { ChatMessages } from "./ChatMessages";
 import { MessageInput } from "./MessageInput";
 import { useChat } from "@/hooks/useChat";
 
-const Chat = () => {
+interface ChatProps {
+  selectedTaskId?: string;
+}
+
+const Chat = ({ selectedTaskId }: ChatProps) => {
   const {
     selectedChat,
     setSelectedChat,
@@ -18,6 +22,16 @@ const Chat = () => {
     handleSendMessage,
     user
   } = useChat();
+
+  // Auto-select chat if selectedTaskId is provided
+  React.useEffect(() => {
+    if (selectedTaskId && chatRooms.length > 0) {
+      const targetRoom = chatRooms.find(room => room.id === selectedTaskId);
+      if (targetRoom) {
+        setSelectedChat(selectedTaskId);
+      }
+    }
+  }, [selectedTaskId, chatRooms, setSelectedChat]);
 
   const selectedRoom = chatRooms.find(room => room.id === selectedChat);
 

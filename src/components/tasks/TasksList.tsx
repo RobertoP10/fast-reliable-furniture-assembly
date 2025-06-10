@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { acceptOffer } from "@/lib/tasks";
@@ -27,12 +28,16 @@ type Task = TaskBase & {
 interface TasksListProps {
   userRole: "client" | "tasker";
   tasks?: Task[];
+  activeTab?: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
+  onChatWithClient?: (taskId: string, clientId: string) => void;
 }
 
-const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
+const TasksList = ({ userRole, tasks: propTasks, activeTab: propActiveTab, onChatWithClient }: TasksListProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers" | "appointments">("available");
+  const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers" | "appointments">(
+    propActiveTab || "available"
+  );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const {
@@ -41,7 +46,7 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     completedCount,
     completedTotal,
     loadData
-  } = useTaskFiltering({ userRole, activeTab, propTasks });
+  } = useTaskFiltering({ userRole, activeTab: propActiveTab || activeTab, propTasks });
 
   const handleOfferCreated = () => {
     setSelectedTaskId(null);
@@ -76,15 +81,19 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
     return <div>Please log in to view tasks.</div>;
   }
 
+  const currentActiveTab = propActiveTab || activeTab;
+
   return (
     <div className="space-y-6">
-      <TaskFilters
-        activeTab={activeTab}
-        userRole={userRole}
-        onTabChange={setActiveTab}
-      />
+      {!propActiveTab && (
+        <TaskFilters
+          activeTab={activeTab}
+          userRole={userRole}
+          onTabChange={setActiveTab}
+        />
+      )}
 
-      {activeTab === "completed" && (
+      {currentActiveTab === "completed" && (
         <CompletedTasksStats
           completedCount={completedCount}
           completedTotal={completedTotal}
@@ -96,10 +105,11 @@ const TasksList = ({ userRole, tasks: propTasks }: TasksListProps) => {
         loading={loading}
         userRole={userRole}
         user={user}
-        activeTab={activeTab}
+        activeTab={currentActiveTab}
         onAccept={handleAcceptOffer}
         onMakeOffer={handleMakeOffer}
         onTaskUpdate={handleTaskUpdate}
+        onChatWithClient={onChatWithClient}
       />
 
       {selectedTaskId && (

@@ -38,6 +38,12 @@ export const TaskFilters = ({ activeTab, userRole, onTabChange }: TaskFiltersPro
         {userRole === "tasker" ? (
           <>
             <Button 
+              variant={activeTab === "my-tasks" ? "default" : "outline"} 
+              onClick={() => onTabChange("my-tasks")}
+            >
+              My Offers
+            </Button>
+            <Button 
               variant={activeTab === "appointments" ? "default" : "outline"} 
               onClick={() => onTabChange("appointments")}
             >
