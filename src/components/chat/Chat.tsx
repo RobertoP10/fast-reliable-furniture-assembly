@@ -70,12 +70,17 @@ const Chat = ({ selectedTaskId }: ChatProps) => {
             />
             <div ref={messagesEndRef} />
           </div>
-          {selectedChat && selectedRoom && (
+          {selectedChat && selectedRoom && selectedRoom.status === 'active' && (
             <MessageInput
               newMessage={newMessage}
               onMessageChange={setNewMessage}
               onSendMessage={handleSendMessage}
             />
+          )}
+          {selectedChat && selectedRoom && selectedRoom.status === 'closed' && (
+            <div className="border-t p-4 text-center text-gray-500">
+              <p className="text-sm">This task has been completed. Chat is now read-only.</p>
+            </div>
           )}
         </div>
       </div>

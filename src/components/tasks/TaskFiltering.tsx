@@ -78,7 +78,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       } else if (userRole === "tasker") {
         switch (activeTab) {
           case "available":
-            // Available Tasks: show tasks with status = 'pending' where the current tasker has NOT submitted an offer yet
+            // Available Tasks: show all pending tasks where tasker hasn't submitted an offer yet
             filteredTasks = filteredTasks.filter(task =>
               task.status === "pending" &&
               task.client_id !== user.id && // Don't show own tasks
@@ -86,14 +86,14 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
             );
             break;
           case "my-tasks":
-            // My Offers: show all tasks where the current tasker has submitted an offer
+            // My Offers: show all tasks where current tasker has submitted an offer
             filteredTasks = filteredTasks.filter(task => {
               if (!task.offers || !Array.isArray(task.offers)) return false;
               return task.offers.some(offer => offer.tasker_id === user.id);
             });
             break;
           case "appointments":
-            // Appointments: show tasks where status = 'accepted' and current tasker was the one whose offer was accepted
+            // Appointments: show tasks where current tasker's offer was accepted
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "accepted") return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
@@ -104,7 +104,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
             });
             break;
           case "completed":
-            // Completed: show tasks where status = 'completed' and current tasker was the one who marked it completed
+            // Completed: show tasks where status = 'completed' and current tasker was the accepted tasker
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "completed") return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;

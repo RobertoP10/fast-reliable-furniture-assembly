@@ -92,6 +92,15 @@ export const TaskTaskerActions = ({
       return;
     }
 
+    if (!isMyOfferAccepted) {
+      toast({ 
+        title: "❌ Cannot complete task", 
+        description: "Only the accepted tasker can complete this task",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       console.log('🔄 [TASK] Uploading proof images...');
@@ -183,11 +192,11 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // My Offers tab - show offer status
+  // My Offers tab - show offer status and details
   if (activeTab === "my-tasks" && myOffer) {
     const status = getOfferStatus(myOffer);
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className={`p-3 rounded-lg ${
           status === "Accepted" ? "bg-green-50 text-green-700" :
           status === "Rejected" ? "bg-red-50 text-red-700" :
@@ -198,12 +207,26 @@ export const TaskTaskerActions = ({
           {myOffer.proposed_date && (
             <p className="text-sm">Date: {myOffer.proposed_date} at {myOffer.proposed_time}</p>
           )}
+          {myOffer.message && (
+            <p className="text-sm italic mt-1">"{myOffer.message}"</p>
+          )}
         </div>
+        
+        {status === "Accepted" && (
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={handleChatWithClient}
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Chat with Client
+          </Button>
+        )}
       </div>
     );
   }
 
-  // Appointments tab - show appointment details and chat/completion options
+  // Appointments tab - show appointment details and actions
   if (activeTab === "appointments" && isMyOfferAccepted && task.status === "accepted") {
     return (
       <div className="space-y-4">
@@ -286,7 +309,7 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // Completed tab - just show the completion details
+  // Completed tab - show completion details
   if (activeTab === "completed" && task.status === "completed" && isMyOfferAccepted) {
     return (
       <div className="bg-green-50 p-4 rounded-lg">

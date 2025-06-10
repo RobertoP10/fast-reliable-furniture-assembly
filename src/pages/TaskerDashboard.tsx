@@ -130,6 +130,11 @@ const TaskerDashboard = () => {
                     onClick={() => setActiveTab('chat')}
                   >
                     Chat
+                    {unreadCount > 0 && (
+                      <Badge className="ml-2 bg-red-500 text-white text-xs">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -143,12 +148,12 @@ const TaskerDashboard = () => {
                     <span className="text-sm text-gray-600">Rating</span>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      <span className="text-sm font-medium">0</span>
+                      <span className="text-sm font-medium">{user?.rating || 0}</span>
                     </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Total reviews</span>
-                    <Badge className="bg-green-100 text-green-700">0</Badge>
+                    <Badge className="bg-green-100 text-green-700">{user?.total_reviews || 0}</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">This month earnings</span>
