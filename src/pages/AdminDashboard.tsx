@@ -10,8 +10,10 @@ import { TransactionsTab } from "@/components/admin/tabs/TransactionsTab";
 import { AnalyticsTab } from "@/components/admin/tabs/AnalyticsTab";
 import { useAdminData } from "@/hooks/useAdminData";
 
+type ActiveTab = 'pending-taskers' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
+
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'pending-transactions' | 'transactions' | 'analytics'>('pending-taskers');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('pending-taskers');
 
   // Filter states
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });

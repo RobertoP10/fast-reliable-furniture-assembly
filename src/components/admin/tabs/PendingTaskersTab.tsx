@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PendingTaskersTabProps {
   pendingTaskers: any[];
-  setPendingTaskers: (taskers: any[]) => void;
+  setPendingTaskers: React.Dispatch<React.SetStateAction<any[]>>;
   loading: boolean;
   formatDate: (date: string) => string;
 }

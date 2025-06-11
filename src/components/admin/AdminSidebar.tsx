@@ -4,9 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Users, Eye, Clock, DollarSign, BarChart3, RefreshCw } from "lucide-react";
 
+type ActiveTab = 'pending-taskers' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
+
 interface AdminSidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab: ActiveTab;
+  setActiveTab: (tab: ActiveTab) => void;
   stats: any;
   loading: boolean;
   onRefresh: () => void;

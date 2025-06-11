@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PendingTransactionsTabProps {
   pendingTransactions: any[];
-  setPendingTransactions: (transactions: any[]) => void;
-  setStats: (stats: any) => void;
+  setPendingTransactions: React.Dispatch<React.SetStateAction<any[]>>;
+  setStats: React.Dispatch<React.SetStateAction<any>>;
   loading: boolean;
   formatDate: (date: string) => string;
   formatCurrency: (amount: number) => string;

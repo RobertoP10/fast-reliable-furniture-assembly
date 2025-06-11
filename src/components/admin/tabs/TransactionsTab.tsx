@@ -14,11 +14,11 @@ interface TransactionsTabProps {
   formatDate: (date: string) => string;
   formatCurrency: (amount: number) => string;
   dateFilter: { start: string; end: string };
-  setDateFilter: (filter: { start: string; end: string }) => void;
+  setDateFilter: React.Dispatch<React.SetStateAction<{ start: string; end: string }>>;
   selectedTasker: string;
-  setSelectedTasker: (taskerId: string) => void;
+  setSelectedTasker: React.Dispatch<React.SetStateAction<string>>;
   selectedClient: string;
-  setSelectedClient: (clientId: string) => void;
+  setSelectedClient: React.Dispatch<React.SetStateAction<string>>;
   taskers: any[];
   clients: any[];
   clearFilters: () => void;
