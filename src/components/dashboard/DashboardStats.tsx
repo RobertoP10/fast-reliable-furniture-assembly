@@ -51,47 +51,49 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
           ).length;
         }
       } else {
-        // For taskers: count tasks where they have accepted offers
-        const { data: taskerTasks } = await supabase
-          .from('task_requests')
-          .select(`
-            status,
-            accepted_offer_id,
-            completed_at,
-            offers!inner(tasker_id, price)
-          `)
-          .eq('offers.tasker_id', user.id);
+        // For taskers: first get their accepted offers
+        const { data: taskerOffers } = await supabase
+          .from('offers')
+          .select('id, task_id, price, is_accepted')
+          .eq('tasker_id', user.id)
+          .eq('is_accepted', true);
 
-        if (taskerTasks) {
-          activeTasks = taskerTasks.filter(task => 
-            task.accepted_offer_id && 
-            task.offers.some(offer => offer.tasker_id === user.id) &&
-            (task.status === 'accepted')
-          ).length;
+        if (taskerOffers && taskerOffers.length > 0) {
+          const taskIds = taskerOffers.map(offer => offer.task_id);
           
-          completedTasks = taskerTasks.filter(task => 
-            task.accepted_offer_id && 
-            task.offers.some(offer => offer.tasker_id === user.id) &&
-            task.status === 'completed'
-          ).length;
+          // Get the corresponding tasks
+          const { data: taskerTasks } = await supabase
+            .from('task_requests')
+            .select('id, status, completed_at, accepted_offer_id')
+            .in('id', taskIds);
 
-          // Calculate monthly earnings
-          const currentMonth = new Date().getMonth();
-          const currentYear = new Date().getFullYear();
-          
-          monthlyEarnings = taskerTasks
-            .filter(task => 
-              task.status === 'completed' &&
-              task.completed_at &&
-              task.accepted_offer_id &&
-              task.offers.some(offer => offer.tasker_id === user.id) &&
-              new Date(task.completed_at).getMonth() === currentMonth &&
-              new Date(task.completed_at).getFullYear() === currentYear
-            )
-            .reduce((total, task) => {
-              const acceptedOffer = task.offers.find(offer => offer.tasker_id === user.id);
-              return total + (Number(acceptedOffer?.price) || 0);
-            }, 0);
+          if (taskerTasks) {
+            activeTasks = taskerTasks.filter(task => 
+              task.status === 'accepted'
+            ).length;
+            
+            completedTasks = taskerTasks.filter(task => 
+              task.status === 'completed'
+            ).length;
+
+            // Calculate monthly earnings
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            monthlyEarnings = taskerTasks
+              .filter(task => 
+                task.status === 'completed' &&
+                task.completed_at &&
+                new Date(task.completed_at).getMonth() === currentMonth &&
+                new Date(task.completed_at).getFullYear() === currentYear
+              )
+              .reduce((total, task) => {
+                const correspondingOffer = taskerOffers.find(offer => 
+                  offer.task_id === task.id && offer.id === task.accepted_offer_id
+                );
+                return total + (Number(correspondingOffer?.price) || 0);
+              }, 0);
+          }
         }
       }
 
