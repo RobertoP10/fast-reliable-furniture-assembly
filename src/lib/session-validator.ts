@@ -13,7 +13,7 @@ export const validateSession = async (): Promise<SessionValidation> => {
     
     // Add timeout to prevent hanging requests
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Session validation timeout')), 10000);
+      setTimeout(() => reject(new Error('Session validation timeout')), 15000); // Increased timeout
     });
 
     const sessionPromise = supabase.auth.getSession();
@@ -33,14 +33,18 @@ export const validateSession = async (): Promise<SessionValidation> => {
       return { isValid: false, userId: null, error: 'No active session' };
     }
 
-    // Verify token is not expired
+    // Check if token is expired (with some buffer)
     const now = Math.floor(Date.now() / 1000);
-    if (session.expires_at && session.expires_at < now) {
-      console.warn('⚠️ [SESSION] Token expired, attempting refresh...');
+    const tokenBuffer = 300; // 5 minutes buffer
+    
+    if (session.expires_at && (session.expires_at - tokenBuffer) < now) {
+      console.warn('⚠️ [SESSION] Token expiring soon, attempting refresh...');
       
       try {
         const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        
         if (refreshError || !refreshed.session) {
+          console.error('❌ [SESSION] Token refresh failed:', refreshError);
           return { isValid: false, userId: null, error: 'Session expired and refresh failed' };
         }
         
@@ -55,7 +59,8 @@ export const validateSession = async (): Promise<SessionValidation> => {
     console.log('✅ [SESSION] Session valid:', {
       userId: session.user.id,
       email: session.user.email,
-      expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
+      expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown',
+      timeToExpiry: session.expires_at ? `${Math.floor((session.expires_at - now) / 60)} minutes` : 'unknown'
     });
 
     return { isValid: true, userId: session.user.id };
@@ -63,7 +68,7 @@ export const validateSession = async (): Promise<SessionValidation> => {
     console.error('❌ [SESSION] Unexpected error:', error);
     
     // Handle network errors gracefully
-    if (error.message?.includes('timeout') || error.message?.includes('fetch')) {
+    if (error.message?.includes('timeout') || error.message?.includes('fetch') || error.message?.includes('NetworkError')) {
       return { isValid: false, userId: null, error: 'Network error during session validation' };
     }
     

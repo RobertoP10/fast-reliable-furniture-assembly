@@ -29,7 +29,8 @@ const TaskerDashboard = () => {
     setActiveTab('chat');
   };
 
-  if (!user?.approved) {
+  // Additional check for approved status to prevent flash of unapproved content
+  if (!user?.approved && user?.role === 'tasker') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
         <Card className="w-full max-w-md shadow-xl border-0">

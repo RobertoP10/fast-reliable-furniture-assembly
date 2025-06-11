@@ -33,35 +33,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const handleRedirect = (profile: any) => {
-    if (profile?.role === "admin") {
-      navigate("/admin-dashboard");
-    } else if (profile?.role === "client") {
-      navigate("/client-dashboard");
-    } else if (profile?.role === "tasker") {
-      if (profile?.approved) {
-        navigate("/tasker-dashboard");
+    const currentPath = window.location.pathname;
+    
+    // Don't redirect if user is already on the correct page
+    if (profile?.role === "admin" && currentPath === "/admin-dashboard") return;
+    if (profile?.role === "client" && currentPath === "/client-dashboard") return;
+    if (profile?.role === "tasker" && profile?.approved && currentPath === "/tasker-dashboard") return;
+    if (profile?.role === "tasker" && !profile?.approved && currentPath === "/tasker-pending") return;
+
+    // Only redirect if we're on the home page or if this is the initial load
+    if (currentPath === '/' || !initialized) {
+      if (profile?.role === "admin") {
+        navigate("/admin-dashboard");
+      } else if (profile?.role === "client") {
+        navigate("/client-dashboard");
+      } else if (profile?.role === "tasker") {
+        if (profile?.approved) {
+          navigate("/tasker-dashboard");
+        } else {
+          navigate("/tasker-pending");
+        }
       } else {
-        navigate("/tasker-pending");
+        console.warn("⚠️ No role found, redirecting to home.");
+        navigate("/");
       }
-    } else {
-      console.warn("⚠️ No role found, redirecting to home.");
-      navigate("/");
     }
   };
 
-  const syncSessionAndProfile = async (retryCount = 0) => {
+  const syncSessionAndProfile = async (retryCount = 0, skipRedirect = false) => {
     try {
-      console.log('🔍 [AUTH] Starting session and profile sync...', { retryCount });
+      console.log('🔍 [AUTH] Starting session and profile sync...', { retryCount, skipRedirect });
       
       // Add a small delay on retries to prevent rapid successive calls
       if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * retryCount, 5000)));
       }
 
       const sessionValidation = await validateSession();
       
       if (!sessionValidation.isValid || !sessionValidation.userId) {
-        console.log('ℹ️ [AUTH] No valid session found');
+        console.log('ℹ️ [AUTH] No valid session found:', sessionValidation.error);
         setUser(null);
         setLoading(false);
         setInitialized(true);
@@ -79,24 +90,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             approved: profile.approved,
             email: profile.email
           });
+          
+          // Set user state first
           setUser(profile);
           
-          // Only redirect if we're on the home page or if this is the initial load
-          const currentPath = window.location.pathname;
-          if (currentPath === '/' || !initialized) {
+          // Only handle redirect if not skipped and this is initial load or we're on home page
+          if (!skipRedirect) {
             handleRedirect(profile);
           }
         } else {
-          console.error("❌ [AUTH] No user profile found.");
+          console.error("❌ [AUTH] No user profile found for user:", sessionValidation.userId);
+          
+          // If we can't find the profile but have a valid session, retry once
+          if (retryCount < 1) {
+            console.log('🔄 [AUTH] Retrying profile fetch due to missing profile...');
+            return syncSessionAndProfile(retryCount + 1, skipRedirect);
+          }
+          
           setUser(null);
         }
       } catch (err: any) {
         console.error("❌ [AUTH] Error fetching profile:", err);
         
-        // Retry logic for profile fetch failures
-        if (retryCount < 2) {
-          console.log('🔄 [AUTH] Retrying profile fetch...');
-          return syncSessionAndProfile(retryCount + 1);
+        // Retry logic for profile fetch failures, but be more conservative
+        if (retryCount < 2 && err.message?.includes('Authentication required')) {
+          console.log('🔄 [AUTH] Retrying profile fetch due to auth error...');
+          return syncSessionAndProfile(retryCount + 1, skipRedirect);
         }
         
         setUser(null);
@@ -112,15 +131,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    let authSubscription: any = null;
 
     const initializeAuth = async () => {
       try {
         console.log('🚀 [AUTH] Initializing authentication...');
         
         // Set up auth state listener first
-        const { data: authListener } = supabase.auth.onAuthStateChange(
+        authSubscription = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log("🔁 [AUTH] Auth state change:", event);
+            console.log("🔁 [AUTH] Auth state change:", event, session ? 'with session' : 'no session');
             
             if (!mounted) return;
             
@@ -131,9 +151,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               return;
             }
             
-            if (session?.user && event !== 'TOKEN_REFRESHED') {
+            // For token refresh, don't redirect to avoid disrupting user experience
+            if (session?.user && event === 'TOKEN_REFRESHED') {
+              console.log('🔄 [AUTH] Token refreshed, syncing profile without redirect...');
               setLoading(true);
-              await syncSessionAndProfile();
+              await syncSessionAndProfile(0, true); // Skip redirect on token refresh
+              return;
+            }
+            
+            if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+              console.log('👤 [AUTH] User signed in or initial session, syncing...');
+              setLoading(true);
+              await syncSessionAndProfile(0, event === 'INITIAL_SESSION');
             }
           }
         );
@@ -157,9 +186,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setInitialized(true);
         }
 
-        return () => {
-          authListener?.subscription?.unsubscribe();
-        };
       } catch (error) {
         console.error('❌ [AUTH] Error in initializeAuth:', error);
         if (mounted) {
@@ -173,6 +199,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       mounted = false;
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
     };
   }, []);
 
