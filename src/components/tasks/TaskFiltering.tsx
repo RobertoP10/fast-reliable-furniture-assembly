@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/tasks";
 import { fetchUserOffers } from "@/lib/offers";
+import { validateSession } from "@/lib/session-validator";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -35,6 +36,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
   const loadData = async () => {
     if (!user) {
       console.warn("⚠️ [TASKS] No user found, cannot load data");
+      setLoading(false);
       return;
     }
 
@@ -42,6 +44,15 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       setLoading(true);
       console.log(`🔍 [TASKS] Loading data for ${userRole} user:`, user.id, "tab:", activeTab);
       
+      // Validate session before proceeding
+      const sessionValidation = await validateSession();
+      if (!sessionValidation.isValid) {
+        console.error("❌ [TASKS] Session validation failed:", sessionValidation.error);
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
       // For My Offers tab, we need to fetch offers separately
       if (userRole === "tasker" && activeTab === "my-tasks") {
         console.log("🔍 [OFFERS] Fetching user offers for tasker:", user.id);
@@ -74,11 +85,11 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       let filteredTasks = fetchedTasks as Task[];
       console.log(`🔍 [TASKS] Raw tasks from DB:`, filteredTasks.length);
 
-      // Filter tasks based on user role and active tab with detailed logging
+      // Apply client-side filtering based on user role and active tab
       if (userRole === "client") {
         switch (activeTab) {
           case "available":
-            // Pending Requests: show only client's tasks with status = 'pending'
+            // Pending Requests: client's own tasks with status = 'pending'
             filteredTasks = filteredTasks.filter(task => {
               const matches = task.client_id === user.id && task.status === "pending";
               if (matches) {
@@ -87,8 +98,9 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               return matches;
             });
             break;
+            
           case "my-tasks":
-            // Accepted Tasks: show only client's tasks with status = 'accepted'
+            // Accepted Tasks: client's own tasks with status = 'accepted'
             filteredTasks = filteredTasks.filter(task => {
               const matches = task.client_id === user.id && task.status === "accepted";
               if (matches) {
@@ -97,8 +109,9 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               return matches;
             });
             break;
+            
           case "completed":
-            // Completed Tasks: show only client's tasks with status = 'completed'
+            // Completed Tasks: client's own tasks with status = 'completed'
             filteredTasks = filteredTasks.filter(task => {
               const matches = task.client_id === user.id && task.status === "completed";
               if (matches) {
@@ -107,11 +120,15 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               return matches;
             });
             break;
+            
           case "received-offers":
-            // Received Offers: show only client's tasks with status = 'pending' and at least one offer
+            // Received Offers: client's own tasks with status = 'pending' and at least one offer
             filteredTasks = filteredTasks.filter(task => {
+              const isMyTask = task.client_id === user.id;
+              const isPending = task.status === "pending";
               const hasOffers = task.offers && Array.isArray(task.offers) && task.offers.length > 0;
-              const matches = task.client_id === user.id && task.status === "pending" && hasOffers;
+              const matches = isMyTask && isPending && hasOffers;
+              
               if (matches) {
                 console.log(`✅ [CLIENT-OFFERS] Task ${task.id}: ${task.title} (${task.offers?.length} offers)`);
               }
@@ -122,22 +139,24 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       } else if (userRole === "tasker") {
         switch (activeTab) {
           case "available":
-            // Available Tasks: show all pending tasks where tasker hasn't submitted an offer yet
+            // Available Tasks: all pending tasks where tasker hasn't submitted an offer yet
             // AND exclude tasks owned by the current user
             filteredTasks = filteredTasks.filter(task => {
               const notOwnTask = task.client_id !== user.id;
               const isPending = task.status === "pending";
-              const noOfferYet = !task.offers || !Array.isArray(task.offers) || !task.offers.some((offer) => offer.tasker_id === user.id);
+              const noOfferYet = !task.offers || !Array.isArray(task.offers) || 
+                !task.offers.some((offer) => offer.tasker_id === user.id);
               const matches = notOwnTask && isPending && noOfferYet;
+              
               if (matches) {
                 console.log(`✅ [TASKER-AVAILABLE] Task ${task.id}: ${task.title} (status: ${task.status}, no offer yet)`);
               }
               return matches;
             });
             break;
+            
           case "appointments":
-            // Appointments: show tasks where current tasker's offer was accepted
-            // Filter strictly by: task.status = 'accepted' AND current tasker's offer is the accepted one
+            // Appointments: tasks where current tasker's offer was accepted
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "accepted" || !task.accepted_offer_id) return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
@@ -145,14 +164,16 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               // Check if current tasker's offer is the accepted one
               const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
               const matches = myOffer && task.accepted_offer_id === myOffer.id && myOffer.status === 'accepted';
+              
               if (matches) {
                 console.log(`✅ [TASKER-APPOINTMENTS] Task ${task.id}: ${task.title} (accepted offer: ${myOffer.id})`);
               }
               return matches;
             });
             break;
+            
           case "completed":
-            // Completed: show tasks where status = 'completed' and current tasker was the accepted tasker
+            // Completed: tasks where status = 'completed' and current tasker was the accepted tasker
             filteredTasks = filteredTasks.filter(task => {
               if (task.status !== "completed" || !task.accepted_offer_id) return false;
               if (!task.offers || !Array.isArray(task.offers)) return false;
@@ -160,6 +181,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               // Check if current tasker was the accepted tasker for this completed task
               const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
               const matches = myOffer && task.accepted_offer_id === myOffer.id;
+              
               if (matches) {
                 console.log(`✅ [TASKER-COMPLETED] Task ${task.id}: ${task.title} (completed by me)`);
               }

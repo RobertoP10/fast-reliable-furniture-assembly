@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserProfile } from "@/lib/auth";
+import { validateSession } from "@/lib/session-validator";
 import LoadingScreen from "@/components/LoadingScreen";
 
 interface AuthContextType {
@@ -49,45 +50,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const syncSessionAndProfile = async () => {
     try {
-      console.log('🔍 [AUTH] Starting session validation...');
+      console.log('🔍 [AUTH] Starting session and profile sync...');
       
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (error) {
-        console.error("❌ [AUTH] Session validation error:", error);
+      // Use the new session validator
+      const sessionValidation = await validateSession();
+      
+      if (!sessionValidation.isValid || !sessionValidation.userId) {
+        console.log('ℹ️ [AUTH] No valid session found');
         setUser(null);
         setLoading(false);
         return;
       }
 
-      if (session?.user) {
-        console.log('✅ [AUTH] Valid session found:', {
-          userId: session.user.id,
-          email: session.user.email,
-          tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
-        });
+      console.log('✅ [AUTH] Valid session found for user:', sessionValidation.userId);
 
-        try {
-          const profile = await fetchUserProfile(session.user);
-          if (profile) {
-            console.log('✅ [AUTH] Profile fetched successfully:', {
-              userId: profile.id,
-              role: profile.role,
-              approved: profile.approved,
-              email: profile.email
-            });
-            setUser(profile);
-            handleRedirect(profile);
-          } else {
-            console.error("❌ [AUTH] No user profile found.");
-            setUser(null);
-          }
-        } catch (err: any) {
-          console.error("❌ [AUTH] Error fetching profile:", err);
+      try {
+        const profile = await fetchUserProfile({ id: sessionValidation.userId });
+        if (profile) {
+          console.log('✅ [AUTH] Profile fetched successfully:', {
+            userId: profile.id,
+            role: profile.role,
+            approved: profile.approved,
+            email: profile.email
+          });
+          setUser(profile);
+          handleRedirect(profile);
+        } else {
+          console.error("❌ [AUTH] No user profile found.");
           setUser(null);
         }
-      } else {
-        console.log('ℹ️ [AUTH] No active session found');
+      } catch (err: any) {
+        console.error("❌ [AUTH] Error fetching profile:", err);
         setUser(null);
       }
     } catch (err) {

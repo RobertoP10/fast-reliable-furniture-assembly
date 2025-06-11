@@ -1,19 +1,23 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { validateSession } from "./session-validator";
 
 export const validateUserSession = async (): Promise<{ session: any; profile: any } | null> => {
   try {
     console.log('🔍 [AUTH] Starting session validation...');
     
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const sessionValidation = await validateSession();
     
-    if (sessionError) {
-      console.error('❌ [AUTH] Session validation error:', sessionError);
+    if (!sessionValidation.isValid || !sessionValidation.userId) {
+      console.log('ℹ️ [AUTH] No active session found');
       return null;
     }
 
-    if (!session?.user) {
-      console.log('ℹ️ [AUTH] No active session found');
+    // Get the actual session object for compatibility
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('❌ [AUTH] Failed to get session object:', sessionError);
       return null;
     }
 
@@ -54,17 +58,17 @@ export const fetchUserProfile = async (authUser: any) => {
   try {
     console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
     
-    // Ensure we have a valid session before making RLS-protected queries
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Validate session before making RLS-protected queries
+    const sessionValidation = await validateSession();
     
-    if (sessionError || !session) {
-      console.error('❌ [AUTH] No valid session for profile fetch:', sessionError);
+    if (!sessionValidation.isValid || !sessionValidation.userId) {
+      console.error('❌ [AUTH] No valid session for profile fetch:', sessionValidation.error);
       throw new Error('Authentication required for profile access');
     }
 
     // Verify the session user matches the requested user
-    if (session.user.id !== authUser.id) {
-      console.error('❌ [AUTH] User ID mismatch. Session:', session.user.id, 'Requested:', authUser.id);
+    if (sessionValidation.userId !== authUser.id) {
+      console.error('❌ [AUTH] User ID mismatch. Session:', sessionValidation.userId, 'Requested:', authUser.id);
       throw new Error('User ID mismatch');
     }
 
@@ -77,12 +81,6 @@ export const fetchUserProfile = async (authUser: any) => {
 
     if (error) {
       console.error('❌ [AUTH] Error fetching user profile:', error);
-      console.error('❌ [AUTH] Error details:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
       
       if (error.code === 'PGRST301' || error.message.includes('not found')) {
         console.warn('⚠️ [AUTH] User profile not found, creating default profile...');
@@ -126,11 +124,11 @@ export const fetchUserProfile = async (authUser: any) => {
 
 export const getCurrentUserRole = async (): Promise<string | null> => {
   try {
-    // Ensure we have a valid session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Validate session before making RPC call
+    const sessionValidation = await validateSession();
     
-    if (sessionError || !session) {
-      console.error('❌ [AUTH] No valid session for role check:', sessionError);
+    if (!sessionValidation.isValid) {
+      console.error('❌ [AUTH] No valid session for role check:', sessionValidation.error);
       return null;
     }
 

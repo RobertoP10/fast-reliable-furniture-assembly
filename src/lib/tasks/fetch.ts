@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Task } from "./types";
+import { validateSession } from "../session-validator";
 
 export const fetchTasks = async (
   userId: string,
@@ -8,19 +9,16 @@ export const fetchTasks = async (
 ): Promise<Task[]> => {
   console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
 
-  // Ensure we have a valid session before making requests
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError || !session) {
-    console.error("❌ [TASKS] No valid session:", sessionError);
+  // Validate session before making requests
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid || !sessionValidation.userId) {
+    console.error("❌ [TASKS] Session validation failed:", sessionValidation.error);
     throw new Error("Authentication required");
   }
 
-  console.log("✅ [TASKS] Session validated, user ID:", session.user.id);
-
   // Verify the passed userId matches the session user ID
-  if (session.user.id !== userId) {
-    console.error("❌ [TASKS] User ID mismatch. Session:", session.user.id, "Passed:", userId);
+  if (sessionValidation.userId !== userId) {
+    console.error("❌ [TASKS] User ID mismatch. Session:", sessionValidation.userId, "Passed:", userId);
     throw new Error("User ID mismatch");
   }
 
@@ -67,13 +65,7 @@ export const fetchTasks = async (
   const { data, error } = await query;
 
   if (error) {
-    console.error("❌ [TASKS] RLS Error fetching tasks:", error);
-    console.error("❌ [TASKS] Error details:", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error("❌ [TASKS] Error fetching tasks:", error);
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
@@ -82,15 +74,8 @@ export const fetchTasks = async (
     return [];
   }
 
-  console.log("✅ [TASKS] Raw data from Supabase:", data.length, "tasks");
-  console.log("🔍 [TASKS] Sample task data:", data[0] ? {
-    id: data[0].id,
-    status: data[0].status,
-    client_id: data[0].client_id,
-    accepted_offer_id: data[0].accepted_offer_id,
-    offers_count: data[0].offers?.length || 0
-  } : "No tasks");
-
+  console.log("✅ [TASKS] Fetched tasks from DB:", data.length);
+  
   const normalizedData = data.map((task) => ({
     ...task,
     offers: Array.isArray(task.offers)
@@ -107,11 +92,10 @@ export const fetchTasks = async (
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   console.log("🔍 [TASKS] Fetching single task:", taskId);
   
-  // Ensure we have a valid session
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError || !session) {
-    console.error("❌ [TASKS] No valid session for single task fetch:", sessionError);
+  // Validate session
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid) {
+    console.error("❌ [TASKS] Session validation failed for single task fetch:", sessionValidation.error);
     throw new Error("Authentication required");
   }
 
