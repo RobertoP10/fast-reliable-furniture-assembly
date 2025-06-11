@@ -34,23 +34,40 @@ const TaskerDashboard = () => {
         .eq('id', user.id)
         .single();
 
-      // Calculate monthly earnings from completed tasks
+      // Calculate monthly earnings from completed tasks - fix the query structure
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       
-      const { data: monthlyTasks } = await supabase
+      const { data: completedTasks } = await supabase
         .from('task_requests')
         .select(`
-          offers!inner(price, tasker_id)
+          id,
+          accepted_offer_id,
+          completed_at
         `)
-        .eq('offers.tasker_id', user.id)
         .eq('status', 'completed')
         .gte('completed_at', new Date(currentYear, currentMonth, 1).toISOString())
         .lt('completed_at', new Date(currentYear, currentMonth + 1, 1).toISOString());
 
-      const monthlyEarnings = monthlyTasks?.reduce((total, task) => {
-        return total + (task.offers?.[0]?.price || 0);
-      }, 0) || 0;
+      let monthlyEarnings = 0;
+      
+      if (completedTasks) {
+        // For each completed task, get the accepted offer price if the current user was the tasker
+        for (const task of completedTasks) {
+          if (task.accepted_offer_id) {
+            const { data: offer } = await supabase
+              .from('offers')
+              .select('price, tasker_id')
+              .eq('id', task.accepted_offer_id)
+              .eq('tasker_id', user.id)
+              .single();
+            
+            if (offer) {
+              monthlyEarnings += Number(offer.price) || 0;
+            }
+          }
+        }
+      }
 
       setProfileStats({
         rating: profile?.rating || 0,
