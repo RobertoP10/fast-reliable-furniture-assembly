@@ -6,16 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchPendingTaskers, fetchAllUsers, fetchPendingTransactions, acceptTasker, rejectTasker } from "@/lib/api";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, RefreshCw, DollarSign } from "lucide-react";
+import { 
+  fetchPendingTaskers, 
+  fetchAllUsers, 
+  fetchPendingTransactions, 
+  fetchAllTransactions,
+  acceptTasker, 
+  rejectTasker, 
+  confirmTransaction,
+  getPlatformAnalytics,
+  getAdminStats
+} from "@/lib/admin";
+import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, RefreshCw, DollarSign, BarChart3, Star } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions'>('pending-taskers');
+  const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions' | 'analytics'>('pending-taskers');
   const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(false);
 
   // Load data based on active tab
@@ -36,7 +48,15 @@ const AdminDashboard = () => {
         const transactions = await fetchPendingTransactions();
         setPendingTransactions(transactions);
         console.log('✅ [ADMIN] Loaded transactions:', transactions.length);
+      } else if (activeTab === 'analytics') {
+        const analyticsData = await getPlatformAnalytics();
+        setAnalytics(analyticsData);
+        console.log('✅ [ADMIN] Loaded analytics:', analyticsData);
       }
+
+      // Always load stats
+      const statsData = await getAdminStats();
+      setStats(statsData);
     } catch (error) {
       console.error('❌ [ADMIN] Error loading data:', error);
       toast({
@@ -91,6 +111,25 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleConfirmTransaction = async (transactionId: string) => {
+    try {
+      console.log('✅ [ADMIN] Confirming transaction:', transactionId);
+      await confirmTransaction(transactionId);
+      setPendingTransactions(prev => prev.filter(transaction => transaction.id !== transactionId));
+      toast({
+        title: "Transaction Confirmed",
+        description: "The transaction has been confirmed and processed.",
+      });
+    } catch (error) {
+      console.error('❌ [ADMIN] Error confirming transaction:', error);
+      toast({
+        title: "Error",
+        description: `Failed to confirm transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
@@ -101,8 +140,8 @@ const AdminDashboard = () => {
     }).format(new Date(date));
   };
 
-  const getActiveUsersCount = () => {
-    return allUsers.filter(user => user.role !== 'admin' && (user.role === 'client' || user.approved)).length;
+  const formatCurrency = (amount: number) => {
+    return `£${amount.toFixed(2)}`;
   };
 
   const getLastSeenBadge = (lastSignIn?: string) => {
@@ -175,9 +214,9 @@ const AdminDashboard = () => {
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Pending Taskers
-                  {pendingTaskers.length > 0 && (
+                  {stats.pendingTaskers > 0 && (
                     <Badge className="ml-auto bg-yellow-100 text-yellow-700">
-                      {pendingTaskers.length}
+                      {stats.pendingTaskers}
                     </Badge>
                   )}
                 </Button>
@@ -189,7 +228,7 @@ const AdminDashboard = () => {
                   <Eye className="h-4 w-4 mr-2" />
                   All Users
                   <Badge className="ml-auto bg-blue-100 text-blue-700">
-                    {allUsers.length}
+                    {stats.totalUsers || 0}
                   </Badge>
                 </Button>
                 <Button
@@ -199,11 +238,19 @@ const AdminDashboard = () => {
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
                   Transactions
-                  {pendingTransactions.length > 0 && (
+                  {stats.pendingTransactions > 0 && (
                     <Badge className="ml-auto bg-orange-100 text-orange-700">
-                      {pendingTransactions.length}
+                      {stats.pendingTransactions}
                     </Badge>
                   )}
+                </Button>
+                <Button
+                  variant={activeTab === 'analytics' ? 'default' : 'ghost'}
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('analytics')}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
                 </Button>
               </CardContent>
             </Card>
@@ -216,22 +263,22 @@ const AdminDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending taskers</span>
-                  <Badge className={pendingTaskers.length > 0 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}>
-                    {pendingTaskers.length}
+                  <Badge className={stats.pendingTaskers > 0 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}>
+                    {stats.pendingTaskers || 0}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active users</span>
-                  <Badge className="bg-green-100 text-green-700">{getActiveUsersCount()}</Badge>
+                  <Badge className="bg-green-100 text-green-700">{stats.activeUsers || 0}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Total users</span>
-                  <Badge className="bg-blue-100 text-blue-700">{allUsers.length}</Badge>
+                  <Badge className="bg-blue-100 text-blue-700">{stats.totalUsers || 0}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Pending transactions</span>
-                  <Badge className={pendingTransactions.length > 0 ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}>
-                    {pendingTransactions.length}
+                  <Badge className={stats.pendingTransactions > 0 ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}>
+                    {stats.pendingTransactions || 0}
                   </Badge>
                 </div>
               </CardContent>
@@ -333,7 +380,7 @@ const AdminDashboard = () => {
                           <TableHead>Email</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Last Seen</TableHead>
+                          <TableHead>Rating</TableHead>
                           <TableHead>Member Since</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -360,7 +407,11 @@ const AdminDashboard = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {getLastSeenBadge(user.last_sign_in_at)}
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                <span className="text-sm">{Number(user.rating || 0).toFixed(1)}</span>
+                                <span className="text-xs text-gray-500">({user.total_reviews || 0})</span>
+                              </div>
                             </TableCell>
                             <TableCell>{formatDate(user.created_at)}</TableCell>
                           </TableRow>
@@ -402,15 +453,28 @@ const AdminDashboard = () => {
                           <TableHead>Amount</TableHead>
                           <TableHead>Payment</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {pendingTransactions.map((transaction) => (
                           <TableRow key={transaction.id}>
-                            <TableCell className="font-medium">{transaction.task?.title || 'N/A'}</TableCell>
-                            <TableCell>{transaction.client?.full_name || 'N/A'}</TableCell>
-                            <TableCell>{transaction.tasker?.full_name || 'N/A'}</TableCell>
-                            <TableCell className="font-medium">£{transaction.amount}</TableCell>
+                            <TableCell className="font-medium">
+                              {transaction.task_requests?.title || 'Unknown Task'}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{transaction.client?.full_name || 'Unknown Client'}</div>
+                                <div className="text-sm text-gray-500">{transaction.client?.email || 'No email'}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{transaction.tasker?.full_name || 'Unknown Tasker'}</div>
+                                <div className="text-sm text-gray-500">{transaction.tasker?.email || 'No email'}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{formatCurrency(Number(transaction.amount))}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className={
                                 transaction.payment_method === 'cash' ? 'text-green-700' : 'text-blue-700'
@@ -419,6 +483,17 @@ const AdminDashboard = () => {
                               </Badge>
                             </TableCell>
                             <TableCell>{formatDate(transaction.created_at)}</TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                onClick={() => handleConfirmTransaction(transaction.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                                title="Confirm transaction"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Confirm
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -426,6 +501,111 @@ const AdminDashboard = () => {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle className="text-blue-900">Platform Analytics</CardTitle>
+                    <CardDescription>
+                      Overview of platform performance and metrics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading analytics...</p>
+                      </div>
+                    ) : analytics ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-900">{analytics.totalCompletedTasks}</div>
+                          <div className="text-sm text-blue-600">Completed Tasks</div>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <div className="text-2xl font-bold text-green-900">{formatCurrency(analytics.totalValue)}</div>
+                          <div className="text-sm text-green-600">Total Value</div>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <div className="text-2xl font-bold text-purple-900">{formatCurrency(analytics.platformCommission)}</div>
+                          <div className="text-sm text-purple-600">Platform Commission (20%)</div>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                          <div className="text-2xl font-bold text-yellow-900 flex items-center">
+                            <Star className="h-5 w-5 mr-1 fill-current" />
+                            {analytics.averageRating.toFixed(1)}
+                          </div>
+                          <div className="text-sm text-yellow-600">Average Rating</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-lg font-medium">No analytics data</p>
+                        <p className="text-sm">Analytics will appear as transactions are processed.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {analytics && analytics.taskerBreakdown.length > 0 && (
+                  <Card className="shadow-lg border-0">
+                    <CardHeader>
+                      <CardTitle className="text-blue-900">Top Taskers</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tasker</TableHead>
+                            <TableHead>Completed Tasks</TableHead>
+                            <TableHead>Total Earnings</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {analytics.taskerBreakdown.slice(0, 10).map((tasker: any, index: number) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{tasker.name}</TableCell>
+                              <TableCell>{tasker.taskCount}</TableCell>
+                              <TableCell>{formatCurrency(tasker.totalEarnings)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {analytics && analytics.clientBreakdown.length > 0 && (
+                  <Card className="shadow-lg border-0">
+                    <CardHeader>
+                      <CardTitle className="text-blue-900">Top Clients</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Tasks Posted</TableHead>
+                            <TableHead>Total Spent</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {analytics.clientBreakdown.slice(0, 10).map((client: any, index: number) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{client.name}</TableCell>
+                              <TableCell>{client.taskCount}</TableCell>
+                              <TableCell>{formatCurrency(client.totalSpent)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
           </div>
         </div>

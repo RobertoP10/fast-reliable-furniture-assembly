@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -42,17 +43,17 @@ export const fetchPendingTaskers = async (): Promise<User[]> => {
   return data || [];
 };
 
-// Fetch pending transactions
-export const fetchPendingTransactions = async (): Promise<Transaction[]> => {
-  console.log('🔍 [ADMIN] Fetching pending transactions...');
+// Fetch transactions with proper joins
+export const fetchPendingTransactions = async () => {
+  console.log('🔍 [ADMIN] Fetching pending transactions with proper joins...');
   
   const { data, error } = await supabase
     .from('transactions')
     .select(`
       *,
-      task:task_requests!transactions_task_id_fkey(title),
-      client:users!transactions_client_id_fkey(full_name, email),
-      tasker:users!transactions_tasker_id_fkey(full_name, email)
+      task_requests!inner(id, title),
+      client:users!transactions_client_id_fkey(id, full_name, email),
+      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
@@ -63,6 +64,29 @@ export const fetchPendingTransactions = async (): Promise<Transaction[]> => {
   }
 
   console.log('✅ [ADMIN] Pending transactions fetched successfully:', data?.length || 0, 'transactions');
+  return data || [];
+};
+
+// Fetch all transactions for analytics
+export const fetchAllTransactions = async () => {
+  console.log('🔍 [ADMIN] Fetching all transactions for analytics...');
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      task_requests!inner(id, title, status),
+      client:users!transactions_client_id_fkey(id, full_name, email),
+      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching all transactions:', error);
+    throw new Error(`Failed to fetch all transactions: ${error.message}`);
+  }
+
+  console.log('✅ [ADMIN] All transactions fetched successfully:', data?.length || 0, 'transactions');
   return data || [];
 };
 
@@ -122,6 +146,82 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
   }
 
   console.log('✅ [ADMIN] Transaction confirmed successfully');
+};
+
+// Get platform analytics
+export const getPlatformAnalytics = async () => {
+  console.log('🔍 [ADMIN] Fetching platform analytics...');
+  
+  // Get all completed transactions
+  const { data: completedTransactions } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      task_requests!inner(id, title, status),
+      client:users!transactions_client_id_fkey(id, full_name, email),
+      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
+    `)
+    .eq('status', 'confirmed');
+
+  // Get reviews for average rating
+  const { data: reviews } = await supabase
+    .from('reviews')
+    .select('rating');
+
+  const totalValue = completedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+  const platformCommission = totalValue * 0.2; // 20% commission
+  const averageRating = reviews && reviews.length > 0 
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+    : 0;
+
+  // Group by tasker
+  const taskerBreakdown = completedTransactions?.reduce((acc: any, transaction) => {
+    const taskerId = transaction.tasker?.id;
+    const taskerName = transaction.tasker?.full_name;
+    
+    if (taskerId && taskerName) {
+      if (!acc[taskerId]) {
+        acc[taskerId] = {
+          name: taskerName,
+          taskCount: 0,
+          totalEarnings: 0
+        };
+      }
+      acc[taskerId].taskCount += 1;
+      acc[taskerId].totalEarnings += Number(transaction.amount);
+    }
+    return acc;
+  }, {}) || {};
+
+  // Group by client
+  const clientBreakdown = completedTransactions?.reduce((acc: any, transaction) => {
+    const clientId = transaction.client?.id;
+    const clientName = transaction.client?.full_name;
+    
+    if (clientId && clientName) {
+      if (!acc[clientId]) {
+        acc[clientId] = {
+          name: clientName,
+          taskCount: 0,
+          totalSpent: 0
+        };
+      }
+      acc[clientId].taskCount += 1;
+      acc[clientId].totalSpent += Number(transaction.amount);
+    }
+    return acc;
+  }, {}) || {};
+
+  console.log('✅ [ADMIN] Platform analytics calculated successfully');
+  
+  return {
+    totalCompletedTasks: completedTransactions?.length || 0,
+    totalValue,
+    platformCommission,
+    averageRating,
+    taskerBreakdown: Object.values(taskerBreakdown),
+    clientBreakdown: Object.values(clientBreakdown)
+  };
 };
 
 // Get admin statistics
