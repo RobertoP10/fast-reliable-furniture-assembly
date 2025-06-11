@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EnhancedAnalyticsTable } from "@/components/admin/EnhancedAnalyticsTable";
 import { BarChart3, Star } from "lucide-react";
 
 interface AnalyticsTabProps {
@@ -10,6 +10,14 @@ interface AnalyticsTabProps {
 }
 
 export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTabProps) => {
+  const formatDate = (date: string) => {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date(date));
+  };
+
   return (
     <div className="space-y-6">
       <Card className="shadow-lg border-0">
@@ -58,59 +66,23 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
       </Card>
 
       {analytics && analytics.taskerBreakdown.length > 0 && (
-        <Card className="shadow-lg border-0">
-          <CardHeader>
-            <CardTitle className="text-blue-900">Top Taskers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tasker</TableHead>
-                  <TableHead>Completed Tasks</TableHead>
-                  <TableHead>Total Earnings</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analytics.taskerBreakdown.slice(0, 10).map((tasker: any, index: number) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{tasker.name}</TableCell>
-                    <TableCell>{tasker.taskCount}</TableCell>
-                    <TableCell>{formatCurrency(tasker.totalEarnings)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <EnhancedAnalyticsTable
+          title="Top Taskers"
+          data={analytics.taskerBreakdown}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          isTaskerTable={true}
+        />
       )}
 
       {analytics && analytics.clientBreakdown.length > 0 && (
-        <Card className="shadow-lg border-0">
-          <CardHeader>
-            <CardTitle className="text-blue-900">Top Clients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Tasks Posted</TableHead>
-                  <TableHead>Total Spent</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analytics.clientBreakdown.slice(0, 10).map((client: any, index: number) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.taskCount}</TableCell>
-                    <TableCell>{formatCurrency(client.totalSpent)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <EnhancedAnalyticsTable
+          title="Top Clients"
+          data={analytics.clientBreakdown}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          isTaskerTable={false}
+        />
       )}
     </div>
   );

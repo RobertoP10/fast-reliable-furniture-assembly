@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -205,7 +204,7 @@ export const getPlatformAnalytics = async () => {
   // Get all reviews for average rating
   const { data: reviews } = await supabase
     .from('reviews')
-    .select('rating');
+    .select('rating, reviewee_id');
 
   // Get completed tasks count
   const { data: completedTasks } = await supabase
@@ -219,7 +218,7 @@ export const getPlatformAnalytics = async () => {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
     : 0;
 
-  // Group by tasker
+  // Group by tasker with enhanced data
   const taskerBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
     const taskerId = transaction.tasker?.id;
     const taskerName = transaction.tasker?.full_name;
@@ -227,18 +226,39 @@ export const getPlatformAnalytics = async () => {
     if (taskerId && taskerName) {
       if (!acc[taskerId]) {
         acc[taskerId] = {
+          id: taskerId,
           name: taskerName,
           taskCount: 0,
-          totalEarnings: 0
+          totalEarnings: 0,
+          totalCommission: 0,
+          lastTaskDate: null,
+          averageRating: 0
         };
       }
       acc[taskerId].taskCount += 1;
       acc[taskerId].totalEarnings += Number(transaction.amount);
+      acc[taskerId].totalCommission += Number(transaction.amount) * 0.2;
+      
+      // Update last task date
+      const taskDate = transaction.task_requests?.completed_at;
+      if (taskDate && (!acc[taskerId].lastTaskDate || new Date(taskDate) > new Date(acc[taskerId].lastTaskDate))) {
+        acc[taskerId].lastTaskDate = taskDate;
+      }
     }
     return acc;
   }, {}) || {};
 
-  // Group by client
+  // Add average ratings for taskers
+  if (reviews) {
+    Object.keys(taskerBreakdown).forEach(taskerId => {
+      const taskerReviews = reviews.filter(r => r.reviewee_id === taskerId);
+      if (taskerReviews.length > 0) {
+        taskerBreakdown[taskerId].averageRating = taskerReviews.reduce((sum, r) => sum + r.rating, 0) / taskerReviews.length;
+      }
+    });
+  }
+
+  // Group by client with enhanced data
   const clientBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
     const clientId = transaction.client?.id;
     const clientName = transaction.client?.full_name;
@@ -246,16 +266,37 @@ export const getPlatformAnalytics = async () => {
     if (clientId && clientName) {
       if (!acc[clientId]) {
         acc[clientId] = {
+          id: clientId,
           name: clientName,
           taskCount: 0,
-          totalSpent: 0
+          totalSpent: 0,
+          totalCommission: 0,
+          lastTaskDate: null,
+          averageRating: 0
         };
       }
       acc[clientId].taskCount += 1;
       acc[clientId].totalSpent += Number(transaction.amount);
+      acc[clientId].totalCommission += Number(transaction.amount) * 0.2;
+      
+      // Update last task date
+      const taskDate = transaction.task_requests?.completed_at;
+      if (taskDate && (!acc[clientId].lastTaskDate || new Date(taskDate) > new Date(acc[clientId].lastTaskDate))) {
+        acc[clientId].lastTaskDate = taskDate;
+      }
     }
     return acc;
   }, {}) || {};
+
+  // Add average ratings for clients
+  if (reviews) {
+    Object.keys(clientBreakdown).forEach(clientId => {
+      const clientReviews = reviews.filter(r => r.reviewee_id === clientId);
+      if (clientReviews.length > 0) {
+        clientBreakdown[clientId].averageRating = clientReviews.reduce((sum, r) => sum + r.rating, 0) / clientReviews.length;
+      }
+    });
+  }
 
   console.log('✅ [ADMIN] Platform analytics calculated successfully');
   
