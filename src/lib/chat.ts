@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { validateSession } from "./session-validator";
 
@@ -45,19 +44,7 @@ export const fetchChatRooms = async (userId: string): Promise<ChatRoom[]> => {
     // Get tasks where user is either client or has accepted offer as tasker
     const { data: tasks, error } = await supabase
       .from("task_requests")
-      .select(`
-        id,
-        title,
-        client_id,
-        accepted_offer_id,
-        status,
-        client:users!client_id(full_name),
-        accepted_offer:offers!accepted_offer_id(
-          tasker_id,
-          tasker:users!tasker_id(full_name)
-        )
-      `)
-      .or(`client_id.eq.${userId},accepted_offer_id.in.(${await getUserOfferIds(userId)})`)
+      .select("id, title, client_id, accepted_offer_id, status")
       .eq("status", "accepted")
       .not("accepted_offer_id", "is", null);
 
@@ -69,11 +56,40 @@ export const fetchChatRooms = async (userId: string): Promise<ChatRoom[]> => {
     const chatRooms: ChatRoom[] = [];
 
     for (const task of tasks || []) {
-      if (!task.accepted_offer) continue;
+      // Get the accepted offer details
+      const { data: acceptedOffer, error: offerError } = await supabase
+        .from("offers")
+        .select("tasker_id")
+        .eq("id", task.accepted_offer_id)
+        .single();
 
+      if (offerError || !acceptedOffer) continue;
+
+      // Check if user is involved in this task
       const isClient = task.client_id === userId;
-      const partnerId = isClient ? task.accepted_offer.tasker_id : task.client_id;
-      const partnerName = isClient ? task.accepted_offer.tasker?.full_name : task.client?.full_name;
+      const isTasker = acceptedOffer.tasker_id === userId;
+      
+      if (!isClient && !isTasker) continue;
+
+      // Get user names
+      const partnerId = isClient ? acceptedOffer.tasker_id : task.client_id;
+      const { data: partnerData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", partnerId)
+        .single();
+
+      const { data: clientData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", task.client_id)
+        .single();
+
+      const { data: taskerData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", acceptedOffer.tasker_id)
+        .single();
 
       // Get last message and unread count
       const { data: lastMessage } = await supabase
@@ -92,13 +108,13 @@ export const fetchChatRooms = async (userId: string): Promise<ChatRoom[]> => {
         .eq("is_read", false);
 
       chatRooms.push({
-        id: `${task.id}-${partnerId}`,
+        id: task.id, // Use task.id directly as the chat room ID
         task_id: task.id,
         client_id: task.client_id,
-        tasker_id: task.accepted_offer.tasker_id,
+        tasker_id: acceptedOffer.tasker_id,
         task_title: task.title,
-        client_name: task.client?.full_name || "Unknown Client",
-        tasker_name: task.accepted_offer.tasker?.full_name || "Unknown Tasker",
+        client_name: clientData?.full_name || "Unknown Client",
+        tasker_name: taskerData?.full_name || "Unknown Tasker",
         last_message: lastMessage?.content,
         last_message_at: lastMessage?.created_at,
         unread_count: unreadCount || 0,
@@ -143,8 +159,7 @@ export const fetchMessages = async (taskId: string, userId: string): Promise<Mes
         receiver_id,
         content,
         is_read,
-        created_at,
-        sender:users!sender_id(full_name)
+        created_at
       `)
       .eq("task_id", taskId)
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
@@ -155,12 +170,21 @@ export const fetchMessages = async (taskId: string, userId: string): Promise<Mes
       throw new Error(`Failed to fetch messages: ${error.message}`);
     }
 
-    const messages = (data || []).map(msg => ({
-      ...msg,
-      sender_name: msg.sender?.full_name || "Unknown User"
+    // Get sender names separately
+    const messages = await Promise.all((data || []).map(async (msg) => {
+      const { data: senderData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", msg.sender_id)
+        .single();
+      
+      return {
+        ...msg,
+        sender_name: senderData?.full_name || "Unknown User"
+      };
     }));
 
-    console.log("✅ [CHAT] Fetched messages:", messages.length);
+    console.log("✅ [CHAT] Loaded messages:", messages.length);
     return messages;
   } catch (error) {
     console.error("❌ [CHAT] Exception in fetchMessages:", error);
@@ -193,16 +217,7 @@ export const sendMessage = async (
         content,
         is_read: false
       })
-      .select(`
-        id,
-        task_id,
-        sender_id,
-        receiver_id,
-        content,
-        is_read,
-        created_at,
-        sender:users!sender_id(full_name)
-      `)
+      .select()
       .single();
 
     if (error) {
@@ -210,9 +225,16 @@ export const sendMessage = async (
       throw new Error(`Failed to send message: ${error.message}`);
     }
 
+    // Get sender name
+    const { data: senderData } = await supabase
+      .from("users")
+      .select("full_name")
+      .eq("id", data.sender_id)
+      .single();
+
     const message = {
       ...data,
-      sender_name: data.sender?.full_name || "Unknown User"
+      sender_name: senderData?.full_name || "Unknown User"
     };
 
     console.log("✅ [CHAT] Message sent:", message.id);
