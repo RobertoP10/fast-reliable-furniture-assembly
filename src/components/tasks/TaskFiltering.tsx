@@ -1,5 +1,7 @@
 
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchTasks } from "@/lib/tasks";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -25,22 +27,63 @@ type Task = TaskBase & {
 };
 
 interface UseTaskFilteringProps {
-  tasks: Task[];
   userRole: "client" | "tasker";
-  userId: string;
   activeTab: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
+  propTasks?: Task[];
 }
 
-export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTaskFilteringProps) => {
+interface UseTaskFilteringReturn {
+  tasks: Task[];
+  loading: boolean;
+  completedCount: number;
+  completedTotal: number;
+  loadData: () => void;
+}
+
+export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilteringProps): UseTaskFilteringReturn => {
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async () => {
+    if (!user?.id) return;
+
+    setLoading(true);
+    try {
+      console.log("🔄 [FILTERING] Loading data for:", { userRole, activeTab, userId: user.id });
+      
+      const fetchedTasks = await fetchTasks(user.id, userRole);
+      setTasks(fetchedTasks);
+      
+      console.log("✅ [FILTERING] Loaded tasks:", fetchedTasks.length);
+    } catch (error) {
+      console.error("❌ [FILTERING] Error loading tasks:", error);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (propTasks) {
+      setTasks(propTasks);
+      setLoading(false);
+    } else {
+      loadData();
+    }
+  }, [user?.id, userRole, activeTab, propTasks]);
+
   const filteredTasks = useMemo(() => {
+    const dataToFilter = propTasks || tasks;
+    
     console.log("🔍 [FILTERING] Filtering tasks:", {
-      totalTasks: tasks.length,
+      totalTasks: dataToFilter.length,
       userRole,
-      userId,
+      userId: user?.id,
       activeTab
     });
 
-    if (!tasks || tasks.length === 0) {
+    if (!dataToFilter || dataToFilter.length === 0) {
       console.log("⚠️ [FILTERING] No tasks to filter");
       return [];
     }
@@ -49,18 +92,19 @@ export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTask
 
     if (userRole === "client") {
       switch (activeTab) {
+        case "available":
         case "my-tasks":
           // Client's own tasks that are pending
-          filtered = tasks.filter(task => 
-            task.client_id === userId && task.status === 'pending'
+          filtered = dataToFilter.filter(task => 
+            task.client_id === user?.id && task.status === 'pending'
           );
           console.log("📋 [CLIENT] Pending requests:", filtered.length);
           break;
 
         case "received-offers":
           // Client's tasks that have received offers
-          filtered = tasks.filter(task => 
-            task.client_id === userId && 
+          filtered = dataToFilter.filter(task => 
+            task.client_id === user?.id && 
             task.offers && 
             task.offers.length > 0 &&
             task.status === 'pending'
@@ -70,8 +114,8 @@ export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTask
 
         case "appointments":
           // Client's tasks with accepted offers (in progress)
-          filtered = tasks.filter(task => 
-            task.client_id === userId && 
+          filtered = dataToFilter.filter(task => 
+            task.client_id === user?.id && 
             task.status === 'accepted' && 
             task.accepted_offer_id
           );
@@ -80,14 +124,14 @@ export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTask
 
         case "completed":
           // Client's completed tasks
-          filtered = tasks.filter(task => 
-            task.client_id === userId && task.status === 'completed'
+          filtered = dataToFilter.filter(task => 
+            task.client_id === user?.id && task.status === 'completed'
           );
           console.log("✅ [CLIENT] Completed tasks:", filtered.length);
           break;
 
         default:
-          filtered = tasks.filter(task => task.client_id === userId);
+          filtered = dataToFilter.filter(task => task.client_id === user?.id);
       }
     } 
     
@@ -95,31 +139,31 @@ export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTask
       switch (activeTab) {
         case "available":
           // Available tasks for taskers (pending, not their own)
-          filtered = tasks.filter(task => 
+          filtered = dataToFilter.filter(task => 
             task.status === 'pending' && 
-            task.client_id !== userId
+            task.client_id !== user?.id
           );
           console.log("🔍 [TASKER] Available tasks:", filtered.length);
           break;
 
         case "my-tasks":
           // Tasker's own offers
-          filtered = tasks.filter(task => 
+          filtered = dataToFilter.filter(task => 
             task.offers && 
-            task.offers.some(offer => offer.tasker_id === userId)
+            task.offers.some(offer => offer.tasker_id === user?.id)
           );
           console.log("💼 [TASKER] My offers:", filtered.length);
           break;
 
         case "appointments":
           // Tasks where tasker's offer was accepted
-          filtered = tasks.filter(task => 
+          filtered = dataToFilter.filter(task => 
             task.status === 'accepted' && 
             task.accepted_offer_id &&
             task.offers &&
             task.offers.some(offer => 
               offer.id === task.accepted_offer_id && 
-              offer.tasker_id === userId
+              offer.tasker_id === user?.id
             )
           );
           console.log("📅 [TASKER] Appointments:", filtered.length);
@@ -127,26 +171,53 @@ export const useTaskFiltering = ({ tasks, userRole, userId, activeTab }: UseTask
 
         case "completed":
           // Completed tasks where tasker had the accepted offer
-          filtered = tasks.filter(task => 
+          filtered = dataToFilter.filter(task => 
             task.status === 'completed' && 
             task.accepted_offer_id &&
             task.offers &&
             task.offers.some(offer => 
               offer.id === task.accepted_offer_id && 
-              offer.tasker_id === userId
+              offer.tasker_id === user?.id
             )
           );
           console.log("✅ [TASKER] Completed tasks:", filtered.length);
           break;
 
         default:
-          filtered = tasks;
+          filtered = dataToFilter;
       }
     }
 
     console.log("🎯 [FILTERING] Final filtered count:", filtered.length);
     return filtered;
-  }, [tasks, userRole, userId, activeTab]);
+  }, [tasks, propTasks, userRole, user?.id, activeTab]);
 
-  return filteredTasks;
+  const completedCount = useMemo(() => {
+    return filteredTasks.filter(task => task.status === 'completed').length;
+  }, [filteredTasks]);
+
+  const completedTotal = useMemo(() => {
+    const allTasks = propTasks || tasks;
+    if (userRole === "client") {
+      return allTasks.filter(task => task.client_id === user?.id && task.status === 'completed').length;
+    } else {
+      return allTasks.filter(task => 
+        task.status === 'completed' && 
+        task.accepted_offer_id &&
+        task.offers &&
+        task.offers.some(offer => 
+          offer.id === task.accepted_offer_id && 
+          offer.tasker_id === user?.id
+        )
+      ).length;
+    }
+  }, [tasks, propTasks, userRole, user?.id]);
+
+  return {
+    tasks: filteredTasks,
+    loading,
+    completedCount,
+    completedTotal,
+    loadData
+  };
 };

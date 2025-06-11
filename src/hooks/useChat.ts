@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchChatRooms, fetchMessages, sendMessage, markMessagesAsRead } from "@/lib/api";
+import { fetchChatRooms, fetchMessages, sendMessage, markMessagesAsRead } from "@/lib/chat";
 
 interface Message {
   id: string;
@@ -11,9 +11,7 @@ interface Message {
   content: string;
   created_at: string;
   is_read: boolean;
-  sender?: {
-    full_name: string;
-  };
+  sender_name?: string;
 }
 
 interface ChatRoom {
@@ -56,8 +54,19 @@ export const useChat = () => {
     try {
       console.log('🔄 [CHAT] Loading chat rooms for user:', user.id);
       const rooms = await fetchChatRooms(user.id);
-      setChatRooms(rooms);
-      console.log('✅ [CHAT] Loaded chat rooms:', rooms.length);
+      
+      // Transform the data to match the ChatRoom interface
+      const transformedRooms: ChatRoom[] = rooms.map(room => ({
+        id: room.id,
+        taskTitle: room.task_title,
+        participantName: user.id === room.client_id ? room.tasker_name : room.client_name,
+        participantId: user.id === room.client_id ? room.tasker_id : room.client_id,
+        status: 'active' as const,
+        unreadCount: room.unread_count
+      }));
+      
+      setChatRooms(transformedRooms);
+      console.log('✅ [CHAT] Loaded chat rooms:', transformedRooms.length);
     } catch (error) {
       console.error('❌ [CHAT] Error loading chat rooms:', error);
       toast({
@@ -76,7 +85,7 @@ export const useChat = () => {
     setLoadingMessages(true);
     try {
       console.log('🔄 [CHAT] Loading messages for task:', taskId);
-      const taskMessages = await fetchMessages(taskId);
+      const taskMessages = await fetchMessages(taskId, user.id);
       setMessages(taskMessages);
       
       // Mark messages as read
@@ -102,14 +111,13 @@ export const useChat = () => {
 
     try {
       console.log('📤 [CHAT] Sending message to task:', selectedChat);
-      const messageData = {
-        task_id: selectedChat,
-        sender_id: user.id,
-        receiver_id: selectedRoom.participantId,
-        content: newMessage.trim()
-      };
-
-      const sentMessage = await sendMessage(messageData);
+      
+      const sentMessage = await sendMessage(
+        selectedChat,
+        user.id,
+        selectedRoom.participantId,
+        newMessage.trim()
+      );
       
       // Add the new message to the current messages
       setMessages(prev => [...prev, sentMessage]);
