@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [waitingForProfile, setWaitingForProfile] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const navigate = useNavigate();
 
   const handleRedirect = (profile: any) => {
@@ -48,17 +49,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const syncSessionAndProfile = async () => {
+  const syncSessionAndProfile = async (retryCount = 0) => {
     try {
-      console.log('🔍 [AUTH] Starting session and profile sync...');
+      console.log('🔍 [AUTH] Starting session and profile sync...', { retryCount });
       
-      // Use the new session validator
+      // Add a small delay on retries to prevent rapid successive calls
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       const sessionValidation = await validateSession();
       
       if (!sessionValidation.isValid || !sessionValidation.userId) {
         console.log('ℹ️ [AUTH] No valid session found');
         setUser(null);
         setLoading(false);
+        setInitialized(true);
         return;
       }
 
@@ -74,13 +80,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             email: profile.email
           });
           setUser(profile);
-          handleRedirect(profile);
+          
+          // Only redirect if we're on the home page or if this is the initial load
+          const currentPath = window.location.pathname;
+          if (currentPath === '/' || !initialized) {
+            handleRedirect(profile);
+          }
         } else {
           console.error("❌ [AUTH] No user profile found.");
           setUser(null);
         }
       } catch (err: any) {
         console.error("❌ [AUTH] Error fetching profile:", err);
+        
+        // Retry logic for profile fetch failures
+        if (retryCount < 2) {
+          console.log('🔄 [AUTH] Retrying profile fetch...');
+          return syncSessionAndProfile(retryCount + 1);
+        }
+        
         setUser(null);
       }
     } catch (err) {
@@ -89,28 +107,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     setLoading(false);
+    setInitialized(true);
   };
 
   useEffect(() => {
-    const initialize = async () => {
-      await syncSessionAndProfile();
-    };
-    initialize();
+    let mounted = true;
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("🔁 [AUTH] Auth state change:", event);
-        if (session?.user) {
+    const initializeAuth = async () => {
+      try {
+        console.log('🚀 [AUTH] Initializing authentication...');
+        
+        // Set up auth state listener first
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log("🔁 [AUTH] Auth state change:", event);
+            
+            if (!mounted) return;
+            
+            if (event === 'SIGNED_OUT') {
+              setUser(null);
+              setLoading(false);
+              setInitialized(true);
+              return;
+            }
+            
+            if (session?.user && event !== 'TOKEN_REFRESHED') {
+              setLoading(true);
+              await syncSessionAndProfile();
+            }
+          }
+        );
+
+        // Then check for existing session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ [AUTH] Error getting session:', error);
+          setLoading(false);
+          setInitialized(true);
+          return;
+        }
+
+        if (session?.user && mounted) {
+          console.log('🔍 [AUTH] Found existing session, syncing...');
           await syncSessionAndProfile();
         } else {
-          setUser(null);
+          console.log('ℹ️ [AUTH] No existing session found');
           setLoading(false);
+          setInitialized(true);
+        }
+
+        return () => {
+          authListener?.subscription?.unsubscribe();
+        };
+      } catch (error) {
+        console.error('❌ [AUTH] Error in initializeAuth:', error);
+        if (mounted) {
+          setLoading(false);
+          setInitialized(true);
         }
       }
-    );
+    };
+
+    initializeAuth();
 
     return () => {
-      subscription?.subscription?.unsubscribe();
+      mounted = false;
     };
   }, []);
 
@@ -118,24 +180,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     console.log('🔄 [AUTH] Attempting login for:', email);
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        setLoading(false);
+        console.error("❌ [AUTH] Login error:", error);
+        throw new Error(error.message);
+      }
+
+      if (!data.session) {
+        setLoading(false);
+        throw new Error("No session returned.");
+      }
+
+      console.log("✅ [AUTH] Login successful, syncing profile...");
+      // The auth state change listener will handle the sync
+    } catch (error) {
       setLoading(false);
-      console.error("❌ [AUTH] Login error:", error);
-      throw new Error(error.message);
+      throw error;
     }
-
-    if (!data.session) {
-      setLoading(false);
-      throw new Error("No session returned.");
-    }
-
-    console.log("✅ [AUTH] Login successful, syncing profile...");
-    await syncSessionAndProfile();
   };
 
   const register = async (data: any) => {
@@ -187,6 +254,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("✅ [AUTH] Logout successful");
     }
     setUser(null);
+    setInitialized(false);
     navigate("/");
     setLoading(false);
   };
@@ -202,7 +270,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         waitingForProfile,
       }}
     >
-      {loading ? <LoadingScreen /> : children}
+      {loading && !initialized ? <LoadingScreen /> : children}
     </AuthContext.Provider>
   );
 };
