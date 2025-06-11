@@ -16,7 +16,13 @@ export const fetchTasks = async (
     throw new Error("Authentication required");
   }
 
-  console.log("✅ [TASKS] Session validated, making request with auth.uid():", session.user.id);
+  console.log("✅ [TASKS] Session validated, user ID:", session.user.id);
+
+  // Verify the passed userId matches the session user ID
+  if (session.user.id !== userId) {
+    console.error("❌ [TASKS] User ID mismatch. Session:", session.user.id, "Passed:", userId);
+    throw new Error("User ID mismatch");
+  }
 
   let query = supabase
     .from("task_requests")

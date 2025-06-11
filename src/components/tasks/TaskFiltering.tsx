@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchTasks } from "@/lib/tasks";
+import { fetchUserOffers } from "@/lib/offers";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -41,6 +42,30 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
       setLoading(true);
       console.log(`🔍 [TASKS] Loading data for ${userRole} user:`, user.id, "tab:", activeTab);
       
+      // For My Offers tab, we need to fetch offers separately
+      if (userRole === "tasker" && activeTab === "my-tasks") {
+        console.log("🔍 [OFFERS] Fetching user offers for tasker:", user.id);
+        
+        const userOffers = await fetchUserOffers(user.id).catch((error) => {
+          console.error("❌ [OFFERS] Fetch user offers failed:", error);
+          return [];
+        });
+        
+        console.log("✅ [OFFERS] Fetched user offers:", userOffers.length);
+        
+        // Transform offers into task format for display
+        const tasksFromOffers = userOffers.map(offer => ({
+          ...offer.task,
+          offers: [offer]
+        })).filter(task => task.id) as Task[];
+        
+        console.log("✅ [TASKS] Transformed offers to tasks:", tasksFromOffers.length);
+        setTasks(tasksFromOffers);
+        setLoading(false);
+        return;
+      }
+      
+      // For all other tabs, fetch tasks normally
       const fetchedTasks = await fetchTasks(user.id, userRole).catch((error) => {
         console.error("❌ [TASKS] Fetch failed:", error);
         return [];
@@ -106,22 +131,6 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
               const matches = notOwnTask && isPending && noOfferYet;
               if (matches) {
                 console.log(`✅ [TASKER-AVAILABLE] Task ${task.id}: ${task.title} (status: ${task.status}, no offer yet)`);
-              }
-              return matches;
-            });
-            break;
-          case "my-tasks":
-            // My Offers: show all tasks where current tasker has submitted an offer
-            // BUT exclude tasks where this tasker's offer was accepted (those go to appointments)
-            filteredTasks = filteredTasks.filter(task => {
-              if (!task.offers || !Array.isArray(task.offers)) return false;
-              const myOffer = task.offers.find(offer => offer.tasker_id === user.id);
-              if (!myOffer) return false;
-              
-              // Only show if offer is pending or rejected, NOT if accepted
-              const matches = myOffer.status === 'pending' || myOffer.status === 'rejected';
-              if (matches) {
-                console.log(`✅ [TASKER-OFFERS] Task ${task.id}: ${task.title} (offer status: ${myOffer.status})`);
               }
               return matches;
             });

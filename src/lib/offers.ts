@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -20,7 +19,7 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
     throw new Error("Authentication required");
   }
 
-  console.log("✅ [OFFERS] Session validated, making request with auth.uid():", session.user.id);
+  console.log("✅ [OFFERS] Session validated, making request with user ID:", session.user.id);
 
   const { data, error } = await supabase
     .from("offers")
@@ -54,8 +53,15 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     throw new Error("Authentication required");
   }
 
-  console.log("✅ [OFFERS] Session validated for user offers, auth.uid():", session.user.id);
+  console.log("✅ [OFFERS] Session validated for user offers, session user ID:", session.user.id);
 
+  // Verify the passed userId matches the session user ID
+  if (session.user.id !== userId) {
+    console.error("❌ [OFFERS] User ID mismatch. Session:", session.user.id, "Passed:", userId);
+    throw new Error("User ID mismatch");
+  }
+
+  // Use explicit filter with the validated user ID instead of relying on RLS
   const { data, error } = await supabase
     .from("offers")
     .select(`
@@ -68,7 +74,7 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("❌ [OFFERS] RLS Error fetching user offers:", error);
+    console.error("❌ [OFFERS] Error fetching user offers:", error);
     console.error("❌ [OFFERS] Error details:", {
       code: error.code,
       message: error.message,

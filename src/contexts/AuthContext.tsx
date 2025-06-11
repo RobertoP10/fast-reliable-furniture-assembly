@@ -84,33 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (err: any) {
           console.error("❌ [AUTH] Error fetching profile:", err);
-          
-          // If it's an RLS error, try a fallback approach
-          if (err.message?.includes('infinite recursion') || err.message?.includes('policy')) {
-            console.log("🔄 [AUTH] RLS error detected, trying fallback profile fetch...");
-            try {
-              // Fallback: try to get basic user info directly
-              const { data: basicProfile, error: basicError } = await supabase
-                .from('users')
-                .select('id, email, full_name, role, approved')
-                .eq('id', session.user.id)
-                .maybeSingle();
-              
-              if (basicProfile && !basicError) {
-                console.log("✅ [AUTH] Fallback profile fetch successful");
-                setUser(basicProfile);
-                handleRedirect(basicProfile);
-              } else {
-                console.error("❌ [AUTH] Fallback profile fetch failed:", basicError);
-                setUser(null);
-              }
-            } catch (fallbackErr) {
-              console.error("❌ [AUTH] Fallback profile fetch error:", fallbackErr);
-              setUser(null);
-            }
-          } else {
-            setUser(null);
-          }
+          setUser(null);
         }
       } else {
         console.log('ℹ️ [AUTH] No active session found');

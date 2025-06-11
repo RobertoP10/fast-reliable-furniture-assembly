@@ -62,6 +62,12 @@ export const fetchUserProfile = async (authUser: any) => {
       throw new Error('Authentication required for profile access');
     }
 
+    // Verify the session user matches the requested user
+    if (session.user.id !== authUser.id) {
+      console.error('❌ [AUTH] User ID mismatch. Session:', session.user.id, 'Requested:', authUser.id);
+      throw new Error('User ID mismatch');
+    }
+
     // Use maybeSingle() to avoid errors when no data is found
     const { data, error } = await supabase
       .from('users')
@@ -77,12 +83,6 @@ export const fetchUserProfile = async (authUser: any) => {
         details: error.details,
         hint: error.hint
       });
-      
-      // Handle specific RLS or policy errors
-      if (error.code === '42P17' || error.message.includes('infinite recursion') || error.message.includes('policy')) {
-        console.log('🔄 [AUTH] RLS policy error detected, this should be resolved with new policies');
-        throw new Error('RLS policy error - please check database policies');
-      }
       
       if (error.code === 'PGRST301' || error.message.includes('not found')) {
         console.warn('⚠️ [AUTH] User profile not found, creating default profile...');
@@ -120,12 +120,6 @@ export const fetchUserProfile = async (authUser: any) => {
     return data;
   } catch (error: any) {
     console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
-    
-    // Re-throw RLS errors so they can be handled upstream
-    if (error.message?.includes('RLS policy error') || error.message?.includes('infinite recursion')) {
-      throw error;
-    }
-    
     return null;
   }
 };
