@@ -3,7 +3,9 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Star, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Star, Search, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface TableData {
   id: string;
@@ -16,12 +18,25 @@ interface TableData {
   averageRating: number;
 }
 
+interface Transaction {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  task_requests?: {
+    completed_at: string | null;
+  };
+  client?: { id: string; full_name: string };
+  tasker?: { id: string; full_name: string };
+}
+
 interface EnhancedAnalyticsTableProps {
   title: string;
   data: TableData[];
   formatCurrency: (amount: number) => string;
   formatDate: (date: string) => string;
   isTaskerTable?: boolean;
+  transactions?: Transaction[];
 }
 
 export const EnhancedAnalyticsTable = ({ 
@@ -29,20 +44,86 @@ export const EnhancedAnalyticsTable = ({
   data, 
   formatCurrency, 
   formatDate, 
-  isTaskerTable = false 
+  isTaskerTable = false,
+  transactions = []
 }: EnhancedAnalyticsTableProps) => {
   const [nameFilter, setNameFilter] = useState("");
   const [minRating, setMinRating] = useState("");
   const [minTasks, setMinTasks] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRangeStart, setDateRangeStart] = useState("");
+  const [dateRangeEnd, setDateRangeEnd] = useState("");
 
   const filteredData = useMemo(() => {
-    return data.filter(item => {
+    let filtered = data.filter(item => {
       const nameMatch = item.name.toLowerCase().includes(nameFilter.toLowerCase());
       const ratingMatch = !minRating || item.averageRating >= Number(minRating);
       const taskMatch = !minTasks || item.taskCount >= Number(minTasks);
-      return nameMatch && ratingMatch && taskMatch;
+      
+      // Date range filter
+      let dateMatch = true;
+      if (dateRangeStart || dateRangeEnd) {
+        if (item.lastTaskDate) {
+          const itemDate = new Date(item.lastTaskDate);
+          if (dateRangeStart && itemDate < new Date(dateRangeStart)) dateMatch = false;
+          if (dateRangeEnd && itemDate > new Date(dateRangeEnd)) dateMatch = false;
+        } else {
+          dateMatch = false;
+        }
+      }
+
+      return nameMatch && ratingMatch && taskMatch && dateMatch;
     });
-  }, [data, nameFilter, minRating, minTasks]);
+
+    // Apply status filter by recalculating totals based on filtered transactions
+    if (statusFilter !== "all" && transactions.length > 0) {
+      filtered = filtered.map(item => {
+        const relevantTransactions = transactions.filter(t => {
+          const matchesUser = isTaskerTable ? 
+            t.tasker?.id === item.id : 
+            t.client?.id === item.id;
+          
+          const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+          
+          let matchesDateRange = true;
+          if (dateRangeStart || dateRangeEnd) {
+            const completedAt = t.task_requests?.completed_at;
+            if (completedAt) {
+              const transactionDate = new Date(completedAt);
+              if (dateRangeStart && transactionDate < new Date(dateRangeStart)) matchesDateRange = false;
+              if (dateRangeEnd && transactionDate > new Date(dateRangeEnd)) matchesDateRange = false;
+            } else {
+              matchesDateRange = false;
+            }
+          }
+
+          return matchesUser && matchesStatus && matchesDateRange;
+        });
+
+        const filteredTaskCount = relevantTransactions.length;
+        const filteredAmount = relevantTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+        const filteredCommission = filteredAmount * 0.2;
+
+        // Find most recent task date from filtered transactions
+        const filteredLastTaskDate = relevantTransactions.length > 0 ? 
+          relevantTransactions
+            .filter(t => t.task_requests?.completed_at)
+            .sort((a, b) => new Date(b.task_requests!.completed_at!).getTime() - new Date(a.task_requests!.completed_at!).getTime())[0]?.task_requests?.completed_at || null
+          : null;
+
+        return {
+          ...item,
+          taskCount: filteredTaskCount,
+          totalEarnings: isTaskerTable ? filteredAmount : item.totalEarnings,
+          totalSpent: !isTaskerTable ? filteredAmount : item.totalSpent,
+          totalCommission: filteredCommission,
+          lastTaskDate: filteredLastTaskDate
+        };
+      }).filter(item => item.taskCount > 0); // Only show items with tasks in the filtered period
+    }
+
+    return filtered;
+  }, [data, nameFilter, minRating, minTasks, statusFilter, dateRangeStart, dateRangeEnd, transactions, isTaskerTable]);
 
   const totals = useMemo(() => {
     return filteredData.reduce((acc, item) => ({
@@ -59,39 +140,89 @@ export const EnhancedAnalyticsTable = ({
     });
   }, [filteredData, isTaskerTable]);
 
+  const clearFilters = () => {
+    setNameFilter("");
+    setMinRating("");
+    setMinTasks("");
+    setStatusFilter("all");
+    setDateRangeStart("");
+    setDateRangeEnd("");
+  };
+
   return (
     <Card className="shadow-lg border-0">
       <CardHeader>
         <CardTitle className="text-blue-900">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        {/* Advanced Filters */}
+        <div className="space-y-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Filter by name..."
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Input
-              placeholder="Filter by name..."
-              value={nameFilter}
-              onChange={(e) => setNameFilter(e.target.value)}
-              className="pl-10"
+              type="number"
+              placeholder="Min rating (0-5)"
+              value={minRating}
+              onChange={(e) => setMinRating(e.target.value)}
+              min="0"
+              max="5"
+              step="0.1"
+            />
+            <Input
+              type="number"
+              placeholder="Min tasks"
+              value={minTasks}
+              onChange={(e) => setMinTasks(e.target.value)}
+              min="0"
             />
           </div>
-          <Input
-            type="number"
-            placeholder="Min rating (0-5)"
-            value={minRating}
-            onChange={(e) => setMinRating(e.target.value)}
-            min="0"
-            max="5"
-            step="0.1"
-          />
-          <Input
-            type="number"
-            placeholder="Min tasks"
-            value={minTasks}
-            onChange={(e) => setMinTasks(e.target.value)}
-            min="0"
-          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="confirmed">Confirmed/Paid</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <div className="relative">
+              <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                type="date"
+                placeholder="Start date"
+                value={dateRangeStart}
+                onChange={(e) => setDateRangeStart(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <div className="relative">
+              <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                type="date"
+                placeholder="End date"
+                value={dateRangeEnd}
+                onChange={(e) => setDateRangeEnd(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <Button variant="outline" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}

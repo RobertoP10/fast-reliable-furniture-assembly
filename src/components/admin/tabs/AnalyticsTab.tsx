@@ -72,6 +72,7 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           isTaskerTable={true}
+          transactions={analytics.confirmedTransactions}
         />
       )}
 
@@ -82,6 +83,7 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           isTaskerTable={false}
+          transactions={analytics.confirmedTransactions}
         />
       )}
     </div>

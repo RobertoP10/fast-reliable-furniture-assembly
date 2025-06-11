@@ -177,12 +177,12 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get confirmed transactions
+  // Get confirmed transactions with proper joins
   const { data: confirmedTransactions } = await supabase
     .from('transactions')
     .select(`
       *,
-      task_requests (
+      task_requests!inner (
         id,
         title,
         status,
@@ -199,18 +199,16 @@ export const getPlatformAnalytics = async () => {
         email
       )
     `)
-    .eq('status', 'confirmed');
+    .eq('status', 'confirmed')
+    .eq('task_requests.status', 'completed');
 
   // Get all reviews for average rating
   const { data: reviews } = await supabase
     .from('reviews')
     .select('rating, reviewee_id');
 
-  // Get completed tasks count
-  const { data: completedTasks } = await supabase
-    .from('task_requests')
-    .select('id')
-    .eq('status', 'completed');
+  // Get completed tasks count from confirmed transactions
+  const totalCompletedTasks = confirmedTransactions?.length || 0;
 
   const totalValue = confirmedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
   const platformCommission = totalValue * 0.2; // 20% commission
@@ -239,7 +237,7 @@ export const getPlatformAnalytics = async () => {
       acc[taskerId].totalEarnings += Number(transaction.amount);
       acc[taskerId].totalCommission += Number(transaction.amount) * 0.2;
       
-      // Update last task date
+      // Update last task date using task completion date
       const taskDate = transaction.task_requests?.completed_at;
       if (taskDate && (!acc[taskerId].lastTaskDate || new Date(taskDate) > new Date(acc[taskerId].lastTaskDate))) {
         acc[taskerId].lastTaskDate = taskDate;
@@ -279,7 +277,7 @@ export const getPlatformAnalytics = async () => {
       acc[clientId].totalSpent += Number(transaction.amount);
       acc[clientId].totalCommission += Number(transaction.amount) * 0.2;
       
-      // Update last task date
+      // Update last task date using task completion date
       const taskDate = transaction.task_requests?.completed_at;
       if (taskDate && (!acc[clientId].lastTaskDate || new Date(taskDate) > new Date(acc[clientId].lastTaskDate))) {
         acc[clientId].lastTaskDate = taskDate;
@@ -301,12 +299,14 @@ export const getPlatformAnalytics = async () => {
   console.log('✅ [ADMIN] Platform analytics calculated successfully');
   
   return {
-    totalCompletedTasks: completedTasks?.length || 0,
+    totalCompletedTasks,
     totalValue,
     platformCommission,
     averageRating,
     taskerBreakdown: Object.values(taskerBreakdown),
-    clientBreakdown: Object.values(clientBreakdown)
+    clientBreakdown: Object.values(clientBreakdown),
+    // Add raw data for filtering
+    confirmedTransactions: confirmedTransactions || []
   };
 };
 
