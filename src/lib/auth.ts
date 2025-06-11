@@ -20,7 +20,8 @@ export const validateUserSession = async (): Promise<{ session: any; profile: an
     console.log('✅ [AUTH] Session validation successful:', {
       userId: session.user.id,
       email: session.user.email,
-      accessToken: session.access_token ? 'present' : 'missing'
+      accessToken: session.access_token ? 'present' : 'missing',
+      tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
     });
 
     const { data: profile, error: profileError } = await supabase
@@ -53,15 +54,29 @@ export const fetchUserProfile = async (authUser: any) => {
   try {
     console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
     
+    // Ensure we have a valid session before making RLS-protected queries
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('❌ [AUTH] No valid session for profile fetch:', sessionError);
+      throw new Error('Authentication required for profile access');
+    }
+
     // Use maybeSingle() to avoid errors when no data is found
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, role, approved, created_at, updated_at')
+      .select('id, email, full_name, role, approved, created_at, updated_at, rating, total_reviews')
       .eq('id', authUser.id)
       .maybeSingle();
 
     if (error) {
       console.error('❌ [AUTH] Error fetching user profile:', error);
+      console.error('❌ [AUTH] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       
       // Handle specific RLS or policy errors
       if (error.code === '42P17' || error.message.includes('infinite recursion') || error.message.includes('policy')) {
@@ -96,7 +111,12 @@ export const fetchUserProfile = async (authUser: any) => {
       return null;
     }
 
-    console.log('✅ [AUTH] Fetched user profile:', data);
+    console.log('✅ [AUTH] Fetched user profile successfully:', {
+      id: data.id,
+      role: data.role,
+      approved: data.approved,
+      email: data.email
+    });
     return data;
   } catch (error: any) {
     console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
@@ -112,6 +132,14 @@ export const fetchUserProfile = async (authUser: any) => {
 
 export const getCurrentUserRole = async (): Promise<string | null> => {
   try {
+    // Ensure we have a valid session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('❌ [AUTH] No valid session for role check:', sessionError);
+      return null;
+    }
+
     const { data, error } = await supabase.rpc('get_current_user_role');
     
     if (error) {
@@ -119,6 +147,7 @@ export const getCurrentUserRole = async (): Promise<string | null> => {
       return null;
     }
     
+    console.log('✅ [AUTH] Current user role:', data);
     return data;
   } catch (error) {
     console.error('❌ [AUTH] Exception getting user role:', error);

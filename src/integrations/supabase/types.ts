@@ -87,6 +87,20 @@ export type Database = {
             referencedRelation: "task_requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -132,10 +146,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -186,6 +228,20 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
             referencedColumns: ["id"]
           },
           {
@@ -245,6 +301,20 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -325,10 +395,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_requests_accepted_offer_id_fkey"
             columns: ["accepted_offer_id"]
             isOneToOne: false
             referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
             referencedColumns: ["id"]
           },
           {
@@ -442,6 +540,20 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
             referencedColumns: ["id"]
           },
           {
@@ -565,6 +677,328 @@ export type Database = {
         }
         Relationships: []
       }
+      view_client_received_offers: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_accepted: boolean | null
+          message: string | null
+          price: number | null
+          proposed_date: string | null
+          proposed_time: string | null
+          status: string | null
+          task_id: string | null
+          tasker_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_tasker_appointments: {
+        Row: {
+          accepted_offer_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          category: string | null
+          client_id: string | null
+          completed_at: string | null
+          completion_proof_urls: string[] | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          location: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          price_range_max: number | null
+          price_range_min: number | null
+          required_date: string | null
+          required_time: string | null
+          status: Database["public"]["Enums"]["task_status"] | null
+          subcategory: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_tasker_completed_tasks: {
+        Row: {
+          accepted_offer_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          category: string | null
+          client_id: string | null
+          completed_at: string | null
+          completion_proof_urls: string[] | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          location: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          price_range_max: number | null
+          price_range_min: number | null
+          required_date: string | null
+          required_time: string | null
+          status: Database["public"]["Enums"]["task_status"] | null
+          subcategory: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_accepted_offer"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_client_received_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_accepted_offer_id_fkey"
+            columns: ["accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_own_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_tasker_own_offers: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_accepted: boolean | null
+          message: string | null
+          price: number | null
+          proposed_date: string | null
+          proposed_time: string | null
+          status: string | null
+          task_id: string | null
+          tasker_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_accepted?: boolean | null
+          message?: string | null
+          price?: number | null
+          proposed_date?: string | null
+          proposed_time?: string | null
+          status?: string | null
+          task_id?: string | null
+          tasker_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_accepted?: boolean | null
+          message?: string | null
+          price?: number | null
+          proposed_date?: string | null
+          proposed_time?: string | null
+          status?: string | null
+          task_id?: string | null
+          tasker_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "view_tasker_completed_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "all_users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "pending_taskers_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_tasker_id_fkey"
+            columns: ["tasker_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_offer_and_reject_others: {
@@ -591,15 +1025,7 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: number
       }
-      get_user_role: {
-        Args: { user_id: string }
-        Returns: string
-      }
       is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_client_offer_accessible: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

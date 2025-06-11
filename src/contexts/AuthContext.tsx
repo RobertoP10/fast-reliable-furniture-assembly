@@ -49,31 +49,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const syncSessionAndProfile = async () => {
     try {
+      console.log('🔍 [AUTH] Starting session validation...');
+      
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error("❌ Error getting session:", error);
+        console.error("❌ [AUTH] Session validation error:", error);
         setUser(null);
         setLoading(false);
         return;
       }
 
       if (session?.user) {
+        console.log('✅ [AUTH] Valid session found:', {
+          userId: session.user.id,
+          email: session.user.email,
+          tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
+        });
+
         try {
           const profile = await fetchUserProfile(session.user);
           if (profile) {
+            console.log('✅ [AUTH] Profile fetched successfully:', {
+              userId: profile.id,
+              role: profile.role,
+              approved: profile.approved,
+              email: profile.email
+            });
             setUser(profile);
             handleRedirect(profile);
           } else {
-            console.error("❌ No user profile found.");
+            console.error("❌ [AUTH] No user profile found.");
             setUser(null);
           }
         } catch (err: any) {
-          console.error("❌ Error fetching profile:", err);
+          console.error("❌ [AUTH] Error fetching profile:", err);
           
           // If it's an RLS error, try a fallback approach
           if (err.message?.includes('infinite recursion') || err.message?.includes('policy')) {
-            console.log("🔄 RLS error detected, trying fallback profile fetch...");
+            console.log("🔄 [AUTH] RLS error detected, trying fallback profile fetch...");
             try {
               // Fallback: try to get basic user info directly
               const { data: basicProfile, error: basicError } = await supabase
@@ -83,15 +97,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 .maybeSingle();
               
               if (basicProfile && !basicError) {
-                console.log("✅ Fallback profile fetch successful");
+                console.log("✅ [AUTH] Fallback profile fetch successful");
                 setUser(basicProfile);
                 handleRedirect(basicProfile);
               } else {
-                console.error("❌ Fallback profile fetch failed:", basicError);
+                console.error("❌ [AUTH] Fallback profile fetch failed:", basicError);
                 setUser(null);
               }
             } catch (fallbackErr) {
-              console.error("❌ Fallback profile fetch error:", fallbackErr);
+              console.error("❌ [AUTH] Fallback profile fetch error:", fallbackErr);
               setUser(null);
             }
           } else {
@@ -99,10 +113,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       } else {
+        console.log('ℹ️ [AUTH] No active session found');
         setUser(null);
       }
     } catch (err) {
-      console.error("❌ Unexpected error in syncSessionAndProfile:", err);
+      console.error("❌ [AUTH] Unexpected error in syncSessionAndProfile:", err);
       setUser(null);
     }
 
@@ -117,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("🔁 Auth state change:", event);
+        console.log("🔁 [AUTH] Auth state change:", event);
         if (session?.user) {
           await syncSessionAndProfile();
         } else {
@@ -134,6 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     setLoading(true);
+    console.log('🔄 [AUTH] Attempting login for:', email);
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -141,6 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (error) {
       setLoading(false);
+      console.error("❌ [AUTH] Login error:", error);
       throw new Error(error.message);
     }
 
@@ -149,6 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("No session returned.");
     }
 
+    console.log("✅ [AUTH] Login successful, syncing profile...");
     await syncSessionAndProfile();
   };
 
@@ -157,6 +176,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setWaitingForProfile(true);
 
     try {
+      console.log('🔄 [AUTH] Attempting registration for:', data.email);
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -164,6 +185,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("No user returned from signup");
+
+      console.log('✅ [AUTH] User registered, creating profile...');
 
       const { error: insertError } = await supabase.from("users").insert({
         id: authData.user.id,
@@ -175,10 +198,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (insertError) throw new Error("Failed to insert user profile");
 
-      console.log("✅ User registered successfully.");
+      console.log("✅ [AUTH] User registered successfully, attempting login...");
       await login(data.email, data.password);
     } catch (err) {
-      console.error("❌ Registration error:", err);
+      console.error("❌ [AUTH] Registration error:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -188,9 +211,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     setLoading(true);
+    console.log('🔄 [AUTH] Logging out...');
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error("❌ Logout error:", error);
+      console.error("❌ [AUTH] Logout error:", error);
+    } else {
+      console.log("✅ [AUTH] Logout successful");
     }
     setUser(null);
     navigate("/");

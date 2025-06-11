@@ -10,17 +10,52 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
 };
 
 export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
+  console.log("🔍 [OFFERS] Fetching offers for task:", taskId);
+  
+  // Ensure we have a valid session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session) {
+    console.error("❌ [OFFERS] No valid session:", sessionError);
+    throw new Error("Authentication required");
+  }
+
+  console.log("✅ [OFFERS] Session validated, making request with auth.uid():", session.user.id);
+
   const { data, error } = await supabase
     .from("offers")
     .select(`*, tasker:users!offers_tasker_id_fkey(full_name, approved)`)
     .eq("task_id", taskId)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch offers: ${error.message}`);
+  if (error) {
+    console.error("❌ [OFFERS] RLS Error fetching offers:", error);
+    console.error("❌ [OFFERS] Error details:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    });
+    throw new Error(`Failed to fetch offers: ${error.message}`);
+  }
+
+  console.log("✅ [OFFERS] Fetched offers:", data?.length || 0, "for task:", taskId);
   return data || [];
 };
 
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
+  console.log("🔍 [OFFERS] Fetching user offers for:", userId);
+  
+  // Ensure we have a valid session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session) {
+    console.error("❌ [OFFERS] No valid session for user offers:", sessionError);
+    throw new Error("Authentication required");
+  }
+
+  console.log("✅ [OFFERS] Session validated for user offers, auth.uid():", session.user.id);
+
   const { data, error } = await supabase
     .from("offers")
     .select(`
@@ -32,7 +67,18 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
     .eq("tasker_id", userId)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch user offers: ${error.message}`);
+  if (error) {
+    console.error("❌ [OFFERS] RLS Error fetching user offers:", error);
+    console.error("❌ [OFFERS] Error details:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    });
+    throw new Error(`Failed to fetch user offers: ${error.message}`);
+  }
+
+  console.log("✅ [OFFERS] Fetched user offers:", data?.length || 0, "for user:", userId);
   return data || [];
 };
 
@@ -44,13 +90,28 @@ export const createOffer = async (offerData: {
   proposed_date: string;
   proposed_time: string;
 }): Promise<Offer> => {
+  console.log("🔄 [OFFERS] Creating offer:", offerData);
+  
+  // Ensure we have a valid session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session) {
+    console.error("❌ [OFFERS] No valid session for offer creation:", sessionError);
+    throw new Error("Authentication required");
+  }
+
   const { data, error } = await supabase
     .from("offers")
     .insert(offerData)
     .select()
     .single();
 
-  if (error) throw new Error(`Failed to create offer: ${error.message}`);
+  if (error) {
+    console.error("❌ [OFFERS] Error creating offer:", error);
+    throw new Error(`Failed to create offer: ${error.message}`);
+  }
+
+  console.log("✅ [OFFERS] Created offer:", data.id);
   return data;
 };
 
@@ -60,6 +121,16 @@ export const acceptOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
   try {
+    console.log("🔄 [OFFERS] Accepting offer:", offerId, "for task:", taskId);
+    
+    // Ensure we have a valid session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error("❌ [OFFERS] No valid session for offer acceptance:", sessionError);
+      return { success: false, error: "Authentication required" };
+    }
+
     // Use the RPC function to handle the entire accept/reject flow atomically
     const { data, error } = await supabase.rpc('accept_offer_and_reject_others', {
       offer_id_param: offerId,
@@ -87,6 +158,16 @@ export const acceptOffer = async (
 export const declineOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
+  console.log("🔄 [OFFERS] Declining offer:", offerId);
+  
+  // Ensure we have a valid session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session) {
+    console.error("❌ [OFFERS] No valid session for offer decline:", sessionError);
+    return { success: false, error: "Authentication required" };
+  }
+
   const { error } = await supabase
     .from("offers")
     .update({ is_accepted: false, status: 'rejected' })
@@ -97,5 +178,6 @@ export const declineOffer = async (
     return { success: false, error };
   }
 
+  console.log("✅ [OFFERS] Declined offer:", offerId);
   return { success: true };
 };
