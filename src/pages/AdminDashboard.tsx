@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +39,23 @@ const AdminDashboard = () => {
   const [selectedTasker, setSelectedTasker] = useState('');
   const [selectedClient, setSelectedClient] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Get unique taskers and clients for filter dropdowns
+  const [taskers, setTaskers] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+
+  // Load filter options
+  const loadFilterOptions = async () => {
+    try {
+      const users = await fetchAllUsers();
+      const taskerUsers = users.filter(u => u.role === 'tasker' && u.approved);
+      const clientUsers = users.filter(u => u.role === 'client');
+      setTaskers(taskerUsers);
+      setClients(clientUsers);
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+    }
+  };
 
   // Load data based on active tab
   const loadData = async () => {
@@ -91,6 +107,9 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadData();
+    if (activeTab === 'transactions') {
+      loadFilterOptions();
+    }
   }, [activeTab, dateFilter, selectedTasker, selectedClient, toast]);
 
   const handleApproveTasker = async (taskerId: string) => {
@@ -485,10 +504,40 @@ const AdminDashboard = () => {
                           onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
                         />
                       </div>
-                      <div className="flex items-end space-x-2">
-                        <Button variant="outline" onClick={clearFilters}>
-                          Clear Filters
-                        </Button>
+                      <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Filter by Tasker</label>
+                          <Select value={selectedTasker} onValueChange={setSelectedTasker}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a tasker" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All Taskers</SelectItem>
+                              {taskers.map(tasker => (
+                                <SelectItem key={tasker.id} value={tasker.id}>{tasker.full_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Filter by Client</label>
+                          <Select value={selectedClient} onValueChange={setSelectedClient}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a client" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">All Clients</SelectItem>
+                              {clients.map(client => (
+                                <SelectItem key={client.id} value={client.id}>{client.full_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-end">
+                          <Button variant="outline" onClick={clearFilters}>
+                            Clear Filters
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -45,19 +44,12 @@ export const fetchPendingTaskers = async (): Promise<User[]> => {
 
 // Fetch pending transactions with proper joins
 export const fetchPendingTransactions = async () => {
-  console.log('🔍 [ADMIN] Fetching pending transactions with proper joins...');
+  console.log('🔍 [ADMIN] Fetching pending transactions...');
   
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      payment_method,
-      status,
-      created_at,
-      task_id,
-      client_id,
-      tasker_id,
+      *,
       task_requests!inner (
         id,
         title,
@@ -88,19 +80,12 @@ export const fetchPendingTransactions = async () => {
 
 // Fetch all transactions for analytics
 export const fetchAllTransactions = async () => {
-  console.log('🔍 [ADMIN] Fetching all transactions for analytics...');
+  console.log('🔍 [ADMIN] Fetching all transactions...');
   
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      payment_method,
-      status,
-      created_at,
-      task_id,
-      client_id,
-      tasker_id,
+      *,
       task_requests!inner (
         id,
         title,
@@ -190,13 +175,11 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get completed transactions with proper joins
-  const { data: completedTransactions } = await supabase
+  // Get confirmed transactions
+  const { data: confirmedTransactions } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      created_at,
+      *,
       task_requests!inner (
         id,
         title,
@@ -226,14 +209,14 @@ export const getPlatformAnalytics = async () => {
     .select('id')
     .eq('status', 'completed');
 
-  const totalValue = completedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+  const totalValue = confirmedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
   const platformCommission = totalValue * 0.2; // 20% commission
   const averageRating = reviews && reviews.length > 0 
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
     : 0;
 
   // Group by tasker
-  const taskerBreakdown = completedTransactions?.reduce((acc: any, transaction) => {
+  const taskerBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
     const taskerId = transaction.tasker?.id;
     const taskerName = transaction.tasker?.full_name;
     
@@ -252,7 +235,7 @@ export const getPlatformAnalytics = async () => {
   }, {}) || {};
 
   // Group by client
-  const clientBreakdown = completedTransactions?.reduce((acc: any, transaction) => {
+  const clientBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
     const clientId = transaction.client?.id;
     const clientName = transaction.client?.full_name;
     
@@ -327,14 +310,7 @@ export const fetchTransactionsByDateRange = async (startDate: string, endDate: s
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      payment_method,
-      status,
-      created_at,
-      task_id,
-      client_id,
-      tasker_id,
+      *,
       task_requests!inner (
         id,
         title,
@@ -370,14 +346,7 @@ export const fetchTransactionsByTasker = async (taskerId: string) => {
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      payment_method,
-      status,
-      created_at,
-      task_id,
-      client_id,
-      tasker_id,
+      *,
       task_requests!inner (
         id,
         title,
@@ -412,14 +381,7 @@ export const fetchTransactionsByClient = async (clientId: string) => {
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      id,
-      amount,
-      payment_method,
-      status,
-      created_at,
-      task_id,
-      client_id,
-      tasker_id,
+      *,
       task_requests!inner (
         id,
         title,
