@@ -177,8 +177,8 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get all confirmed transactions with completed tasks
-  const { data: allTransactions } = await supabase
+  // Get all confirmed transactions with completed tasks only
+  const { data: completedTransactions } = await supabase
     .from('transactions')
     .select(`
       *,
@@ -203,30 +203,51 @@ export const getPlatformAnalytics = async () => {
     .eq('task_requests.status', 'completed')
     .not('task_requests.completed_at', 'is', null);
 
-  console.log('📊 [ADMIN] Confirmed transactions with completed tasks:', allTransactions?.length || 0);
+  console.log('📊 [ADMIN] Completed and paid transactions:', completedTransactions?.length || 0);
 
-  // Get all reviews for average rating
-  const { data: reviews } = await supabase
+  // Get tasker reviews only (for completed tasks)
+  const { data: taskerReviews } = await supabase
     .from('reviews')
-    .select('rating, reviewee_id');
+    .select(`
+      rating, 
+      reviewee_id,
+      task_requests!inner (
+        status,
+        completed_at
+      )
+    `)
+    .eq('task_requests.status', 'completed')
+    .not('task_requests.completed_at', 'is', null);
 
-  // Calculate platform metrics based on confirmed transactions with completed tasks
-  const confirmedTransactions = allTransactions || [];
+  // Filter to only include tasker reviews (where reviewee is a tasker)
+  const { data: taskers } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'tasker');
+
+  const taskerIds = new Set(taskers?.map(t => t.id) || []);
+  const validTaskerReviews = taskerReviews?.filter(review => 
+    taskerIds.has(review.reviewee_id)
+  ) || [];
+
+  // Calculate platform metrics based on completed and paid transactions only
+  const confirmedTransactions = completedTransactions || [];
   const totalCompletedTasks = confirmedTransactions.length;
   const totalValue = confirmedTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
   const platformCommission = totalValue * 0.2; // 20% commission
-  const averageRating = reviews && reviews.length > 0 
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+  const averageRating = validTaskerReviews.length > 0 
+    ? validTaskerReviews.reduce((sum, r) => sum + r.rating, 0) / validTaskerReviews.length 
     : 0;
 
   console.log('📊 [ADMIN] Analytics calculated:', {
     totalCompletedTasks,
     totalValue,
     platformCommission,
-    averageRating
+    averageRating: averageRating.toFixed(1),
+    taskerReviewsCount: validTaskerReviews.length
   });
 
-  // Group by tasker with enhanced data - include ALL confirmed transactions for breakdown
+  // Get ALL confirmed transactions for filtering (including non-completed ones)
   const { data: allConfirmedTransactions } = await supabase
     .from('transactions')
     .select(`
@@ -252,6 +273,7 @@ export const getPlatformAnalytics = async () => {
 
   const allConfirmedTxns = allConfirmedTransactions || [];
 
+  // Group by tasker with enhanced data - include ALL confirmed transactions for breakdown
   const taskerBreakdown = allConfirmedTxns.reduce((acc: any, transaction) => {
     const taskerId = transaction.tasker?.id;
     const taskerName = transaction.tasker?.full_name;
@@ -264,32 +286,23 @@ export const getPlatformAnalytics = async () => {
           taskCount: 0,
           totalEarnings: 0,
           totalCommission: 0,
-          lastTaskDate: null,
           averageRating: 0
         };
       }
       acc[taskerId].taskCount += 1;
       acc[taskerId].totalEarnings += Number(transaction.amount);
       acc[taskerId].totalCommission += Number(transaction.amount) * 0.2;
-      
-      // Update last task date using task completion date
-      const taskDate = transaction.task_requests?.completed_at;
-      if (taskDate && (!acc[taskerId].lastTaskDate || new Date(taskDate) > new Date(acc[taskerId].lastTaskDate))) {
-        acc[taskerId].lastTaskDate = taskDate;
-      }
     }
     return acc;
   }, {});
 
-  // Add average ratings for taskers
-  if (reviews) {
-    Object.keys(taskerBreakdown).forEach(taskerId => {
-      const taskerReviews = reviews.filter(r => r.reviewee_id === taskerId);
-      if (taskerReviews.length > 0) {
-        taskerBreakdown[taskerId].averageRating = taskerReviews.reduce((sum, r) => sum + r.rating, 0) / taskerReviews.length;
-      }
-    });
-  }
+  // Add average ratings for taskers (only from completed tasks)
+  Object.keys(taskerBreakdown).forEach(taskerId => {
+    const taskerReviewsForUser = validTaskerReviews.filter(r => r.reviewee_id === taskerId);
+    if (taskerReviewsForUser.length > 0) {
+      taskerBreakdown[taskerId].averageRating = taskerReviewsForUser.reduce((sum, r) => sum + r.rating, 0) / taskerReviewsForUser.length;
+    }
+  });
 
   // Group by client with enhanced data
   const clientBreakdown = allConfirmedTxns.reduce((acc: any, transaction) => {
@@ -304,27 +317,24 @@ export const getPlatformAnalytics = async () => {
           taskCount: 0,
           totalSpent: 0,
           totalCommission: 0,
-          lastTaskDate: null,
           averageRating: 0
         };
       }
       acc[clientId].taskCount += 1;
       acc[clientId].totalSpent += Number(transaction.amount);
       acc[clientId].totalCommission += Number(transaction.amount) * 0.2;
-      
-      // Update last task date using task completion date
-      const taskDate = transaction.task_requests?.completed_at;
-      if (taskDate && (!acc[clientId].lastTaskDate || new Date(taskDate) > new Date(acc[clientId].lastTaskDate))) {
-        acc[clientId].lastTaskDate = taskDate;
-      }
     }
     return acc;
   }, {});
 
-  // Add average ratings for clients
-  if (reviews) {
+  // Add average ratings for clients (from all reviews where they are reviewees)
+  const { data: allReviews } = await supabase
+    .from('reviews')
+    .select('rating, reviewee_id');
+
+  if (allReviews) {
     Object.keys(clientBreakdown).forEach(clientId => {
-      const clientReviews = reviews.filter(r => r.reviewee_id === clientId);
+      const clientReviews = allReviews.filter(r => r.reviewee_id === clientId);
       if (clientReviews.length > 0) {
         clientBreakdown[clientId].averageRating = clientReviews.reduce((sum, r) => sum + r.rating, 0) / clientReviews.length;
       }
