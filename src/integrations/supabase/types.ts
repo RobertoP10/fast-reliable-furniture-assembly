@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_analytics_report: {
+        Row: {
+          avg_client_rating: number | null
+          avg_tasker_rating: number | null
+          client_id: string
+          commission_amount: number | null
+          date_bucket: string
+          id: string
+          payment_bank: number | null
+          payment_card: number | null
+          payment_cash: number | null
+          region: string | null
+          snapshot_date: string
+          tasker_id: string
+          total_earnings: number | null
+          total_tasks: number | null
+        }
+        Insert: {
+          avg_client_rating?: number | null
+          avg_tasker_rating?: number | null
+          client_id: string
+          commission_amount?: number | null
+          date_bucket: string
+          id?: string
+          payment_bank?: number | null
+          payment_card?: number | null
+          payment_cash?: number | null
+          region?: string | null
+          snapshot_date?: string
+          tasker_id: string
+          total_earnings?: number | null
+          total_tasks?: number | null
+        }
+        Update: {
+          avg_client_rating?: number | null
+          avg_tasker_rating?: number | null
+          client_id?: string
+          commission_amount?: number | null
+          date_bucket?: string
+          id?: string
+          payment_bank?: number | null
+          payment_card?: number | null
+          payment_cash?: number | null
+          region?: string | null
+          snapshot_date?: string
+          tasker_id?: string
+          total_earnings?: number | null
+          total_tasks?: number | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
