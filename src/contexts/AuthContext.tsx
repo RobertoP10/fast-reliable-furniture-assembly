@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [waitingForProfile, setWaitingForProfile] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [sessionRecoveryAttempted, setSessionRecoveryAttempted] = useState(false);
   const navigate = useNavigate();
 
   const handleRedirect = (profile: any) => {
@@ -43,6 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Only redirect if we're on the home page or if this is the initial load
     if (currentPath === '/' || !initialized) {
+      console.log('🔄 [AUTH] Redirecting user to dashboard:', { role: profile?.role, approved: profile?.approved });
+      
       if (profile?.role === "admin") {
         navigate("/admin-dashboard");
       } else if (profile?.role === "client") {
@@ -62,11 +64,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const syncSessionAndProfile = async (retryCount = 0, skipRedirect = false) => {
     try {
-      console.log('🔍 [AUTH] Starting session and profile sync...', { retryCount, skipRedirect });
+      console.log('🔍 [AUTH] Starting session and profile sync...', { retryCount, skipRedirect, sessionRecoveryAttempted });
       
+      // Mark that we've attempted session recovery
+      if (!sessionRecoveryAttempted) {
+        setSessionRecoveryAttempted(true);
+      }
+
       // Add a small delay on retries to prevent rapid successive calls
       if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * retryCount, 5000)));
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * retryCount, 3000)));
       }
 
       const sessionValidation = await validateSession();
@@ -113,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("❌ [AUTH] Error fetching profile:", err);
         
         // Retry logic for profile fetch failures, but be more conservative
-        if (retryCount < 2 && err.message?.includes('Authentication required')) {
+        if (retryCount < 1 && err.message?.includes('Authentication required')) {
           console.log('🔄 [AUTH] Retrying profile fetch due to auth error...');
           return syncSessionAndProfile(retryCount + 1, skipRedirect);
         }
@@ -145,9 +152,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!mounted) return;
             
             if (event === 'SIGNED_OUT') {
+              console.log('👋 [AUTH] User signed out');
               setUser(null);
               setLoading(false);
               setInitialized(true);
+              setSessionRecoveryAttempted(false);
               return;
             }
             
@@ -166,6 +175,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           }
         );
+
+        // Add a small delay to ensure auth listener is set up before checking session
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         // Then check for existing session
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -284,6 +296,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setUser(null);
     setInitialized(false);
+    setSessionRecoveryAttempted(false);
     navigate("/");
     setLoading(false);
   };
@@ -303,3 +316,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;
