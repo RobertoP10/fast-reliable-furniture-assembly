@@ -82,7 +82,7 @@ export const AnalyticsTableFilters = ({
           <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
             type="date"
-            placeholder="Start date"
+            placeholder="Completion start date"
             value={dateRangeStart}
             onChange={(e) => setDateRangeStart(e.target.value)}
             className="pl-10"
@@ -93,7 +93,7 @@ export const AnalyticsTableFilters = ({
           <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
             type="date"
-            placeholder="End date"
+            placeholder="Completion end date"
             value={dateRangeEnd}
             onChange={(e) => setDateRangeEnd(e.target.value)}
             className="pl-10"

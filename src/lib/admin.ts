@@ -177,7 +177,7 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get all transactions with proper joins to task_requests
+  // Get all confirmed transactions with completed tasks
   const { data: allTransactions } = await supabase
     .from('transactions')
     .select(`
@@ -226,8 +226,33 @@ export const getPlatformAnalytics = async () => {
     averageRating
   });
 
-  // Group by tasker with enhanced data
-  const taskerBreakdown = confirmedTransactions.reduce((acc: any, transaction) => {
+  // Group by tasker with enhanced data - include ALL confirmed transactions for breakdown
+  const { data: allConfirmedTransactions } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      task_requests (
+        id,
+        title,
+        status,
+        completed_at
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .eq('status', 'confirmed');
+
+  const allConfirmedTxns = allConfirmedTransactions || [];
+
+  const taskerBreakdown = allConfirmedTxns.reduce((acc: any, transaction) => {
     const taskerId = transaction.tasker?.id;
     const taskerName = transaction.tasker?.full_name;
     
@@ -267,7 +292,7 @@ export const getPlatformAnalytics = async () => {
   }
 
   // Group by client with enhanced data
-  const clientBreakdown = confirmedTransactions.reduce((acc: any, transaction) => {
+  const clientBreakdown = allConfirmedTxns.reduce((acc: any, transaction) => {
     const clientId = transaction.client?.id;
     const clientName = transaction.client?.full_name;
     
@@ -315,8 +340,8 @@ export const getPlatformAnalytics = async () => {
     averageRating,
     taskerBreakdown: Object.values(taskerBreakdown),
     clientBreakdown: Object.values(clientBreakdown),
-    // Add raw data for filtering
-    confirmedTransactions: confirmedTransactions || []
+    // Pass all confirmed transactions for filtering
+    confirmedTransactions: allConfirmedTxns
   };
 };
 

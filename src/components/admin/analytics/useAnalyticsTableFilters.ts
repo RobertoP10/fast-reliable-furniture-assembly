@@ -42,22 +42,10 @@ export const useAnalyticsTableFilters = (
       const ratingMatch = !minRating || item.averageRating >= Number(minRating);
       const taskMatch = !minTasks || item.taskCount >= Number(minTasks);
       
-      // Date range filter based on task completion date
-      let dateMatch = true;
-      if (dateRangeStart || dateRangeEnd) {
-        if (item.lastTaskDate) {
-          const itemDate = new Date(item.lastTaskDate);
-          if (dateRangeStart && itemDate < new Date(dateRangeStart)) dateMatch = false;
-          if (dateRangeEnd && itemDate > new Date(dateRangeEnd)) dateMatch = false;
-        } else {
-          dateMatch = false;
-        }
-      }
-
-      return nameMatch && ratingMatch && taskMatch && dateMatch;
+      return nameMatch && ratingMatch && taskMatch;
     });
 
-    // Apply status filter and recalculate totals based on filtered transactions
+    // Apply status and date filters based on transactions
     if ((statusFilter !== "all" || dateRangeStart || dateRangeEnd) && transactions.length > 0) {
       filtered = filtered.map(item => {
         const relevantTransactions = transactions.filter(t => {
@@ -68,7 +56,7 @@ export const useAnalyticsTableFilters = (
           let matchesStatus = true;
           if (statusFilter !== "all") {
             if (statusFilter === "completed") {
-              matchesStatus = t.status === "confirmed";
+              matchesStatus = t.status === "confirmed" && t.task_requests?.completed_at !== null;
             } else if (statusFilter === "pending") {
               matchesStatus = t.status === "pending";
             } else if (statusFilter === "paid") {
@@ -95,22 +83,14 @@ export const useAnalyticsTableFilters = (
         const filteredAmount = relevantTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
         const filteredCommission = filteredAmount * 0.2;
 
-        // Find most recent task date from filtered transactions
-        const filteredLastTaskDate = relevantTransactions.length > 0 ? 
-          relevantTransactions
-            .filter(t => t.task_requests?.completed_at)
-            .sort((a, b) => new Date(b.task_requests!.completed_at!).getTime() - new Date(a.task_requests!.completed_at!).getTime())[0]?.task_requests?.completed_at || null
-          : null;
-
         return {
           ...item,
           taskCount: filteredTaskCount,
           totalEarnings: isTaskerTable ? filteredAmount : item.totalEarnings,
           totalSpent: !isTaskerTable ? filteredAmount : item.totalSpent,
-          totalCommission: filteredCommission,
-          lastTaskDate: filteredLastTaskDate
+          totalCommission: filteredCommission
         };
-      }).filter(item => item.taskCount > 0); // Only show items with tasks in the filtered period
+      }).filter(item => item.taskCount > 0);
     }
 
     return filtered;

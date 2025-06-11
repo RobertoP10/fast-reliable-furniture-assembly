@@ -23,8 +23,7 @@ interface AnalyticsDataTableProps {
 export const AnalyticsDataTable = ({
   data,
   isTaskerTable,
-  formatCurrency,
-  formatDate
+  formatCurrency
 }: AnalyticsDataTableProps) => {
   return (
     <Table>
@@ -35,7 +34,6 @@ export const AnalyticsDataTable = ({
           <TableHead>Total {isTaskerTable ? 'Earnings' : 'Spent'}</TableHead>
           <TableHead>Average Rating</TableHead>
           <TableHead>Platform Commission</TableHead>
-          <TableHead>Last Task Date</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -52,14 +50,11 @@ export const AnalyticsDataTable = ({
                 </div>
               </TableCell>
               <TableCell>{formatCurrency(item.totalCommission)}</TableCell>
-              <TableCell>
-                {item.lastTaskDate ? formatDate(item.lastTaskDate) : 'N/A'}
-              </TableCell>
             </TableRow>
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+            <TableCell colSpan={5} className="text-center text-gray-500 py-8">
               No data matches your filters
             </TableCell>
           </TableRow>
