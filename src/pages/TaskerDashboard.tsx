@@ -4,84 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Bell, User, LogOut, Star, PoundSterling, CheckCircle, Calendar } from "lucide-react";
+import { Wrench, Bell, User, LogOut, Calendar } from "lucide-react";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import RoleProtection from "@/components/auth/RoleProtection";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { useNotifications } from "@/hooks/useNotifications";
-import { supabase } from "@/integrations/supabase/client";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 const TaskerDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'appointments' | 'my-offers' | 'completed' | 'chat'>('available');
   const [selectedChatTask, setSelectedChatTask] = useState<{ taskId: string; clientId: string } | null>(null);
-  const [profileStats, setProfileStats] = useState({
-    rating: 0,
-    totalReviews: 0,
-    monthlyEarnings: 0
-  });
   const { unreadCount, refreshNotifications } = useNotifications();
-
-  const fetchProfileStats = async () => {
-    if (!user?.id) return;
-
-    try {
-      // Fetch updated user profile
-      const { data: profile } = await supabase
-        .from('users')
-        .select('rating, total_reviews')
-        .eq('id', user.id)
-        .single();
-
-      // Calculate monthly earnings from completed tasks - fix the query structure
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      
-      const { data: completedTasks } = await supabase
-        .from('task_requests')
-        .select(`
-          id,
-          accepted_offer_id,
-          completed_at
-        `)
-        .eq('status', 'completed')
-        .gte('completed_at', new Date(currentYear, currentMonth, 1).toISOString())
-        .lt('completed_at', new Date(currentYear, currentMonth + 1, 1).toISOString());
-
-      let monthlyEarnings = 0;
-      
-      if (completedTasks) {
-        // For each completed task, get the accepted offer price if the current user was the tasker
-        for (const task of completedTasks) {
-          if (task.accepted_offer_id) {
-            const { data: offer } = await supabase
-              .from('offers')
-              .select('price, tasker_id')
-              .eq('id', task.accepted_offer_id)
-              .eq('tasker_id', user.id)
-              .single();
-            
-            if (offer) {
-              monthlyEarnings += Number(offer.price) || 0;
-            }
-          }
-        }
-      }
-
-      setProfileStats({
-        rating: profile?.rating || 0,
-        totalReviews: profile?.total_reviews || 0,
-        monthlyEarnings
-      });
-    } catch (error) {
-      console.error('Error fetching profile stats:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfileStats();
-  }, [user?.id]);
 
   const handleNotificationClick = () => {
     // Redirect to chat and refresh notifications
@@ -92,11 +27,6 @@ const TaskerDashboard = () => {
   const handleChatWithClient = (taskId: string, clientId: string) => {
     setSelectedChatTask({ taskId, clientId });
     setActiveTab('chat');
-  };
-
-  const handleTaskUpdate = () => {
-    // Refresh profile stats when tasks are updated
-    fetchProfileStats();
   };
 
   if (!user?.approved) {
@@ -210,40 +140,9 @@ const TaskerDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg border-0 mt-6">
-                <CardHeader>
-                  <CardTitle className="text-blue-900 text-lg">My Profile</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Rating</span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      <span className="text-sm font-medium">{profileStats.rating.toFixed(1)}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total reviews</span>
-                    <Badge className="bg-green-100 text-green-700">{profileStats.totalReviews}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">This month earnings</span>
-                    <div className="flex items-center space-x-1">
-                      <PoundSterling className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium">£{profileStats.monthlyEarnings.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Status</span>
-                    <div className="flex items-center space-x-1">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-600">
-                        {user?.approved ? 'Verified' : 'Pending'}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="mt-6">
+                <DashboardStats userRole="tasker" />
+              </div>
             </div>
 
             <div className="lg:col-span-3">
@@ -254,7 +153,6 @@ const TaskerDashboard = () => {
                   userRole="tasker" 
                   activeTab={getTabMapping()}
                   onChatWithClient={handleChatWithClient}
-                  onTaskUpdate={handleTaskUpdate}
                 />
               )}
             </div>

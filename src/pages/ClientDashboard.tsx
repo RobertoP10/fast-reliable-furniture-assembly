@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { Wrench, Plus, MessageSquare, User, LogOut, Star } from "lucide-react";
+import { Wrench, Plus, MessageSquare, User, LogOut } from "lucide-react";
 import CreateTaskForm from "@/components/tasks/CreateTaskForm";
 import TasksList from "@/components/tasks/TasksList";
 import Chat from "@/components/chat/Chat";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { useNotifications } from "@/hooks/useNotifications";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
@@ -119,28 +119,9 @@ const ClientDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 mt-6">
-              <CardHeader>
-                <CardTitle className="text-blue-900 text-lg">Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Active tasks</span>
-                  <Badge className="bg-blue-100 text-blue-700">-</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Completed tasks</span>
-                  <Badge className="bg-green-100 text-green-700">-</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Average rating</span>
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">0</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="mt-6">
+              <DashboardStats userRole="client" />
+            </div>
           </div>
 
           <div className="lg:col-span-3 space-y-6">

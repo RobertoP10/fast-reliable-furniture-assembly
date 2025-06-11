@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +7,7 @@ import { CheckCircle, Upload, MessageCircle, Calendar, Clock } from "lucide-reac
 import { completeTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { TaskReviewModal } from "./TaskReviewModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -43,10 +43,37 @@ export const TaskTaskerActions = ({
   const [showProofDialog, setShowProofDialog] = useState(false);
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showClientReviewModal, setShowClientReviewModal] = useState(false);
+  const [hasReviewedClient, setHasReviewedClient] = useState(false);
 
   const myOffer = task.offers?.find((offer) => offer.tasker_id === user.id);
   const hasOffered = !!myOffer;
   const isMyOfferAccepted = myOffer && task.accepted_offer_id === myOffer.id && myOffer.status === 'accepted';
+
+  // Check if tasker has already reviewed the client for this task
+  const checkClientReview = async () => {
+    if (!user?.id || !task.client_id) return;
+
+    try {
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('task_id', task.id)
+        .eq('reviewer_id', user.id)
+        .eq('reviewee_id', task.client_id)
+        .maybeSingle();
+
+      setHasReviewedClient(!!existingReview);
+    } catch (error) {
+      console.error('Error checking client review:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (task.status === 'completed' && isMyOfferAccepted) {
+      checkClientReview();
+    }
+  }, [task.status, isMyOfferAccepted, user?.id, task.client_id]);
 
   const uploadProofImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file) => {
@@ -124,6 +151,11 @@ export const TaskTaskerActions = ({
       setShowProofDialog(false);
       setProofFiles([]);
       
+      // Show client review modal after task completion
+      if (!hasReviewedClient) {
+        setShowClientReviewModal(true);
+      }
+      
       // Refresh the dashboard data without page reload
       if (onTaskUpdate) {
         onTaskUpdate();
@@ -187,6 +219,12 @@ export const TaskTaskerActions = ({
     if (onChatWithClient && task.client_id) {
       onChatWithClient(task.id, task.client_id);
     }
+  };
+
+  const handleClientReviewSubmitted = () => {
+    setShowClientReviewModal(false);
+    setHasReviewedClient(true);
+    onTaskUpdate?.();
   };
 
   // Available Tasks tab - show Make Offer button only if no offer submitted yet
@@ -300,16 +338,43 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // Completed tab - show completion details (only for completed tasks where this tasker was accepted)
+  // Completed tab - show completion details and client review option
   if (activeTab === "completed" && task.status === "completed" && isMyOfferAccepted) {
     return (
-      <div className="bg-green-50 p-4 rounded-lg">
-        <p className="text-sm text-green-700 font-medium">✅ Task Completed</p>
-        <p className="text-sm text-gray-600">Completed at: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
-        {myOffer && (
-          <p className="text-sm text-gray-600">Earned: £{myOffer.price}</p>
+      <>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <p className="text-sm text-green-700 font-medium">✅ Task Completed</p>
+          <p className="text-sm text-gray-600">Completed at: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
+          {myOffer && (
+            <p className="text-sm text-gray-600">Earned: £{myOffer.price}</p>
+          )}
+          
+          {!hasReviewedClient && (
+            <Button 
+              onClick={() => setShowClientReviewModal(true)}
+              variant="outline"
+              className="mt-2 w-full"
+            >
+              Rate Client
+            </Button>
+          )}
+          
+          {hasReviewedClient && (
+            <p className="text-sm text-green-600 mt-2">✅ Client reviewed</p>
+          )}
+        </div>
+        
+        {task.client_id && (
+          <TaskReviewModal
+            isOpen={showClientReviewModal}
+            onClose={() => setShowClientReviewModal(false)}
+            taskId={task.id}
+            taskerId={task.client_id}
+            taskerName={task.client?.full_name || "Client"}
+            onReviewSubmitted={handleClientReviewSubmitted}
+          />
         )}
-      </div>
+      </>
     );
   }
 

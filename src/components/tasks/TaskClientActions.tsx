@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +5,7 @@ import { CheckCircle, X, MessageCircle } from "lucide-react";
 import { cancelTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskReviewModal } from "./TaskReviewModal";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
@@ -39,12 +39,35 @@ export const TaskClientActions = ({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewTaskerId, setReviewTaskerId] = useState<string | null>(null);
   const [reviewTaskerName, setReviewTaskerName] = useState<string>("");
+  const [hasExistingReview, setHasExistingReview] = useState(false);
 
   const isMyTask = task.client_id === user?.id;
   const acceptedOffer = task.offers?.find(offer => offer.id === task.accepted_offer_id);
 
-  // Check if task was just completed and needs review
-  const needsReview = task.status === 'completed' && acceptedOffer && !showReviewModal;
+  // Check if review already exists for this task
+  const checkExistingReview = async () => {
+    if (!acceptedOffer || !user?.id) return;
+
+    try {
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('task_id', task.id)
+        .eq('reviewer_id', user.id)
+        .eq('reviewee_id', acceptedOffer.tasker_id)
+        .maybeSingle();
+
+      setHasExistingReview(!!existingReview);
+    } catch (error) {
+      console.error('Error checking existing review:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (task.status === 'completed' && acceptedOffer) {
+      checkExistingReview();
+    }
+  }, [task.status, acceptedOffer, user?.id]);
 
   const handleCancelTask = async () => {
     if (!confirm("Are you sure you want to cancel this task? This action cannot be undone.")) {
@@ -68,21 +91,12 @@ export const TaskClientActions = ({
     setShowReviewModal(false);
     setReviewTaskerId(null);
     setReviewTaskerName("");
+    setHasExistingReview(true);
     onTaskUpdate?.();
   };
 
-  // Auto-show review modal for completed tasks
-  useEffect(() => {
-    if (needsReview && acceptedOffer) {
-      setReviewTaskerId(acceptedOffer.tasker_id);
-      setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
-      setShowReviewModal(true);
-    }
-  }, [needsReview, acceptedOffer]);
-
   if (!isMyTask) return null;
 
-  // Pending Requests tab
   if ((activeTab === "available" || activeTab === "my-tasks") && task.status === "pending") {
     return (
       <div className="flex gap-2">
@@ -98,7 +112,6 @@ export const TaskClientActions = ({
     );
   }
 
-  // Received Offers tab
   if (activeTab === "received-offers" && task.status === "pending" && task.offers && task.offers.length > 0) {
     return (
       <div className="space-y-3">
@@ -135,7 +148,6 @@ export const TaskClientActions = ({
     );
   }
 
-  // Appointments tab (accepted tasks)
   if (activeTab === "appointments" && task.status === "accepted" && acceptedOffer) {
     return (
       <div className="bg-green-50 p-4 rounded-lg">
@@ -151,7 +163,7 @@ export const TaskClientActions = ({
     );
   }
 
-  // Completed Tasks tab
+  // Completed Tasks tab - only show review button if no review exists
   if (activeTab === "completed" && task.status === "completed" && acceptedOffer) {
     return (
       <>
@@ -161,17 +173,21 @@ export const TaskClientActions = ({
           <p className="text-sm text-gray-600">Tasker: {acceptedOffer.tasker?.full_name}</p>
           <p className="text-sm text-gray-600">Total Paid: £{acceptedOffer.price}</p>
           
-          <Button 
-            onClick={() => {
-              setReviewTaskerId(acceptedOffer.tasker_id);
-              setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
-              setShowReviewModal(true);
-            }}
-            variant="outline"
-            className="mt-2 w-full"
-          >
-            Leave a Review
-          </Button>
+          {!hasExistingReview ? (
+            <Button 
+              onClick={() => {
+                setReviewTaskerId(acceptedOffer.tasker_id);
+                setReviewTaskerName(acceptedOffer.tasker?.full_name || "Tasker");
+                setShowReviewModal(true);
+              }}
+              variant="outline"
+              className="mt-2 w-full"
+            >
+              Leave a Review
+            </Button>
+          ) : (
+            <p className="text-sm text-green-600 mt-2">✅ Review submitted</p>
+          )}
         </div>
         
         {reviewTaskerId && (
