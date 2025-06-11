@@ -13,7 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'received-offers' | 'appointments' | 'completed' | 'create' | 'chat'>('tasks');
   const { unreadCount, refreshNotifications } = useNotifications();
 
   // Refresh notifications when tab changes to chat
@@ -22,6 +22,21 @@ const ClientDashboard = () => {
       refreshNotifications();
     }
   }, [activeTab, refreshNotifications]);
+
+  const getTasksActiveTab = () => {
+    switch (activeTab) {
+      case 'tasks':
+        return 'my-tasks';
+      case 'received-offers':
+        return 'received-offers';
+      case 'appointments':
+        return 'appointments';
+      case 'completed':
+        return 'completed';
+      default:
+        return 'my-tasks';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -62,7 +77,28 @@ const ClientDashboard = () => {
                   className="w-full justify-start"
                   onClick={() => setActiveTab('tasks')}
                 >
-                  My Tasks
+                  My Requests
+                </Button>
+                <Button
+                  variant={activeTab === 'received-offers' ? 'default' : 'ghost'}
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('received-offers')}
+                >
+                  Received Offers
+                </Button>
+                <Button
+                  variant={activeTab === 'appointments' ? 'default' : 'ghost'}
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('appointments')}
+                >
+                  Accepted Tasks
+                </Button>
+                <Button
+                  variant={activeTab === 'completed' ? 'default' : 'ghost'}
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('completed')}
+                >
+                  Completed
                 </Button>
                 <Button
                   variant={activeTab === 'create' ? 'default' : 'ghost'}
@@ -108,7 +144,9 @@ const ClientDashboard = () => {
           </div>
 
           <div className="lg:col-span-3 space-y-6">
-            {activeTab === 'tasks' && <TasksList userRole="client" />}
+            {(activeTab === 'tasks' || activeTab === 'received-offers' || activeTab === 'appointments' || activeTab === 'completed') && (
+              <TasksList userRole="client" activeTab={getTasksActiveTab()} />
+            )}
             {activeTab === 'create' && <CreateTaskForm />}
             {activeTab === 'chat' && <Chat />}
           </div>

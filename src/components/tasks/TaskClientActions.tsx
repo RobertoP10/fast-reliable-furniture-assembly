@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, X, MessageCircle } from "lucide-react";
-import { acceptOffer, cancelTask } from "@/lib/tasks";
+import { cancelTask } from "@/lib/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskReviewModal } from "./TaskReviewModal";
 import type { Database } from "@/integrations/supabase/types";
@@ -83,7 +83,7 @@ export const TaskClientActions = ({
   if (!isMyTask) return null;
 
   // Pending Requests tab
-  if (activeTab === "available" && task.status === "pending") {
+  if ((activeTab === "available" || activeTab === "my-tasks") && task.status === "pending") {
     return (
       <div className="flex gap-2">
         <Button 
@@ -135,8 +135,8 @@ export const TaskClientActions = ({
     );
   }
 
-  // Accepted Tasks tab
-  if (activeTab === "my-tasks" && task.status === "accepted" && acceptedOffer) {
+  // Appointments tab (accepted tasks)
+  if (activeTab === "appointments" && task.status === "accepted" && acceptedOffer) {
     return (
       <div className="bg-green-50 p-4 rounded-lg">
         <p className="text-sm text-green-700 font-medium">✅ Offer Accepted</p>

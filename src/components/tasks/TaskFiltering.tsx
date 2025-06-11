@@ -113,7 +113,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
           break;
 
         case "appointments":
-          // Client's tasks with accepted offers (in progress) - THIS WAS THE BUG
+          // Client's tasks with accepted offers (in progress)
           filtered = dataToFilter.filter(task => 
             task.client_id === user?.id && 
             task.status === 'accepted'
