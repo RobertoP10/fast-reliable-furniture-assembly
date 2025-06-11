@@ -28,7 +28,21 @@ export const TaskReviewModal = ({
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const { toast } = useToast();
+
+  const resetModal = () => {
+    setRating(0);
+    setHoveredRating(0);
+    setComment("");
+    setIsSubmitting(false);
+    setHasSubmitted(false);
+  };
+
+  const handleClose = () => {
+    resetModal();
+    onClose();
+  };
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -40,10 +54,38 @@ export const TaskReviewModal = ({
       return;
     }
 
+    if (hasSubmitted) {
+      toast({
+        title: "Review already submitted",
+        description: "You have already submitted a review for this task",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+
+      // Check if review already exists
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('reviewer_id', user.id)
+        .eq('reviewee_id', taskerId)
+        .maybeSingle();
+
+      if (existingReview) {
+        toast({
+          title: "Review already exists",
+          description: "You have already submitted a review for this task",
+          variant: "destructive"
+        });
+        setHasSubmitted(true);
+        return;
+      }
 
       const { error } = await supabase
         .from('reviews')
@@ -62,10 +104,14 @@ export const TaskReviewModal = ({
         description: "Thank you for your feedback!"
       });
 
+      setHasSubmitted(true);
       onReviewSubmitted();
-      onClose();
-      setRating(0);
-      setComment("");
+      
+      // Close modal after successful submission
+      setTimeout(() => {
+        handleClose();
+      }, 1000);
+      
     } catch (error) {
       console.error('Error submitting review:', error);
       toast({
@@ -79,7 +125,7 @@ export const TaskReviewModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Rate Your Experience</DialogTitle>
@@ -96,9 +142,10 @@ export const TaskReviewModal = ({
                   key={star}
                   type="button"
                   className="p-1"
-                  onMouseEnter={() => setHoveredRating(star)}
-                  onMouseLeave={() => setHoveredRating(0)}
-                  onClick={() => setRating(star)}
+                  disabled={hasSubmitted}
+                  onMouseEnter={() => !hasSubmitted && setHoveredRating(star)}
+                  onMouseLeave={() => !hasSubmitted && setHoveredRating(0)}
+                  onClick={() => !hasSubmitted && setRating(star)}
                 >
                   <Star
                     className={`h-6 w-6 ${
@@ -131,19 +178,20 @@ export const TaskReviewModal = ({
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share details about your experience..."
               rows={3}
+              disabled={hasSubmitted}
             />
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">
-              Skip
+            <Button variant="outline" onClick={handleClose} className="flex-1">
+              {hasSubmitted ? "Close" : "Skip"}
             </Button>
             <Button 
               onClick={handleSubmit} 
-              disabled={isSubmitting || rating === 0}
+              disabled={isSubmitting || rating === 0 || hasSubmitted}
               className="flex-1"
             >
-              {isSubmitting ? "Submitting..." : "Submit Review"}
+              {isSubmitting ? "Submitting..." : hasSubmitted ? "Submitted" : "Submit Review"}
             </Button>
           </div>
         </div>

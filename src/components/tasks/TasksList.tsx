@@ -30,9 +30,10 @@ interface TasksListProps {
   tasks?: Task[];
   activeTab?: "available" | "my-tasks" | "completed" | "received-offers" | "appointments";
   onChatWithClient?: (taskId: string, clientId: string) => void;
+  onTaskUpdate?: () => void;
 }
 
-const TasksList = ({ userRole, tasks: propTasks, activeTab: propActiveTab, onChatWithClient }: TasksListProps) => {
+const TasksList = ({ userRole, tasks: propTasks, activeTab: propActiveTab, onChatWithClient, onTaskUpdate }: TasksListProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"available" | "my-tasks" | "completed" | "received-offers" | "appointments">(
@@ -71,6 +72,10 @@ const TasksList = ({ userRole, tasks: propTasks, activeTab: propActiveTab, onCha
 
   const handleTaskUpdate = () => {
     loadData();
+    // Call the parent's onTaskUpdate if provided
+    if (onTaskUpdate) {
+      onTaskUpdate();
+    }
   };
 
   const handleMakeOffer = (taskId: string) => {
