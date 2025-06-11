@@ -16,11 +16,12 @@ interface Message {
 
 interface ChatRoom {
   id: string;
-  taskTitle: string;
-  participantName: string;
-  participantId: string;
-  status: 'active' | 'closed';
-  unreadCount?: number;
+  task_title: string;
+  client_name: string;
+  tasker_name: string;
+  client_id: string;
+  tasker_id: string;
+  unread_count: number;
 }
 
 export const useChat = () => {
@@ -55,18 +56,8 @@ export const useChat = () => {
       console.log('🔄 [CHAT] Loading chat rooms for user:', user.id);
       const rooms = await fetchChatRooms(user.id);
       
-      // Transform the data to match the ChatRoom interface
-      const transformedRooms: ChatRoom[] = rooms.map(room => ({
-        id: room.id,
-        taskTitle: room.task_title,
-        participantName: user.id === room.client_id ? room.tasker_name : room.client_name,
-        participantId: user.id === room.client_id ? room.tasker_id : room.client_id,
-        status: 'active' as const,
-        unreadCount: room.unread_count
-      }));
-      
-      setChatRooms(transformedRooms);
-      console.log('✅ [CHAT] Loaded chat rooms:', transformedRooms.length);
+      setChatRooms(rooms);
+      console.log('✅ [CHAT] Loaded chat rooms:', rooms.length);
     } catch (error) {
       console.error('❌ [CHAT] Error loading chat rooms:', error);
       toast({
@@ -90,6 +81,12 @@ export const useChat = () => {
       
       // Mark messages as read
       await markMessagesAsRead(taskId, user.id);
+      
+      // Update the chat room's unread count to 0
+      setChatRooms(prev => prev.map(room => 
+        room.id === taskId ? { ...room, unread_count: 0 } : room
+      ));
+      
       console.log('✅ [CHAT] Loaded messages:', taskMessages.length);
     } catch (error) {
       console.error('❌ [CHAT] Error loading messages:', error);
@@ -109,13 +106,16 @@ export const useChat = () => {
     const selectedRoom = chatRooms.find(room => room.id === selectedChat);
     if (!selectedRoom) return;
 
+    // Determine receiver ID based on current user
+    const receiverId = user.id === selectedRoom.client_id ? selectedRoom.tasker_id : selectedRoom.client_id;
+
     try {
       console.log('📤 [CHAT] Sending message to task:', selectedChat);
       
       const sentMessage = await sendMessage(
         selectedChat,
         user.id,
-        selectedRoom.participantId,
+        receiverId,
         newMessage.trim()
       );
       

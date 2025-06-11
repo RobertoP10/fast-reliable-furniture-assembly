@@ -14,7 +14,14 @@ import { useNotifications } from "@/hooks/useNotifications";
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'create' | 'chat'>('tasks');
-  const { unreadCount } = useNotifications();
+  const { unreadCount, refreshNotifications } = useNotifications();
+
+  // Refresh notifications when tab changes to chat
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      refreshNotifications();
+    }
+  }, [activeTab, refreshNotifications]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">

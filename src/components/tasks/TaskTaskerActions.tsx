@@ -108,7 +108,7 @@ export const TaskTaskerActions = ({
       const proofUrls = await uploadProofImages(proofFiles);
       console.log('✅ [TASK] Images uploaded:', proofUrls);
 
-      // Complete the task with proof URLs using direct Supabase call to avoid notification constraint issue
+      // Complete the task with proof URLs using direct Supabase call
       const { error: updateError } = await supabase
         .from('task_requests')
         .update({
@@ -140,7 +140,17 @@ export const TaskTaskerActions = ({
       });
       setShowProofDialog(false);
       setProofFiles([]);
-      onTaskUpdate?.();
+      
+      // Force refresh the dashboard data
+      if (onTaskUpdate) {
+        onTaskUpdate();
+      }
+      
+      // Also trigger a page refresh to ensure data is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error) {
       console.error('❌ [TASK] Error completing task:', error);
       toast({ 

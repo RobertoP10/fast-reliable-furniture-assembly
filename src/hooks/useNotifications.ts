@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchNotifications, getUnreadNotificationCount, type Notification } from "@/lib/notifications";
+import { fetchNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, type Notification } from "@/lib/notifications";
 
 export const useNotifications = () => {
   const { user } = useAuth();
@@ -28,6 +28,17 @@ export const useNotifications = () => {
     }
   };
 
+  const markNotificationsAsRead = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await markAllNotificationsAsRead(user.id);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
   useEffect(() => {
     if (user?.id) {
       loadNotifications();
@@ -42,6 +53,7 @@ export const useNotifications = () => {
     notifications,
     unreadCount,
     loading,
-    refreshNotifications: loadNotifications
+    refreshNotifications: loadNotifications,
+    markNotificationsAsRead
   };
 };

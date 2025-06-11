@@ -102,7 +102,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
           break;
 
         case "received-offers":
-          // Client's tasks that have received offers
+          // Client's tasks that have received offers and are still pending
           filtered = dataToFilter.filter(task => 
             task.client_id === user?.id && 
             task.offers && 
@@ -113,13 +113,12 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
           break;
 
         case "appointments":
-          // Client's tasks with accepted offers (in progress)
+          // Client's tasks with accepted offers (in progress) - THIS WAS THE BUG
           filtered = dataToFilter.filter(task => 
             task.client_id === user?.id && 
-            task.status === 'accepted' && 
-            task.accepted_offer_id
+            task.status === 'accepted'
           );
-          console.log("📅 [CLIENT] Accepted tasks:", filtered.length);
+          console.log("📅 [CLIENT] Accepted tasks (appointments):", filtered.length);
           break;
 
         case "completed":
@@ -147,12 +146,15 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
           break;
 
         case "my-tasks":
-          // Tasker's own offers
+          // Tasker's own offers that are still pending or rejected
           filtered = dataToFilter.filter(task => 
             task.offers && 
-            task.offers.some(offer => offer.tasker_id === user?.id)
+            task.offers.some(offer => 
+              offer.tasker_id === user?.id && 
+              (offer.status === 'pending' || offer.status === 'rejected')
+            )
           );
-          console.log("💼 [TASKER] My offers:", filtered.length);
+          console.log("💼 [TASKER] My pending/rejected offers:", filtered.length);
           break;
 
         case "appointments":
