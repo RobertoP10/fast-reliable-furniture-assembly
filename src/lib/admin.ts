@@ -177,8 +177,8 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get confirmed transactions with proper joins
-  const { data: confirmedTransactions } = await supabase
+  // Get all transactions with proper joins to task_requests
+  const { data: allTransactions } = await supabase
     .from('transactions')
     .select(`
       *,
@@ -200,24 +200,34 @@ export const getPlatformAnalytics = async () => {
       )
     `)
     .eq('status', 'confirmed')
-    .eq('task_requests.status', 'completed');
+    .eq('task_requests.status', 'completed')
+    .not('task_requests.completed_at', 'is', null);
+
+  console.log('📊 [ADMIN] Confirmed transactions with completed tasks:', allTransactions?.length || 0);
 
   // Get all reviews for average rating
   const { data: reviews } = await supabase
     .from('reviews')
     .select('rating, reviewee_id');
 
-  // Get completed tasks count from confirmed transactions
-  const totalCompletedTasks = confirmedTransactions?.length || 0;
-
-  const totalValue = confirmedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+  // Calculate platform metrics based on confirmed transactions with completed tasks
+  const confirmedTransactions = allTransactions || [];
+  const totalCompletedTasks = confirmedTransactions.length;
+  const totalValue = confirmedTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
   const platformCommission = totalValue * 0.2; // 20% commission
   const averageRating = reviews && reviews.length > 0 
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
     : 0;
 
+  console.log('📊 [ADMIN] Analytics calculated:', {
+    totalCompletedTasks,
+    totalValue,
+    platformCommission,
+    averageRating
+  });
+
   // Group by tasker with enhanced data
-  const taskerBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
+  const taskerBreakdown = confirmedTransactions.reduce((acc: any, transaction) => {
     const taskerId = transaction.tasker?.id;
     const taskerName = transaction.tasker?.full_name;
     
@@ -244,7 +254,7 @@ export const getPlatformAnalytics = async () => {
       }
     }
     return acc;
-  }, {}) || {};
+  }, {});
 
   // Add average ratings for taskers
   if (reviews) {
@@ -257,7 +267,7 @@ export const getPlatformAnalytics = async () => {
   }
 
   // Group by client with enhanced data
-  const clientBreakdown = confirmedTransactions?.reduce((acc: any, transaction) => {
+  const clientBreakdown = confirmedTransactions.reduce((acc: any, transaction) => {
     const clientId = transaction.client?.id;
     const clientName = transaction.client?.full_name;
     
@@ -284,7 +294,7 @@ export const getPlatformAnalytics = async () => {
       }
     }
     return acc;
-  }, {}) || {};
+  }, {});
 
   // Add average ratings for clients
   if (reviews) {

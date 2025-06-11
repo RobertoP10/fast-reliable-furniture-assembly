@@ -60,7 +60,7 @@ export const EnhancedAnalyticsTable = ({
       const ratingMatch = !minRating || item.averageRating >= Number(minRating);
       const taskMatch = !minTasks || item.taskCount >= Number(minTasks);
       
-      // Date range filter
+      // Date range filter based on task completion date
       let dateMatch = true;
       if (dateRangeStart || dateRangeEnd) {
         if (item.lastTaskDate) {
@@ -75,15 +75,24 @@ export const EnhancedAnalyticsTable = ({
       return nameMatch && ratingMatch && taskMatch && dateMatch;
     });
 
-    // Apply status filter by recalculating totals based on filtered transactions
-    if (statusFilter !== "all" && transactions.length > 0) {
+    // Apply status filter and recalculate totals based on filtered transactions
+    if ((statusFilter !== "all" || dateRangeStart || dateRangeEnd) && transactions.length > 0) {
       filtered = filtered.map(item => {
         const relevantTransactions = transactions.filter(t => {
           const matchesUser = isTaskerTable ? 
             t.tasker?.id === item.id : 
             t.client?.id === item.id;
           
-          const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+          let matchesStatus = true;
+          if (statusFilter !== "all") {
+            if (statusFilter === "completed") {
+              matchesStatus = t.status === "confirmed";
+            } else if (statusFilter === "pending") {
+              matchesStatus = t.status === "pending";
+            } else if (statusFilter === "paid") {
+              matchesStatus = t.status === "confirmed";
+            }
+          }
           
           let matchesDateRange = true;
           if (dateRangeStart || dateRangeEnd) {
@@ -193,7 +202,8 @@ export const EnhancedAnalyticsTable = ({
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed/Paid</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
               </SelectContent>
             </Select>
             
