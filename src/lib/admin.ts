@@ -43,17 +43,36 @@ export const fetchPendingTaskers = async (): Promise<User[]> => {
   return data || [];
 };
 
-// Fetch transactions with proper joins
+// Fetch pending transactions with proper joins
 export const fetchPendingTransactions = async () => {
   console.log('🔍 [ADMIN] Fetching pending transactions with proper joins...');
   
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      *,
-      task_requests!inner(id, title),
-      client:users!transactions_client_id_fkey(id, full_name, email),
-      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
+      id,
+      amount,
+      payment_method,
+      status,
+      created_at,
+      task_id,
+      client_id,
+      tasker_id,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
@@ -74,10 +93,29 @@ export const fetchAllTransactions = async () => {
   const { data, error } = await supabase
     .from('transactions')
     .select(`
-      *,
-      task_requests!inner(id, title, status),
-      client:users!transactions_client_id_fkey(id, full_name, email),
-      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
+      id,
+      amount,
+      payment_method,
+      status,
+      created_at,
+      task_id,
+      client_id,
+      tasker_id,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
     `)
     .order('created_at', { ascending: false });
 
@@ -152,21 +190,41 @@ export const confirmTransaction = async (transactionId: string): Promise<void> =
 export const getPlatformAnalytics = async () => {
   console.log('🔍 [ADMIN] Fetching platform analytics...');
   
-  // Get all completed transactions
+  // Get completed transactions with proper joins
   const { data: completedTransactions } = await supabase
     .from('transactions')
     .select(`
-      *,
-      task_requests!inner(id, title, status),
-      client:users!transactions_client_id_fkey(id, full_name, email),
-      tasker:users!transactions_tasker_id_fkey(id, full_name, email)
+      id,
+      amount,
+      created_at,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
     `)
     .eq('status', 'confirmed');
 
-  // Get reviews for average rating
+  // Get all reviews for average rating
   const { data: reviews } = await supabase
     .from('reviews')
     .select('rating');
+
+  // Get completed tasks count
+  const { data: completedTasks } = await supabase
+    .from('task_requests')
+    .select('id')
+    .eq('status', 'completed');
 
   const totalValue = completedTransactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
   const platformCommission = totalValue * 0.2; // 20% commission
@@ -215,7 +273,7 @@ export const getPlatformAnalytics = async () => {
   console.log('✅ [ADMIN] Platform analytics calculated successfully');
   
   return {
-    totalCompletedTasks: completedTransactions?.length || 0,
+    totalCompletedTasks: completedTasks?.length || 0,
     totalValue,
     platformCommission,
     averageRating,
@@ -260,4 +318,131 @@ export const getAdminStats = async () => {
     totalUsers: totalUsers || 0,
     pendingTransactions: pendingTransactions || 0
   };
+};
+
+// Filter transactions by date range
+export const fetchTransactionsByDateRange = async (startDate: string, endDate: string) => {
+  console.log('🔍 [ADMIN] Fetching transactions by date range:', startDate, 'to', endDate);
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id,
+      amount,
+      payment_method,
+      status,
+      created_at,
+      task_id,
+      client_id,
+      tasker_id,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .gte('created_at', startDate)
+    .lte('created_at', endDate)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching transactions by date:', error);
+    throw new Error(`Failed to fetch transactions: ${error.message}`);
+  }
+
+  return data || [];
+};
+
+// Filter transactions by tasker
+export const fetchTransactionsByTasker = async (taskerId: string) => {
+  console.log('🔍 [ADMIN] Fetching transactions by tasker:', taskerId);
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id,
+      amount,
+      payment_method,
+      status,
+      created_at,
+      task_id,
+      client_id,
+      tasker_id,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .eq('tasker_id', taskerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching transactions by tasker:', error);
+    throw new Error(`Failed to fetch transactions: ${error.message}`);
+  }
+
+  return data || [];
+};
+
+// Filter transactions by client
+export const fetchTransactionsByClient = async (clientId: string) => {
+  console.log('🔍 [ADMIN] Fetching transactions by client:', clientId);
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id,
+      amount,
+      payment_method,
+      status,
+      created_at,
+      task_id,
+      client_id,
+      tasker_id,
+      task_requests!inner (
+        id,
+        title,
+        status
+      ),
+      client:users!transactions_client_id_fkey (
+        id,
+        full_name,
+        email
+      ),
+      tasker:users!transactions_tasker_id_fkey (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching transactions by client:', error);
+    throw new Error(`Failed to fetch transactions: ${error.message}`);
+  }
+
+  return data || [];
 };

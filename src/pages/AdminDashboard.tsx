@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -11,13 +13,16 @@ import {
   fetchAllUsers, 
   fetchPendingTransactions, 
   fetchAllTransactions,
+  fetchTransactionsByDateRange,
+  fetchTransactionsByTasker,
+  fetchTransactionsByClient,
   acceptTasker, 
   rejectTasker, 
   confirmTransaction,
   getPlatformAnalytics,
   getAdminStats
 } from "@/lib/admin";
-import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, RefreshCw, DollarSign, BarChart3, Star } from "lucide-react";
+import { Wrench, Users, CheckCircle, X, Eye, User, LogOut, RefreshCw, DollarSign, BarChart3, Star, Filter } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -25,10 +30,16 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<'pending-taskers' | 'users' | 'transactions' | 'analytics'>('pending-taskers');
   const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(false);
+
+  // Filter states
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [selectedTasker, setSelectedTasker] = useState('');
+  const [selectedClient, setSelectedClient] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Load data based on active tab
   const loadData = async () => {
@@ -45,9 +56,18 @@ const AdminDashboard = () => {
         setAllUsers(users);
         console.log('✅ [ADMIN] Loaded all users:', users.length);
       } else if (activeTab === 'transactions') {
-        const transactions = await fetchPendingTransactions();
-        setPendingTransactions(transactions);
-        console.log('✅ [ADMIN] Loaded transactions:', transactions.length);
+        let transactionData;
+        if (dateFilter.start && dateFilter.end) {
+          transactionData = await fetchTransactionsByDateRange(dateFilter.start, dateFilter.end);
+        } else if (selectedTasker) {
+          transactionData = await fetchTransactionsByTasker(selectedTasker);
+        } else if (selectedClient) {
+          transactionData = await fetchTransactionsByClient(selectedClient);
+        } else {
+          transactionData = await fetchAllTransactions();
+        }
+        setTransactions(transactionData);
+        console.log('✅ [ADMIN] Loaded transactions:', transactionData.length);
       } else if (activeTab === 'analytics') {
         const analyticsData = await getPlatformAnalytics();
         setAnalytics(analyticsData);
@@ -71,7 +91,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeTab, toast]);
+  }, [activeTab, dateFilter, selectedTasker, selectedClient, toast]);
 
   const handleApproveTasker = async (taskerId: string) => {
     try {
@@ -115,7 +135,7 @@ const AdminDashboard = () => {
     try {
       console.log('✅ [ADMIN] Confirming transaction:', transactionId);
       await confirmTransaction(transactionId);
-      setPendingTransactions(prev => prev.filter(transaction => transaction.id !== transactionId));
+      setTransactions(prev => prev.filter(transaction => transaction.id !== transactionId));
       toast({
         title: "Transaction Confirmed",
         description: "The transaction has been confirmed and processed.",
@@ -128,6 +148,12 @@ const AdminDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const clearFilters = () => {
+    setDateFilter({ start: '', end: '' });
+    setSelectedTasker('');
+    setSelectedClient('');
   };
 
   const formatDate = (date: string) => {
@@ -426,10 +452,46 @@ const AdminDashboard = () => {
             {activeTab === 'transactions' && (
               <Card className="shadow-lg border-0">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">Pending Transactions</CardTitle>
+                  <CardTitle className="text-blue-900 flex items-center justify-between">
+                    Platform Transactions
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFilters(!showFilters)}
+                    >
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filters
+                    </Button>
+                  </CardTitle>
                   <CardDescription>
                     Monitor and manage platform transactions
                   </CardDescription>
+                  
+                  {showFilters && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Start Date</label>
+                        <Input
+                          type="date"
+                          value={dateFilter.start}
+                          onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">End Date</label>
+                        <Input
+                          type="date"
+                          value={dateFilter.end}
+                          onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex items-end space-x-2">
+                        <Button variant="outline" onClick={clearFilters}>
+                          Clear Filters
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -437,11 +499,11 @@ const AdminDashboard = () => {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                       <p className="mt-2 text-gray-600">Loading transactions...</p>
                     </div>
-                  ) : pendingTransactions.length === 0 ? (
+                  ) : transactions.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p className="text-lg font-medium">No pending transactions</p>
-                      <p className="text-sm">All transactions have been processed.</p>
+                      <p className="text-lg font-medium">No transactions found</p>
+                      <p className="text-sm">No transactions match your current filters.</p>
                     </div>
                   ) : (
                     <Table>
@@ -452,12 +514,13 @@ const AdminDashboard = () => {
                           <TableHead>Tasker</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Payment</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pendingTransactions.map((transaction) => (
+                        {transactions.map((transaction) => (
                           <TableRow key={transaction.id}>
                             <TableCell className="font-medium">
                               {transaction.task_requests?.title || 'Unknown Task'}
@@ -482,17 +545,27 @@ const AdminDashboard = () => {
                                 {transaction.payment_method === 'cash' ? 'Cash' : 'Transfer'}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                transaction.status === 'confirmed' ? 'bg-green-100 text-green-700' : 
+                                transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                              }>
+                                {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                              </Badge>
+                            </TableCell>
                             <TableCell>{formatDate(transaction.created_at)}</TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                onClick={() => handleConfirmTransaction(transaction.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                                title="Confirm transaction"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirm
-                              </Button>
+                              {transaction.status === 'pending' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleConfirmTransaction(transaction.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                  title="Confirm transaction"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Confirm
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
