@@ -24,12 +24,16 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
     if (!user?.id) return;
 
     try {
-      // Fetch user profile for rating and reviews
-      const { data: profile } = await supabase
-        .from('users')
-        .select('rating, total_reviews')
-        .eq('id', user.id)
-        .single();
+      // Calculate rating and reviews directly from reviews table
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('reviewee_id', user.id);
+
+      const rating = reviews && reviews.length > 0 
+        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+        : 0;
+      const totalReviews = reviews?.length || 0;
 
       let activeTasks = 0;
       let completedTasks = 0;
@@ -100,8 +104,8 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       setStats({
         activeTasks,
         completedTasks,
-        rating: profile?.rating || 0,
-        totalReviews: profile?.total_reviews || 0,
+        rating,
+        totalReviews,
         monthlyEarnings
       });
     } catch (error) {
@@ -119,6 +123,44 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
+
+  // Set up real-time listener for reviews to update stats immediately
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('dashboard-stats-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reviews',
+          filter: `reviewee_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Review update detected, refreshing stats');
+          fetchStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_requests'
+        },
+        () => {
+          console.log('Task update detected, refreshing stats');
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   return (
     <Card className="shadow-lg border-0">
