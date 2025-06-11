@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,48 +109,25 @@ export const TaskTaskerActions = ({
       const proofUrls = await uploadProofImages(proofFiles);
       console.log('✅ [TASK] Images uploaded:', proofUrls);
 
-      // Complete the task with proof URLs using direct Supabase call
-      const { error: updateError } = await supabase
-        .from('task_requests')
-        .update({
-          status: 'completed' as any,
-          completed_at: new Date().toISOString(),
-          completion_proof_urls: proofUrls
-        })
-        .eq('id', task.id)
-        .eq('status', 'accepted');
-
-      if (updateError) {
-        throw new Error(`Failed to complete task: ${updateError.message}`);
+      // Use the proper completeTask function
+      const result = await completeTask(task.id, proofUrls);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to complete task');
       }
-
-      // Create notification manually with correct type
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: task.client_id,
-          type: 'offer_accepted', // Use existing valid type instead of 'task_completed'
-          title: 'Task Completed',
-          message: `Your task "${task.title}" has been marked as completed by the tasker.`,
-          task_id: task.id
-        });
 
       toast({ 
         title: "✅ Task completed successfully!",
         description: "Proof images have been uploaded and the task is marked as completed."
       });
+      
       setShowProofDialog(false);
       setProofFiles([]);
       
-      // Force refresh the dashboard data
+      // Refresh the dashboard data without page reload
       if (onTaskUpdate) {
         onTaskUpdate();
       }
-      
-      // Also trigger a page refresh to ensure data is updated
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
       
     } catch (error) {
       console.error('❌ [TASK] Error completing task:', error);
