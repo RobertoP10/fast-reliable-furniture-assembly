@@ -22,71 +22,70 @@ export const fetchTasks = async (
     throw new Error("User ID mismatch");
   }
 
-  let query = supabase
-    .from("task_requests")
-    .select(`
-      id,
-      client_id,
-      title,
-      description,
-      category,
-      subcategory,
-      price_range_min,
-      price_range_max,
-      location,
-      payment_method,
-      status,
-      accepted_offer_id,
-      required_date,
-      required_time,
-      completion_proof_urls,
-      completed_at,
-      cancelled_at,
-      cancellation_reason,
-      created_at,
-      offers:offers_task_id_fkey (
+  try {
+    const { data, error } = await supabase
+      .from("task_requests")
+      .select(`
         id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
+        client_id,
+        title,
+        description,
+        category,
+        subcategory,
+        price_range_min,
+        price_range_max,
+        location,
+        payment_method,
         status,
+        accepted_offer_id,
+        required_date,
+        required_time,
+        completion_proof_urls,
+        completed_at,
+        cancelled_at,
+        cancellation_reason,
         created_at,
-        updated_at,
-        tasker:users!offers_tasker_id_fkey(full_name, approved)
-      ),
-      client:users!task_requests_client_id_fkey(full_name, location)
-    `)
-    .order("created_at", { ascending: false });
+        offers:offers!task_id (
+          id,
+          task_id,
+          tasker_id,
+          price,
+          message,
+          proposed_date,
+          proposed_time,
+          is_accepted,
+          status,
+          created_at,
+          updated_at,
+          tasker:users!tasker_id(full_name, approved)
+        ),
+        client:users!client_id(full_name, location)
+      `)
+      .order("created_at", { ascending: false });
 
-  const { data, error } = await query;
+    if (error) {
+      console.error("❌ [TASKS] Error fetching tasks:", error);
+      throw new Error(`Failed to fetch tasks: ${error.message}`);
+    }
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching tasks:", error);
-    throw new Error(`Failed to fetch tasks: ${error.message}`);
+    if (!data) {
+      console.warn("⚠️ [TASKS] No data returned from Supabase");
+      return [];
+    }
+
+    console.log("✅ [TASKS] Fetched tasks from DB:", data.length);
+    
+    const normalizedData = data.map((task) => ({
+      ...task,
+      offers: Array.isArray(task.offers) ? task.offers : (task.offers ? [task.offers] : []),
+    })) as Task[];
+
+    console.log("✅ [TASKS] Normalized tasks for frontend:", normalizedData.length);
+    return normalizedData;
+  } catch (error) {
+    console.error("❌ [TASKS] Exception in fetchTasks:", error);
+    throw error;
   }
-
-  if (!data) {
-    console.warn("⚠️ [TASKS] No data returned from Supabase");
-    return [];
-  }
-
-  console.log("✅ [TASKS] Fetched tasks from DB:", data.length);
-  
-  const normalizedData = data.map((task) => ({
-    ...task,
-    offers: Array.isArray(task.offers)
-      ? task.offers
-      : task.offers
-      ? [task.offers]
-      : null,
-  })) as Task[];
-
-  console.log("✅ [TASKS] Normalized tasks for frontend:", normalizedData.length);
-  return normalizedData;
 };
 
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
@@ -99,66 +98,67 @@ export const fetchTask = async (taskId: string): Promise<Task | null> => {
     throw new Error("Authentication required");
   }
 
-  const { data, error } = await supabase
-    .from("task_requests")
-    .select(`
-      id,
-      client_id,
-      title,
-      description,
-      category,
-      subcategory,
-      price_range_min,
-      price_range_max,
-      location,
-      payment_method,
-      status,
-      accepted_offer_id,
-      required_date,
-      required_time,
-      completion_proof_urls,
-      completed_at,
-      cancelled_at,
-      cancellation_reason,
-      created_at,
-      offers:offers_task_id_fkey (
+  try {
+    const { data, error } = await supabase
+      .from("task_requests")
+      .select(`
         id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
+        client_id,
+        title,
+        description,
+        category,
+        subcategory,
+        price_range_min,
+        price_range_max,
+        location,
+        payment_method,
         status,
+        accepted_offer_id,
+        required_date,
+        required_time,
+        completion_proof_urls,
+        completed_at,
+        cancelled_at,
+        cancellation_reason,
         created_at,
-        updated_at,
-        tasker:users!offers_tasker_id_fkey(full_name, approved)
-      ),
-      client:users!task_requests_client_id_fkey(full_name, location)
-    `)
-    .eq("id", taskId)
-    .single();
+        offers:offers!task_id (
+          id,
+          task_id,
+          tasker_id,
+          price,
+          message,
+          proposed_date,
+          proposed_time,
+          is_accepted,
+          status,
+          created_at,
+          updated_at,
+          tasker:users!tasker_id(full_name, approved)
+        ),
+        client:users!client_id(full_name, location)
+      `)
+      .eq("id", taskId)
+      .single();
 
-  if (error) {
-    console.error("❌ [TASKS] Error fetching task:", error);
+    if (error) {
+      console.error("❌ [TASKS] Error fetching task:", error);
+      return null;
+    }
+
+    if (!data) {
+      console.warn("⚠️ [TASKS] No data returned for task:", taskId);
+      return null;
+    }
+
+    const normalized = {
+      ...data,
+      offers: Array.isArray(data.offers) ? data.offers : (data.offers ? [data.offers] : []),
+    } as Task;
+
+    console.log("✅ [TASKS] Fetched single task:", normalized.id, "with", normalized.offers?.length || 0, "offers");
+    return normalized;
+  } catch (error) {
+    console.error("❌ [TASKS] Exception in fetchTask:", error);
     return null;
   }
-
-  if (!data) {
-    console.warn("⚠️ [TASKS] No data returned for task:", taskId);
-    return null;
-  }
-
-  const normalized = {
-    ...data,
-    offers: Array.isArray(data.offers)
-      ? data.offers
-      : data.offers
-      ? [data.offers]
-      : null,
-  } as Task;
-
-  console.log("✅ [TASKS] Fetched single task:", normalized.id, "with", normalized.offers?.length || 0, "offers");
-  return normalized;
 };

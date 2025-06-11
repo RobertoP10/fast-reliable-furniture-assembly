@@ -1,171 +1,254 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { validateSession } from "./session-validator";
 
-// Chat functions - Fixed to properly handle relationships
-export const fetchChatRooms = async (userId: string): Promise<any[]> => {
-  console.log('🔍 [CHAT] Fetching chat rooms for user:', userId);
-  
-  try {
-    // Get tasks where user is involved and has accepted offers
-    const { data: tasks, error: tasksError } = await supabase
-      .from('task_requests')
-      .select(`
-        id,
-        title,
-        client_id,
-        status,
-        accepted_offer_id
-      `)
-      .or(`client_id.eq.${userId}`)
-      .not('accepted_offer_id', 'is', null);
+interface ChatRoom {
+  id: string;
+  task_id: string;
+  client_id: string;
+  tasker_id: string;
+  task_title: string;
+  client_name: string;
+  tasker_name: string;
+  last_message?: string;
+  last_message_at?: string;
+  unread_count: number;
+}
 
-    if (tasksError) {
-      console.error('❌ [CHAT] Error fetching client tasks:', tasksError);
-      throw new Error(`Failed to fetch chat rooms: ${tasksError.message}`);
-    }
-
-    // Get tasks where user is the tasker with accepted offer
-    const { data: taskerTasks, error: taskerError } = await supabase
-      .from('offers')
-      .select(`
-        task_id,
-        task:task_requests!offers_task_id_fkey(
-          id,
-          title,
-          client_id,
-          status
-        )
-      `)
-      .eq('tasker_id', userId)
-      .eq('is_accepted', true);
-
-    if (taskerError) {
-      console.error('❌ [CHAT] Error fetching tasker tasks:', taskerError);
-      throw new Error(`Failed to fetch tasker chat rooms: ${taskerError.message}`);
-    }
-
-    const chatRooms = [];
-
-    // Add client chat rooms
-    for (const task of tasks || []) {
-      if (task.accepted_offer_id) {
-        // Get the accepted offer details
-        const { data: offer } = await supabase
-          .from('offers')
-          .select(`
-            tasker_id,
-            tasker:users!offers_tasker_id_fkey(full_name)
-          `)
-          .eq('id', task.accepted_offer_id)
-          .single();
-
-        if (offer) {
-          chatRooms.push({
-            id: task.id,
-            taskTitle: task.title,
-            participantName: offer.tasker?.full_name || 'Tasker',
-            participantId: offer.tasker_id,
-            status: task.status === 'completed' ? 'closed' : 'active'
-          });
-        }
-      }
-    }
-
-    // Add tasker chat rooms
-    for (const item of taskerTasks || []) {
-      if (item.task) {
-        // Get client details
-        const { data: client } = await supabase
-          .from('users')
-          .select('full_name')
-          .eq('id', item.task.client_id)
-          .single();
-
-        chatRooms.push({
-          id: item.task.id,
-          taskTitle: item.task.title,
-          participantName: client?.full_name || 'Client',
-          participantId: item.task.client_id,
-          status: item.task.status === 'completed' ? 'closed' : 'active'
-        });
-      }
-    }
-
-    console.log('✅ [CHAT] Chat rooms fetched successfully:', chatRooms.length, 'rooms');
-    return chatRooms;
-  } catch (error) {
-    console.error('❌ [CHAT] Exception in fetchChatRooms:', error);
-    throw error;
-  }
-};
-
-export const fetchMessages = async (taskId: string): Promise<any[]> => {
-  console.log('🔍 [CHAT] Fetching messages for task:', taskId);
-  
-  const { data, error } = await supabase
-    .from('messages')
-    .select(`
-      *,
-      sender:users!messages_sender_id_fkey(full_name)
-    `)
-    .eq('task_id', taskId)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('❌ [CHAT] Error fetching messages:', error);
-    throw new Error(`Failed to fetch messages: ${error.message}`);
-  }
-
-  console.log('✅ [CHAT] Messages fetched successfully:', data?.length || 0, 'messages');
-  return data || [];
-};
-
-export const sendMessage = async (messageData: {
+interface Message {
+  id: string;
   task_id: string;
   sender_id: string;
   receiver_id: string;
   content: string;
-}): Promise<any> => {
-  console.log('📝 [CHAT] Sending message for task:', messageData.task_id);
-  
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      task_id: messageData.task_id,
-      sender_id: messageData.sender_id,
-      receiver_id: messageData.receiver_id,
-      content: messageData.content,
-      is_read: false
-    })
-    .select(`
-      *,
-      sender:users!messages_sender_id_fkey(full_name)
-    `)
-    .single();
+  is_read: boolean;
+  created_at: string;
+  sender_name?: string;
+}
 
-  if (error) {
-    console.error('❌ [CHAT] Error sending message:', error);
-    throw new Error(`Failed to send message: ${error.message}`);
+export const fetchChatRooms = async (userId: string): Promise<ChatRoom[]> => {
+  console.log("🔍 [CHAT] Fetching chat rooms for user:", userId);
+  
+  // Validate session
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid || !sessionValidation.userId) {
+    console.error("❌ [CHAT] Session validation failed:", sessionValidation.error);
+    throw new Error("Authentication required");
   }
 
-  console.log('✅ [CHAT] Message sent successfully with ID:', data.id);
-  return data;
+  if (sessionValidation.userId !== userId) {
+    console.error("❌ [CHAT] User ID mismatch");
+    throw new Error("User ID mismatch");
+  }
+
+  try {
+    // Get tasks where user is either client or has accepted offer as tasker
+    const { data: tasks, error } = await supabase
+      .from("task_requests")
+      .select(`
+        id,
+        title,
+        client_id,
+        accepted_offer_id,
+        status,
+        client:users!client_id(full_name),
+        accepted_offer:offers!accepted_offer_id(
+          tasker_id,
+          tasker:users!tasker_id(full_name)
+        )
+      `)
+      .or(`client_id.eq.${userId},accepted_offer_id.in.(${await getUserOfferIds(userId)})`)
+      .eq("status", "accepted")
+      .not("accepted_offer_id", "is", null);
+
+    if (error) {
+      console.error("❌ [CHAT] Error fetching chat tasks:", error);
+      throw new Error(`Failed to fetch chat rooms: ${error.message}`);
+    }
+
+    const chatRooms: ChatRoom[] = [];
+
+    for (const task of tasks || []) {
+      if (!task.accepted_offer) continue;
+
+      const isClient = task.client_id === userId;
+      const partnerId = isClient ? task.accepted_offer.tasker_id : task.client_id;
+      const partnerName = isClient ? task.accepted_offer.tasker?.full_name : task.client?.full_name;
+
+      // Get last message and unread count
+      const { data: lastMessage } = await supabase
+        .from("messages")
+        .select("content, created_at")
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      const { count: unreadCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("task_id", task.id)
+        .eq("receiver_id", userId)
+        .eq("is_read", false);
+
+      chatRooms.push({
+        id: `${task.id}-${partnerId}`,
+        task_id: task.id,
+        client_id: task.client_id,
+        tasker_id: task.accepted_offer.tasker_id,
+        task_title: task.title,
+        client_name: task.client?.full_name || "Unknown Client",
+        tasker_name: task.accepted_offer.tasker?.full_name || "Unknown Tasker",
+        last_message: lastMessage?.content,
+        last_message_at: lastMessage?.created_at,
+        unread_count: unreadCount || 0,
+      });
+    }
+
+    console.log("✅ [CHAT] Fetched chat rooms:", chatRooms.length);
+    return chatRooms;
+  } catch (error) {
+    console.error("❌ [CHAT] Exception in fetchChatRooms:", error);
+    throw error;
+  }
 };
 
-export const markMessagesAsRead = async (taskId: string, receiverId: string): Promise<void> => {
-  console.log('📝 [CHAT] Marking messages as read for task:', taskId, 'receiver:', receiverId);
+const getUserOfferIds = async (userId: string): Promise<string> => {
+  const { data } = await supabase
+    .from("offers")
+    .select("id")
+    .eq("tasker_id", userId)
+    .eq("is_accepted", true);
   
-  const { error } = await supabase
-    .from('messages')
-    .update({ is_read: true })
-    .eq('task_id', taskId)
-    .eq('receiver_id', receiverId)
-    .eq('is_read', false);
+  return data?.map(offer => offer.id).join(",") || "''";
+};
 
-  if (error) {
-    console.error('❌ [CHAT] Error marking messages as read:', error);
-    throw new Error(`Failed to mark messages as read: ${error.message}`);
+export const fetchMessages = async (taskId: string, userId: string): Promise<Message[]> => {
+  console.log("🔍 [CHAT] Fetching messages for task:", taskId, "user:", userId);
+  
+  // Validate session
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid) {
+    console.error("❌ [CHAT] Session validation failed:", sessionValidation.error);
+    throw new Error("Authentication required");
   }
 
-  console.log('✅ [CHAT] Messages marked as read successfully');
+  try {
+    const { data, error } = await supabase
+      .from("messages")
+      .select(`
+        id,
+        task_id,
+        sender_id,
+        receiver_id,
+        content,
+        is_read,
+        created_at,
+        sender:users!sender_id(full_name)
+      `)
+      .eq("task_id", taskId)
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("❌ [CHAT] Error fetching messages:", error);
+      throw new Error(`Failed to fetch messages: ${error.message}`);
+    }
+
+    const messages = (data || []).map(msg => ({
+      ...msg,
+      sender_name: msg.sender?.full_name || "Unknown User"
+    }));
+
+    console.log("✅ [CHAT] Fetched messages:", messages.length);
+    return messages;
+  } catch (error) {
+    console.error("❌ [CHAT] Exception in fetchMessages:", error);
+    throw error;
+  }
+};
+
+export const sendMessage = async (
+  taskId: string,
+  senderId: string,
+  receiverId: string,
+  content: string
+): Promise<Message> => {
+  console.log("🔄 [CHAT] Sending message:", { taskId, senderId, receiverId });
+  
+  // Validate session
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid) {
+    console.error("❌ [CHAT] Session validation failed:", sessionValidation.error);
+    throw new Error("Authentication required");
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({
+        task_id: taskId,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content,
+        is_read: false
+      })
+      .select(`
+        id,
+        task_id,
+        sender_id,
+        receiver_id,
+        content,
+        is_read,
+        created_at,
+        sender:users!sender_id(full_name)
+      `)
+      .single();
+
+    if (error) {
+      console.error("❌ [CHAT] Error sending message:", error);
+      throw new Error(`Failed to send message: ${error.message}`);
+    }
+
+    const message = {
+      ...data,
+      sender_name: data.sender?.full_name || "Unknown User"
+    };
+
+    console.log("✅ [CHAT] Message sent:", message.id);
+    return message;
+  } catch (error) {
+    console.error("❌ [CHAT] Exception in sendMessage:", error);
+    throw error;
+  }
+};
+
+export const markMessagesAsRead = async (taskId: string, userId: string): Promise<void> => {
+  console.log("🔄 [CHAT] Marking messages as read for task:", taskId, "user:", userId);
+  
+  // Validate session
+  const sessionValidation = await validateSession();
+  if (!sessionValidation.isValid) {
+    console.error("❌ [CHAT] Session validation failed:", sessionValidation.error);
+    throw new Error("Authentication required");
+  }
+
+  try {
+    const { error } = await supabase
+      .from("messages")
+      .update({ is_read: true })
+      .eq("task_id", taskId)
+      .eq("receiver_id", userId)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("❌ [CHAT] Error marking messages as read:", error);
+      throw new Error(`Failed to mark messages as read: ${error.message}`);
+    }
+
+    console.log("✅ [CHAT] Messages marked as read");
+  } catch (error) {
+    console.error("❌ [CHAT] Exception in markMessagesAsRead:", error);
+    throw error;
+  }
 };

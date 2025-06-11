@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { validateSession } from "./session-validator";
@@ -6,6 +7,14 @@ type Offer = Database["public"]["Tables"]["offers"]["Row"] & {
   tasker?: {
     full_name: string;
     approved?: boolean;
+  };
+  task?: {
+    id: string;
+    title: string;
+    description: string;
+    location: string;
+    status: string;
+    created_at: string;
   };
 };
 
@@ -21,19 +30,27 @@ export const fetchOffers = async (taskId: string): Promise<Offer[]> => {
 
   console.log("✅ [OFFERS] Session validated, making request with user ID:", sessionValidation.userId);
 
-  const { data, error } = await supabase
-    .from("offers")
-    .select(`*, tasker:users!offers_tasker_id_fkey(full_name, approved)`)
-    .eq("task_id", taskId)
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("offers")
+      .select(`
+        *,
+        tasker:users!tasker_id(full_name, approved)
+      `)
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("❌ [OFFERS] Error fetching offers:", error);
-    throw new Error(`Failed to fetch offers: ${error.message}`);
+    if (error) {
+      console.error("❌ [OFFERS] Error fetching offers:", error);
+      throw new Error(`Failed to fetch offers: ${error.message}`);
+    }
+
+    console.log("✅ [OFFERS] Fetched offers:", data?.length || 0, "for task:", taskId);
+    return data || [];
+  } catch (error) {
+    console.error("❌ [OFFERS] Exception in fetchOffers:", error);
+    throw error;
   }
-
-  console.log("✅ [OFFERS] Fetched offers:", data?.length || 0, "for task:", taskId);
-  return data || [];
 };
 
 export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
@@ -54,25 +71,29 @@ export const fetchUserOffers = async (userId: string): Promise<Offer[]> => {
 
   console.log("✅ [OFFERS] Session validated for user offers, fetching for user:", userId);
 
-  // Use explicit filter with the validated user ID
-  const { data, error } = await supabase
-    .from("offers")
-    .select(`
-      *,
-      task:task_requests!offers_task_id_fkey(
-        id, title, description, location, status, created_at
-      )
-    `)
-    .eq("tasker_id", userId)
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("offers")
+      .select(`
+        *,
+        task:task_requests!task_id(
+          id, title, description, location, status, created_at
+        )
+      `)
+      .eq("tasker_id", userId)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("❌ [OFFERS] Error fetching user offers:", error);
-    throw new Error(`Failed to fetch user offers: ${error.message}`);
+    if (error) {
+      console.error("❌ [OFFERS] Error fetching user offers:", error);
+      throw new Error(`Failed to fetch user offers: ${error.message}`);
+    }
+
+    console.log("✅ [OFFERS] Fetched user offers:", data?.length || 0, "for user:", userId);
+    return data || [];
+  } catch (error) {
+    console.error("❌ [OFFERS] Exception in fetchUserOffers:", error);
+    throw error;
   }
-
-  console.log("✅ [OFFERS] Fetched user offers:", data?.length || 0, "for user:", userId);
-  return data || [];
 };
 
 export const createOffer = async (offerData: {
@@ -92,22 +113,26 @@ export const createOffer = async (offerData: {
     throw new Error("Authentication required");
   }
 
-  const { data, error } = await supabase
-    .from("offers")
-    .insert(offerData)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("offers")
+      .insert(offerData)
+      .select()
+      .single();
 
-  if (error) {
-    console.error("❌ [OFFERS] Error creating offer:", error);
-    throw new Error(`Failed to create offer: ${error.message}`);
+    if (error) {
+      console.error("❌ [OFFERS] Error creating offer:", error);
+      throw new Error(`Failed to create offer: ${error.message}`);
+    }
+
+    console.log("✅ [OFFERS] Created offer:", data.id);
+    return data;
+  } catch (error) {
+    console.error("❌ [OFFERS] Exception in createOffer:", error);
+    throw error;
   }
-
-  console.log("✅ [OFFERS] Created offer:", data.id);
-  return data;
 };
 
-// ✅ Accept one offer & reject the rest with proper status handling
 export const acceptOffer = async (
   taskId: string,
   offerId: string
@@ -145,7 +170,6 @@ export const acceptOffer = async (
   }
 };
 
-// ✅ Decline only one offer
 export const declineOffer = async (
   offerId: string
 ): Promise<{ success: boolean; error?: any }> => {
@@ -158,16 +182,21 @@ export const declineOffer = async (
     return { success: false, error: "Authentication required" };
   }
 
-  const { error } = await supabase
-    .from("offers")
-    .update({ is_accepted: false, status: 'rejected' })
-    .eq("id", offerId);
+  try {
+    const { error } = await supabase
+      .from("offers")
+      .update({ is_accepted: false, status: 'rejected' })
+      .eq("id", offerId);
 
-  if (error) {
-    console.error("❌ [OFFERS] Error declining offer:", error);
-    return { success: false, error };
+    if (error) {
+      console.error("❌ [OFFERS] Error declining offer:", error);
+      return { success: false, error };
+    }
+
+    console.log("✅ [OFFERS] Declined offer:", offerId);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ [OFFERS] Exception in declineOffer:", error);
+    return { success: false, error: (error as Error).message };
   }
-
-  console.log("✅ [OFFERS] Declined offer:", offerId);
-  return { success: true };
 };
