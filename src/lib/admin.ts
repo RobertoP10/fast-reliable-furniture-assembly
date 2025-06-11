@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -50,10 +51,11 @@ export const fetchPendingTransactions = async () => {
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
@@ -86,10 +88,11 @@ export const fetchAllTransactions = async () => {
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
@@ -180,10 +183,11 @@ export const getPlatformAnalytics = async () => {
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
@@ -311,10 +315,11 @@ export const fetchTransactionsByDateRange = async (startDate: string, endDate: s
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
@@ -347,10 +352,11 @@ export const fetchTransactionsByTasker = async (taskerId: string) => {
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
@@ -382,10 +388,11 @@ export const fetchTransactionsByClient = async (clientId: string) => {
     .from('transactions')
     .select(`
       *,
-      task_requests!inner (
+      task_requests (
         id,
         title,
-        status
+        status,
+        completed_at
       ),
       client:users!transactions_client_id_fkey (
         id,
