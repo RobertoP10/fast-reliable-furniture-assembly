@@ -1,6 +1,8 @@
 
 // Re-export all admin functionality from organized modules
-export * from './users';
+export * from './taskers';
+export * from './clientTasks';
+export * from './userManagement';
 export * from './transactions';
 export * from './analytics';
 export * from './stats';
