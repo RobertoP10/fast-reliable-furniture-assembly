@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'chat_message' | 'new_task' | 'offer_accepted' | 'offer_rejected' | 'task_cancelled';
+  type: 'chat_message' | 'new_task' | 'offer_accepted' | 'offer_rejected' | 'task_cancelled' | 'task_completed';
   title: string;
   message?: string;
   task_id?: string;

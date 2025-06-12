@@ -59,9 +59,11 @@ export const useNotifications = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           },
-          () => {
-            // Refresh notifications when new ones arrive
-            loadNotifications();
+          (payload) => {
+            console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
+            // Add the new notification to the top of the list
+            setNotifications(prev => [payload.new as Notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
           }
         )
         .subscribe();

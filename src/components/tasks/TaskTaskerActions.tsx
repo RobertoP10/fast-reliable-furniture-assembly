@@ -242,8 +242,16 @@ export const TaskTaskerActions = ({
   // Show cancelled message for available tasks that are cancelled
   if (activeTab === "available" && task.status === 'cancelled') {
     return (
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <p className="text-sm text-gray-700">This task has been cancelled by the client</p>
+      <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+        <p className="text-sm text-red-700 font-medium">❌ Task Cancelled</p>
+        <p className="text-sm text-red-600 mt-1">
+          This task has been cancelled by the client. Your offer is no longer valid.
+        </p>
+        {task.cancellation_reason && (
+          <p className="text-xs text-red-600 mt-2">
+            <strong>Reason:</strong> {task.cancellation_reason}
+          </p>
+        )}
       </div>
     );
   }
@@ -253,7 +261,9 @@ export const TaskTaskerActions = ({
     const statusDisplay = getOfferStatusDisplay(myOffer);
     return (
       <div className="space-y-3">
-        <div className={`p-3 rounded-lg ${statusDisplay.color}`}>
+        <div className={`p-4 rounded-lg border ${statusDisplay.color} ${
+          myOffer.status === 'cancelled' ? 'border-red-200' : ''
+        }`}>
           <p className="font-medium">Your Offer: {statusDisplay.text}</p>
           <p className="text-sm">Price: £{myOffer.price}</p>
           {myOffer.proposed_date && (
@@ -263,9 +273,17 @@ export const TaskTaskerActions = ({
             <p className="text-sm italic mt-1">"{myOffer.message}"</p>
           )}
           {myOffer.status === 'cancelled' && (
-            <p className="text-xs text-gray-600 mt-2">
-              The client cancelled this task. You will be notified when new similar tasks are available.
-            </p>
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-700 font-medium">Task Cancelled by Client</p>
+              <p className="text-xs text-red-600 mt-1">
+                The client cancelled this task. Your offer is no longer valid and you will not be able to proceed with this work.
+              </p>
+              {task.cancellation_reason && (
+                <p className="text-xs text-red-600 mt-2">
+                  <strong>Reason:</strong> {task.cancellation_reason}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
