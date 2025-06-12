@@ -27,6 +27,32 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const validatePhoneNumber = (phone: string) => {
+    // Remove all spaces, dashes, and parentheses
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, "");
+    
+    // UK phone number patterns:
+    // - Mobile: 07xxxxxxxxx (11 digits total)
+    // - International mobile: +447xxxxxxxxx or 447xxxxxxxxx
+    // - Landline: 01xxxxxxxxx, 02xxxxxxxxx, 03xxxxxxxxx (11 digits total)
+    // - International landline: +441xxxxxxxxx, +442xxxxxxxxx, +443xxxxxxxxx
+    
+    const ukPatterns = [
+      /^07\d{9}$/, // UK mobile (07xxxxxxxxx)
+      /^\+447\d{9}$/, // International UK mobile (+447xxxxxxxxx)
+      /^447\d{9}$/, // International UK mobile without + (447xxxxxxxxx)
+      /^0[123]\d{9}$/, // UK landline (01/02/03xxxxxxxxx)
+      /^\+44[123]\d{9}$/, // International UK landline (+441/2/3xxxxxxxxx)
+      /^44[123]\d{9}$/, // International UK landline without + (441/2/3xxxxxxxxx)
+    ];
+    
+    // Also accept other international formats (basic validation)
+    const internationalPattern = /^\+\d{7,15}$/; // International format with country code
+    
+    return ukPatterns.some(pattern => pattern.test(cleanPhone)) || 
+           internationalPattern.test(cleanPhone);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -50,10 +76,9 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
       return;
     }
 
-    // Basic phone number validation
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (!phoneRegex.test(form.phone_number.replace(/\s/g, ""))) {
-      setError("Please enter a valid phone number.");
+    // Updated phone number validation
+    if (!validatePhoneNumber(form.phone_number)) {
+      setError("Please enter a valid phone number (e.g., 07440669983, +447440669983, or international format).");
       setLoading(false);
       return;
     }
@@ -117,7 +142,7 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
 
           <Input
             type="tel"
-            placeholder="Phone Number"
+            placeholder="Phone Number (e.g., 07440669983 or +447440669983)"
             value={form.phone_number}
             onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
             required
