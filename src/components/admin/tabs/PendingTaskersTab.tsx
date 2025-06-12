@@ -31,15 +31,17 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
 
     try {
       console.log('🔄 [ADMIN] UI: Calling approveTasker function...');
-      await approveTasker(taskerId);
+      const result = await approveTasker(taskerId);
       
-      // Remove from list immediately on success
+      // Remove from pending list immediately on success
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
       
       toast({
         title: "Success",
         description: `${taskerToApprove.full_name} has been approved successfully.`,
       });
+
+      console.log('✅ [ADMIN] UI: Approval successful:', result);
 
     } catch (error) {
       console.error('❌ [ADMIN] UI: Approval error:', error);
@@ -66,15 +68,17 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
 
     try {
       console.log('🔄 [ADMIN] UI: Calling rejectTasker function...');
-      await rejectTasker(taskerId);
+      const result = await rejectTasker(taskerId);
       
-      // Remove from list immediately on success
+      // Remove from pending list immediately on success
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
       
       toast({
         title: "Success",
-        description: `${taskerToReject.full_name} has been rejected and removed.`,
+        description: `${taskerToReject.full_name} has been rejected and removed from the system.`,
       });
+
+      console.log('✅ [ADMIN] UI: Rejection successful:', result);
 
     } catch (error) {
       console.error('❌ [ADMIN] UI: Rejection error:', error);
