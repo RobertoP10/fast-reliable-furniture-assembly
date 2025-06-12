@@ -4,7 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   fetchPendingTaskers, 
   fetchAllUsers, 
-  fetchPendingTransactions, 
+  fetchPendingTransactions
+} from "@/lib/adminApi";
+import {
   fetchAllTransactions,
   fetchTransactionsByDateRange,
   fetchTransactionsByTasker,
@@ -93,6 +95,7 @@ export const useAdminData = (
     }
   };
 
+  // Force refresh when tab changes or when filters change
   useEffect(() => {
     loadData();
     if (activeTab === 'transactions') {

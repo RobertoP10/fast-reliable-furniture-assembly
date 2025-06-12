@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Users, CheckCircle, X } from "lucide-react";
 import { acceptTasker, rejectTasker } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface PendingTaskersTabProps {
   pendingTaskers: any[];
@@ -15,14 +16,22 @@ interface PendingTaskersTabProps {
 
 export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, formatDate }: PendingTaskersTabProps) => {
   const { toast } = useToast();
+  const [processingTaskers, setProcessingTaskers] = useState<Set<string>>(new Set());
 
   const handleApproveTasker = async (taskerId: string) => {
+    if (processingTaskers.has(taskerId)) return;
+    
+    setProcessingTaskers(prev => new Set(prev).add(taskerId));
+    
     try {
-      console.log('✅ [ADMIN] Approving tasker:', taskerId);
-      await acceptTasker(taskerId);
+      console.log('✅ [ADMIN] Starting tasker approval process for:', taskerId);
       
-      // Remove the tasker from the pending list immediately
+      const updatedTasker = await acceptTasker(taskerId);
+      
+      // Remove the tasker from the pending list immediately after successful update
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      
+      console.log('✅ [ADMIN] Tasker approved and removed from list:', updatedTasker);
       
       toast({
         title: "Tasker Approved",
@@ -35,16 +44,29 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
         description: `Failed to approve tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
+    } finally {
+      setProcessingTaskers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskerId);
+        return newSet;
+      });
     }
   };
 
   const handleRejectTasker = async (taskerId: string) => {
+    if (processingTaskers.has(taskerId)) return;
+    
+    setProcessingTaskers(prev => new Set(prev).add(taskerId));
+    
     try {
-      console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
+      console.log('❌ [ADMIN] Starting tasker rejection process for:', taskerId);
+      
       await rejectTasker(taskerId);
       
-      // Remove the tasker from the pending list immediately
+      // Remove the tasker from the pending list immediately after successful deletion
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      
+      console.log('✅ [ADMIN] Tasker rejected and removed from list');
       
       toast({
         title: "Tasker Rejected",
@@ -56,6 +78,12 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
         title: "Error",
         description: `Failed to reject tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
+      });
+    } finally {
+      setProcessingTaskers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskerId);
+        return newSet;
       });
     }
   };
@@ -101,6 +129,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                       <Button
                         size="sm"
                         onClick={() => handleApproveTasker(tasker.id)}
+                        disabled={processingTaskers.has(tasker.id)}
                         className="bg-green-600 hover:bg-green-700"
                         title="Approve tasker"
                       >
@@ -110,6 +139,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                         size="sm"
                         variant="destructive"
                         onClick={() => handleRejectTasker(tasker.id)}
+                        disabled={processingTaskers.has(tasker.id)}
                         title="Reject tasker"
                       >
                         <X className="h-4 w-4" />

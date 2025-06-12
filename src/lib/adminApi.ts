@@ -62,15 +62,23 @@ export const fetchPendingTransactions = async () => {
 export const acceptTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker:', taskerId);
   
+  // Use update with proper return to ensure the operation completed
   const { data, error } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
-    .select();
+    .eq('role', 'tasker') // Additional safety check
+    .select('*')
+    .single();
 
   if (error) {
     console.error('❌ [ADMIN] Error approving tasker:', error);
     throw error;
+  }
+
+  if (!data) {
+    console.error('❌ [ADMIN] No tasker found with ID:', taskerId);
+    throw new Error('Tasker not found or could not be updated');
   }
 
   console.log('✅ [ADMIN] Tasker approved successfully:', data);
@@ -80,16 +88,33 @@ export const acceptTasker = async (taskerId: string) => {
 export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
   
-  const { error } = await supabase
+  // First verify the user exists and is a pending tasker
+  const { data: existingUser, error: fetchError } = await supabase
     .from('users')
-    .delete()
-    .eq('id', taskerId);
+    .select('id, role, approved')
+    .eq('id', taskerId)
+    .eq('role', 'tasker')
+    .eq('approved', false)
+    .single();
 
-  if (error) {
-    console.error('❌ [ADMIN] Error rejecting tasker:', error);
-    throw error;
+  if (fetchError || !existingUser) {
+    console.error('❌ [ADMIN] Tasker not found or not pending:', fetchError);
+    throw new Error('Tasker not found or not in pending state');
   }
 
-  console.log('✅ [ADMIN] Tasker rejected successfully');
+  // Now delete the user
+  const { error: deleteError } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', taskerId)
+    .eq('role', 'tasker')
+    .eq('approved', false);
+
+  if (deleteError) {
+    console.error('❌ [ADMIN] Error rejecting tasker:', deleteError);
+    throw deleteError;
+  }
+
+  console.log('✅ [ADMIN] Tasker rejected and deleted successfully');
   return true;
 };
