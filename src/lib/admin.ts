@@ -1,4 +1,3 @@
 
-// Re-export everything from existing admin modules
-export * from './adminApi';
-export * from './adminPendingClients';
+// Re-export everything from the new admin modules
+export * from './admin';
