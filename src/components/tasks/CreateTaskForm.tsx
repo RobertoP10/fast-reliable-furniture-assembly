@@ -44,11 +44,12 @@ const CreateTaskForm = () => {
           />
 
           <TaskLocation
-            address={formData.location}
+            address={formData.address}
             manualAddress={formData.manualAddress}
             onUpdate={(updates) => updateFormData({
-              location: updates.address ?? formData.location,
-              manualAddress: updates.manualAddress ?? formData.manualAddress
+              address: updates.address ?? formData.address,
+              manualAddress: updates.manualAddress ?? formData.manualAddress,
+              needsLocationReview: updates.needsLocationReview ?? formData.needsLocationReview
             })}
           />
 
