@@ -19,7 +19,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const handleApproveTasker = async (taskerId: string) => {
     try {
       console.log('✅ [ADMIN] Starting tasker approval for:', taskerId);
-      console.log('📋 [ADMIN] Current pending taskers:', pendingTaskers.length);
+      console.log('📋 [ADMIN] Current pending taskers count:', pendingTaskers.length);
       
       // Find the tasker in the current list
       const taskerToApprove = pendingTaskers.find(t => t.id === taskerId);
@@ -35,23 +35,42 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
         return;
       }
 
-      await approveTasker(taskerId);
-      
-      // Remove from pending list immediately for instant UI feedback
+      // Show optimistic UI update immediately
       setPendingTaskers(prev => {
         const updated = prev.filter(tasker => tasker.id !== taskerId);
-        console.log('✅ [ADMIN] Updated pending list length:', updated.length);
+        console.log('🔄 [ADMIN] Optimistically updated pending list length:', updated.length);
         return updated;
       });
+
+      // Show immediate success message
+      toast({
+        title: "Approving Tasker...",
+        description: `Approving ${taskerToApprove.full_name}...`,
+      });
+
+      // Perform the actual approval
+      const result = await approveTasker(taskerId);
+      console.log('✅ [ADMIN] Approval result:', result);
       
+      // Show final success message
       toast({
         title: "Tasker Approved",
         description: `${taskerToApprove.full_name} has been successfully approved and can now start bidding on tasks.`,
       });
+
     } catch (error) {
       console.error('❌ [ADMIN] Error approving tasker:', error);
+      
+      // Revert the optimistic update on error
+      const originalTasker = pendingTaskers.find(t => t.id === taskerId);
+      if (originalTasker) {
+        setPendingTaskers(prev => [...prev, originalTasker].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ));
+      }
+      
       toast({
-        title: "Error",
+        title: "Approval Failed",
         description: `Failed to approve tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });

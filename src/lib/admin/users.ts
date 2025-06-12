@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -21,58 +20,81 @@ export const fetchPendingTaskers = async () => {
 };
 
 export const approveTasker = async (taskerId: string) => {
-  console.log('✅ [ADMIN] Approving tasker:', taskerId);
+  console.log('✅ [ADMIN] Starting tasker approval for ID:', taskerId);
   
-  // First, let's verify the user exists and get their current state
-  const { data: currentUser, error: fetchError } = await supabase
-    .from('users')
-    .select('id, role, approved, email, full_name')
-    .eq('id', taskerId)
-    .single();
+  try {
+    // First, verify the user exists and get their current state
+    const { data: currentUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, role, approved, email, full_name')
+      .eq('id', taskerId)
+      .single();
 
-  if (fetchError) {
-    console.error('❌ [ADMIN] Error fetching user:', fetchError);
-    throw new Error(`User not found: ${fetchError.message}`);
+    if (fetchError) {
+      console.error('❌ [ADMIN] Error fetching user before approval:', fetchError);
+      throw new Error(`User lookup failed: ${fetchError.message}`);
+    }
+
+    if (!currentUser) {
+      console.error('❌ [ADMIN] User not found with ID:', taskerId);
+      throw new Error('User not found in database');
+    }
+
+    console.log('📋 [ADMIN] Found user before approval:', currentUser);
+
+    // Check if user is a tasker
+    if (currentUser.role !== 'tasker') {
+      console.error('❌ [ADMIN] User is not a tasker, role is:', currentUser.role);
+      throw new Error(`User is not a tasker (role: ${currentUser.role})`);
+    }
+
+    // Check if already approved
+    if (currentUser.approved) {
+      console.error('❌ [ADMIN] Tasker already approved');
+      throw new Error('Tasker is already approved');
+    }
+
+    // Now perform the approval update
+    console.log('🔄 [ADMIN] Updating approval status for tasker:', taskerId);
+    
+    const { data: updatedData, error: updateError } = await supabase
+      .from('users')
+      .update({ approved: true })
+      .eq('id', taskerId)
+      .eq('role', 'tasker')
+      .eq('approved', false)
+      .select('id, full_name, email, approved, role');
+
+    if (updateError) {
+      console.error('❌ [ADMIN] Database update error:', updateError);
+      throw new Error(`Database update failed: ${updateError.message}`);
+    }
+
+    if (!updatedData || updatedData.length === 0) {
+      console.error('❌ [ADMIN] No rows were updated. This could mean:');
+      console.error('  - User ID does not exist:', taskerId);
+      console.error('  - User is not a tasker');
+      console.error('  - User is already approved');
+      console.error('  - User was modified by another process');
+      
+      // Let's do one more check to see the current state
+      const { data: finalCheck } = await supabase
+        .from('users')
+        .select('id, role, approved')
+        .eq('id', taskerId)
+        .single();
+      
+      console.error('❌ [ADMIN] Current user state after failed update:', finalCheck);
+      throw new Error('No rows were updated - user may have been modified or does not meet approval criteria');
+    }
+
+    console.log('✅ [ADMIN] Tasker approved successfully:', updatedData[0]);
+    return updatedData[0];
+
+  } catch (error) {
+    console.error('❌ [ADMIN] Approval process failed:', error);
+    throw error;
   }
-
-  if (!currentUser) {
-    console.error('❌ [ADMIN] User not found:', taskerId);
-    throw new Error('User not found');
-  }
-
-  console.log('📋 [ADMIN] Current user state:', currentUser);
-
-  // Check if user is a tasker
-  if (currentUser.role !== 'tasker') {
-    console.error('❌ [ADMIN] User is not a tasker:', currentUser.role);
-    throw new Error('User is not a tasker');
-  }
-
-  // Check if already approved
-  if (currentUser.approved) {
-    console.error('❌ [ADMIN] Tasker already approved:', taskerId);
-    throw new Error('Tasker is already approved');
-  }
-
-  // Now update the approval status
-  const { data, error } = await supabase
-    .from('users')
-    .update({ approved: true })
-    .eq('id', taskerId)
-    .select();
-
-  if (error) {
-    console.error('❌ [ADMIN] Error approving tasker:', error);
-    throw new Error(`Failed to approve tasker: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
-    console.error('❌ [ADMIN] No rows were updated for tasker:', taskerId);
-    throw new Error('Failed to update tasker approval status');
-  }
-
-  console.log('✅ [ADMIN] Tasker approved successfully:', data[0]);
-  return data[0];
 };
 
 export const acceptTasker = approveTasker; // Alias for compatibility
