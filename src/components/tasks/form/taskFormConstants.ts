@@ -56,5 +56,5 @@ export const initialFormData = {
   address: '',
   requiredDate: '',
   requiredTime: '',
-  paymentMethod: 'cash' as const
+  paymentMethod: 'cash' as 'cash' | 'card' | 'bank_transfer'
 };
