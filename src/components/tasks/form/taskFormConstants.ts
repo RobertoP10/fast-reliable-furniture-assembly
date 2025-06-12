@@ -1,16 +1,12 @@
 
-export const categories = [
-  'Home Improvement',
-  'Cleaning',
-  'Gardening',
-  'Tech Support',
-  'Moving Help',
-  'Handyman',
-  'Tutoring',
-  'Pet Care',
-  'Delivery',
-  'Other'
-];
+export const categories = {
+  wardrobe: ['PAX Wardrobe', 'KLEPPSTAD Wardrobe', 'BRIMNES Wardrobe', 'HEMNES Wardrobe'],
+  desk: ['BEKANT Desk', 'LINNMON Desk', 'GALANT Desk', 'ALEX Desk'],
+  bed: ['HEMNES Bed Frame', 'MALM Bed Frame', 'BRIMNES Bed Frame', 'TARVA Bed Frame'],
+  chest: ['HEMNES Chest', 'MALM Chest', 'RAST Chest', 'KOPPANG Chest'],
+  table: ['INGATORP Table', 'BJURSTA Table', 'NORDEN Table', 'LERHAMN Table'],
+  shelf: ['BILLY Bookcase', 'HEMNES Bookcase', 'IVAR Shelf', 'KALLAX Shelf']
+};
 
 export const locations = [
   'Birmingham',
@@ -49,3 +45,16 @@ export const paymentMethods = [
   'card',
   'bank_transfer'
 ];
+
+export const initialFormData = {
+  title: '',
+  description: '',
+  category: '',
+  subcategory: '',
+  minBudget: '',
+  maxBudget: '',
+  address: '',
+  requiredDate: '',
+  requiredTime: '',
+  paymentMethod: 'cash' as const
+};

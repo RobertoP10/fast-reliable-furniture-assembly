@@ -1,6 +1,23 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+export const fetchAllUsers = async () => {
+  console.log('🔍 [ADMIN] Fetching all users...');
+  
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching all users:', error);
+    throw error;
+  }
+
+  console.log('✅ [ADMIN] Fetched all users:', data?.length || 0);
+  return data || [];
+};
+
 export const fetchPendingTaskers = async () => {
   console.log('🔍 [ADMIN] Fetching pending taskers...');
   
@@ -17,6 +34,28 @@ export const fetchPendingTaskers = async () => {
   }
 
   console.log('✅ [ADMIN] Fetched pending taskers:', data?.length || 0);
+  return data || [];
+};
+
+export const fetchPendingTransactions = async () => {
+  console.log('🔍 [ADMIN] Fetching pending transactions...');
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      client:users!client_id(full_name, email),
+      tasker:users!tasker_id(full_name, email)
+    `)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ [ADMIN] Error fetching pending transactions:', error);
+    throw error;
+  }
+
+  console.log('✅ [ADMIN] Fetched pending transactions:', data?.length || 0);
   return data || [];
 };
 

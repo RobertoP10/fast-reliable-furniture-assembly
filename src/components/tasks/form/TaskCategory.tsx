@@ -22,12 +22,11 @@ export const TaskCategory = ({ category, subcategory, onUpdate }: TaskCategoryPr
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="wardrobe">Wardrobe</SelectItem>
-            <SelectItem value="desk">Desk</SelectItem>
-            <SelectItem value="bed">Bed</SelectItem>
-            <SelectItem value="chest">Chest of Drawers</SelectItem>
-            <SelectItem value="table">Table</SelectItem>
-            <SelectItem value="shelf">Shelf</SelectItem>
+            {Object.keys(categories).map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
