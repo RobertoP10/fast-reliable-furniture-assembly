@@ -35,15 +35,21 @@ const CreateTaskForm = () => {
           />
 
           <TaskBudget
-            minBudget={formData.minBudget}
-            maxBudget={formData.maxBudget}
-            onUpdate={updateFormData}
+            minBudget={formData.priceRangeMin.toString()}
+            maxBudget={formData.priceRangeMax.toString()}
+            onUpdate={(updates) => updateFormData({
+              priceRangeMin: updates.minBudget ? Number(updates.minBudget) : formData.priceRangeMin,
+              priceRangeMax: updates.maxBudget ? Number(updates.maxBudget) : formData.priceRangeMax
+            })}
           />
 
           <TaskLocation
-            address={formData.address}
+            address={formData.location}
             manualAddress={formData.manualAddress}
-            onUpdate={updateFormData}
+            onUpdate={(updates) => updateFormData({
+              location: updates.address ?? formData.location,
+              manualAddress: updates.manualAddress ?? formData.manualAddress
+            })}
           />
 
           <TaskSchedule

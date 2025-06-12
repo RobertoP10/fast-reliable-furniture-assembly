@@ -22,16 +22,21 @@ export const useTaskForm = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const updateFormData = (field: keyof TaskFormData, value: any) => {
+  const updateFormData = (updates: Partial<TaskFormData>) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      ...updates
     }));
   };
 
   const isLocationInOperationalArea = (location: string) => {
     // Check if location is in our operational area (West Midlands towns)
     return westMidlandsTowns.includes(location);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitTask();
   };
 
   const submitTask = async () => {
@@ -45,7 +50,7 @@ export const useTaskForm = () => {
       }
 
       // Determine if task needs location review
-      const needsLocationReview = formData.location === "other" || !isLocationInOperationalArea(formData.location);
+      const needsLocationReview = formData.location === "Other (not listed)" || !isLocationInOperationalArea(formData.location);
       
       console.log('🔍 [TASK CREATION] Location check:', {
         selectedLocation: formData.location,
@@ -59,7 +64,7 @@ export const useTaskForm = () => {
         category: formData.category,
         subcategory: formData.subcategory,
         location: formData.location,
-        manual_address: formData.location === "other" ? formData.manualAddress : null,
+        manual_address: formData.location === "Other (not listed)" ? formData.manualAddress : null,
         price_range_min: formData.priceRangeMin,
         price_range_max: formData.priceRangeMax,
         payment_method: formData.paymentMethod,
@@ -118,7 +123,9 @@ export const useTaskForm = () => {
   return {
     formData,
     loading,
+    isSubmitting: loading,
     updateFormData,
-    submitTask
+    submitTask,
+    handleSubmit
   };
 };
