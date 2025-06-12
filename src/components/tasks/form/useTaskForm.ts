@@ -77,14 +77,14 @@ export const useTaskForm = () => {
         required_time: formData.requiredTime || null,
         client_id: user.id,
         needs_location_review: needsLocationReview,
-        status: needsLocationReview ? 'pending' : 'pending' // Keep status as pending but flag for review
+        status: 'pending' as const // Properly typed as enum value
       };
 
       console.log('📝 [TASK CREATION] Submitting task with data:', taskData);
 
       const { data, error } = await supabase
         .from('task_requests')
-        .insert([taskData])
+        .insert(taskData)
         .select()
         .single();
 
