@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -381,12 +382,6 @@ export const getAdminStats = async () => {
     .eq('role', 'tasker')
     .eq('approved', false);
 
-  const { data: pendingClients, error: pendingClientsError } = await supabase
-    .from('task_requests')
-    .select('id')
-    .eq('needs_location_review', true)
-    .neq('status', 'cancelled');
-
   const { data: allUsers, error: allUsersError } = await supabase
     .from('users')
     .select('id');
@@ -401,14 +396,14 @@ export const getAdminStats = async () => {
     .select('id')
     .eq('status', 'pending');
 
-  if (pendingTaskersError || pendingClientsError || allUsersError || activeUsersError || pendingTransactionsError) {
+  if (pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError) {
     console.error('❌ [ADMIN] Error fetching admin stats');
-    throw pendingTaskersError || pendingClientsError || allUsersError || activeUsersError || pendingTransactionsError;
+    throw pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError;
   }
 
   const stats = {
     pendingTaskers: pendingTaskers?.length || 0,
-    pendingClients: pendingClients?.length || 0,
+    pendingClients: 0, // Remove pending clients functionality for now
     totalUsers: allUsers?.length || 0,
     activeUsers: activeUsers?.length || 0,
     pendingTransactions: pendingTransactions?.length || 0

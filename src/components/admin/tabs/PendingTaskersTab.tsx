@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, CheckCircle, X } from "lucide-react";
-import { approveTasker, rejectTasker } from "@/lib/admin";
+import { approveTasker, rejectTasker } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
 
 interface PendingTaskersTabProps {
