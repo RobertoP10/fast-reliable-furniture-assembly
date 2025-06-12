@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -27,6 +26,7 @@ export const approveTasker = async (taskerId: string) => {
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
+    .eq('role', 'tasker')
     .select();
 
   if (error) {
@@ -34,8 +34,13 @@ export const approveTasker = async (taskerId: string) => {
     throw error;
   }
 
+  if (!data || data.length === 0) {
+    console.error('❌ [ADMIN] No tasker found with ID:', taskerId);
+    throw new Error('Tasker not found or already approved');
+  }
+
   console.log('✅ [ADMIN] Tasker approved successfully:', data);
-  return data;
+  return data[0];
 };
 
 export const acceptTasker = approveTasker; // Alias for compatibility
@@ -48,7 +53,8 @@ export const rejectTasker = async (taskerId: string) => {
   const { data, error } = await supabase
     .from('users')
     .delete()
-    .eq('id', taskerId);
+    .eq('id', taskerId)
+    .eq('role', 'tasker');
 
   if (error) {
     console.error('❌ [ADMIN] Error rejecting tasker:', error);
