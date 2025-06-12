@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { validatePhoneNumber } from "@/utils/phoneValidation";
+import TermsAcceptance from "./TermsAcceptance";
+import RoleSelection from "./RoleSelection";
 
 interface RegisterFormProps {
   onBack?: () => void;
@@ -14,7 +14,6 @@ interface RegisterFormProps {
 
 export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormProps) {
   const { register } = useAuth();
-  const navigate = useNavigate();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -26,32 +25,6 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const validatePhoneNumber = (phone: string) => {
-    // Remove all spaces, dashes, and parentheses
-    const cleanPhone = phone.replace(/[\s\-\(\)]/g, "");
-    
-    // UK phone number patterns:
-    // - Mobile: 07xxxxxxxxx (11 digits total)
-    // - International mobile: +447xxxxxxxxx or 447xxxxxxxxx
-    // - Landline: 01xxxxxxxxx, 02xxxxxxxxx, 03xxxxxxxxx (11 digits total)
-    // - International landline: +441xxxxxxxxx, +442xxxxxxxxx, +443xxxxxxxxx
-    
-    const ukPatterns = [
-      /^07\d{9}$/, // UK mobile (07xxxxxxxxx)
-      /^\+447\d{9}$/, // International UK mobile (+447xxxxxxxxx)
-      /^447\d{9}$/, // International UK mobile without + (447xxxxxxxxx)
-      /^0[123]\d{9}$/, // UK landline (01/02/03xxxxxxxxx)
-      /^\+44[123]\d{9}$/, // International UK landline (+441/2/3xxxxxxxxx)
-      /^44[123]\d{9}$/, // International UK landline without + (441/2/3xxxxxxxxx)
-    ];
-    
-    // Also accept other international formats (basic validation)
-    const internationalPattern = /^\+\d{7,15}$/; // International format with country code
-    
-    return ukPatterns.some(pattern => pattern.test(cleanPhone)) || 
-           internationalPattern.test(cleanPhone);
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -76,7 +49,6 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
       return;
     }
 
-    // Updated phone number validation
     if (!validatePhoneNumber(form.phone_number)) {
       setError("Please enter a valid phone number (e.g., 07440669983, +447440669983, or international format).");
       setLoading(false);
@@ -158,48 +130,17 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
             disabled={loading}
           />
 
-          <Select 
-            value={form.role} 
-            onValueChange={(value: "client" | "tasker") => setForm({ ...form, role: value })}
+          <RoleSelection
+            value={form.role}
+            onChange={(value) => setForm({ ...form, role: value })}
             disabled={loading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select your role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="client">Client (I need furniture assembled)</SelectItem>
-              <SelectItem value="tasker">Tasker (I provide assembly services)</SelectItem>
-            </SelectContent>
-          </Select>
+          />
 
-          {form.role === "tasker" && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <p className="text-yellow-800 text-sm">
-                <strong>Note:</strong> Tasker accounts require manual approval by an admin before you can start offering services.
-              </p>
-            </div>
-          )}
-
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="terms"
-              checked={form.terms_accepted}
-              onCheckedChange={(checked) => setForm({ ...form, terms_accepted: checked as boolean })}
-              disabled={loading}
-              className="mt-1"
-            />
-            <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
-              I agree to the{" "}
-              <button
-                type="button"
-                onClick={() => navigate("/terms-of-service")}
-                className="text-blue-600 hover:underline font-medium"
-              >
-                Terms of Service
-              </button>
-              {" "}and Privacy Policy
-            </label>
-          </div>
+          <TermsAcceptance
+            checked={form.terms_accepted}
+            onChange={(checked) => setForm({ ...form, terms_accepted: checked })}
+            disabled={loading}
+          />
 
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
