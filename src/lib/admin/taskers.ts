@@ -24,57 +24,30 @@ export const approveTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Starting tasker approval for ID:', taskerId);
   
   try {
-    // First, verify the user exists and is a pending tasker
-    const { data: currentUser, error: fetchError } = await supabase
-      .from('users')
-      .select('id, role, approved, email, full_name')
-      .eq('id', taskerId)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ [ADMIN] Error fetching user:', fetchError);
-      throw new Error(`User not found: ${fetchError.message}`);
-    }
-
-    if (!currentUser) {
-      throw new Error('User not found in database');
-    }
-
-    console.log('📋 [ADMIN] Found user before approval:', currentUser);
-
-    // Validate user state
-    if (currentUser.role !== 'tasker') {
-      throw new Error(`User is not a tasker (role: ${currentUser.role})`);
-    }
-
-    if (currentUser.approved) {
-      throw new Error('Tasker is already approved');
-    }
-
-    // Perform the approval update
-    console.log('🔄 [ADMIN] Updating approval status for tasker:', taskerId);
-    
-    const { data: updatedData, error: updateError } = await supabase
+    // Simple approval - just update the approved field
+    const { data, error } = await supabase
       .from('users')
       .update({ approved: true })
       .eq('id', taskerId)
+      .eq('role', 'tasker')
+      .eq('approved', false)
       .select('id, full_name, email, approved, role');
 
-    if (updateError) {
-      console.error('❌ [ADMIN] Database update error:', updateError);
-      throw new Error(`Failed to update approval status: ${updateError.message}`);
+    if (error) {
+      console.error('❌ [ADMIN] Database error during approval:', error);
+      throw new Error(`Database error: ${error.message}`);
     }
 
-    if (!updatedData || updatedData.length === 0) {
-      console.error('❌ [ADMIN] No rows were updated for user:', taskerId);
-      throw new Error('Failed to update user approval status');
+    if (!data || data.length === 0) {
+      console.error('❌ [ADMIN] No rows updated - user may not exist or already approved');
+      throw new Error('User not found or already approved');
     }
 
-    console.log('✅ [ADMIN] Tasker approved successfully:', updatedData[0]);
-    return updatedData[0];
+    console.log('✅ [ADMIN] Tasker approved successfully:', data[0]);
+    return data[0];
 
   } catch (error) {
-    console.error('❌ [ADMIN] Approval process failed:', error);
+    console.error('❌ [ADMIN] Approval failed:', error);
     throw error;
   }
 };
@@ -85,53 +58,30 @@ export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Starting tasker rejection for ID:', taskerId);
   
   try {
-    // First verify the user exists and is a pending tasker
-    const { data: currentUser, error: fetchError } = await supabase
-      .from('users')
-      .select('id, role, approved, full_name')
-      .eq('id', taskerId)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ [ADMIN] Error fetching user for rejection:', fetchError);
-      throw new Error(`User not found: ${fetchError.message}`);
-    }
-
-    if (!currentUser) {
-      throw new Error('User not found in database');
-    }
-
-    console.log('📋 [ADMIN] Found user before rejection:', currentUser);
-
-    if (currentUser.role !== 'tasker') {
-      throw new Error(`User is not a tasker (role: ${currentUser.role})`);
-    }
-
-    if (currentUser.approved) {
-      throw new Error('Cannot reject an already approved tasker');
-    }
-
-    // Delete the tasker account entirely for rejection
+    // Simple rejection - just delete the user
     const { data, error } = await supabase
       .from('users')
       .delete()
       .eq('id', taskerId)
-      .select();
+      .eq('role', 'tasker')
+      .eq('approved', false)
+      .select('id, full_name, email');
 
     if (error) {
-      console.error('❌ [ADMIN] Error rejecting tasker:', error);
-      throw new Error(`Failed to reject tasker: ${error.message}`);
+      console.error('❌ [ADMIN] Database error during rejection:', error);
+      throw new Error(`Database error: ${error.message}`);
     }
 
     if (!data || data.length === 0) {
-      throw new Error('Tasker not found or already processed');
+      console.error('❌ [ADMIN] No rows deleted - user may not exist or already processed');
+      throw new Error('User not found or already processed');
     }
 
-    console.log('✅ [ADMIN] Tasker account deleted successfully:', data[0]);
+    console.log('✅ [ADMIN] Tasker rejected and deleted successfully:', data[0]);
     return data[0];
 
   } catch (error) {
-    console.error('❌ [ADMIN] Rejection process failed:', error);
+    console.error('❌ [ADMIN] Rejection failed:', error);
     throw error;
   }
 };
