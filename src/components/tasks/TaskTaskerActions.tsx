@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,6 +210,8 @@ export const TaskTaskerActions = ({
         return { text: "Accepted", color: "bg-green-50 text-green-700" };
       case 'rejected':
         return { text: "Not Selected", color: "bg-red-50 text-red-700" };
+      case 'cancelled':
+        return { text: "Task Cancelled", color: "bg-gray-50 text-gray-700" };
       case 'pending':
       default:
         return { text: "Pending", color: "bg-yellow-50 text-yellow-700" };
@@ -227,8 +230,8 @@ export const TaskTaskerActions = ({
     onTaskUpdate?.();
   };
 
-  // Available Tasks tab - show Make Offer button only if no offer submitted yet
-  if (activeTab === "available" && !hasOffered) {
+  // Available Tasks tab - show Make Offer button only if no offer submitted yet and task is not cancelled
+  if (activeTab === "available" && !hasOffered && task.status !== 'cancelled') {
     return (
       <Button onClick={onMakeOffer} className="bg-blue-600 hover:bg-blue-700">
         Make an Offer
@@ -236,7 +239,16 @@ export const TaskTaskerActions = ({
     );
   }
 
-  // My Offers tab - show offer status and details (only pending/rejected offers)
+  // Show cancelled message for available tasks that are cancelled
+  if (activeTab === "available" && task.status === 'cancelled') {
+    return (
+      <div className="bg-gray-50 p-3 rounded-lg">
+        <p className="text-sm text-gray-700">This task has been cancelled by the client</p>
+      </div>
+    );
+  }
+
+  // My Offers tab - show offer status and details (including cancelled offers)
   if (activeTab === "my-tasks" && myOffer) {
     const statusDisplay = getOfferStatusDisplay(myOffer);
     return (
@@ -249,6 +261,11 @@ export const TaskTaskerActions = ({
           )}
           {myOffer.message && (
             <p className="text-sm italic mt-1">"{myOffer.message}"</p>
+          )}
+          {myOffer.status === 'cancelled' && (
+            <p className="text-xs text-gray-600 mt-2">
+              The client cancelled this task. You will be notified when new similar tasks are available.
+            </p>
           )}
         </div>
       </div>

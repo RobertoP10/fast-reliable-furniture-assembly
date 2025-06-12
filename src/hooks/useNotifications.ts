@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, type Notification } from "@/lib/notifications";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useNotifications = () => {
   const { user } = useAuth();
@@ -34,6 +35,10 @@ export const useNotifications = () => {
     try {
       await markAllNotificationsAsRead(user.id);
       setUnreadCount(0);
+      // Update local state to mark all as read
+      setNotifications(prev => 
+        prev.map(notification => ({ ...notification, is_read: true }))
+      );
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
@@ -43,9 +48,31 @@ export const useNotifications = () => {
     if (user?.id) {
       loadNotifications();
       
-      // Refresh every 30 seconds
+      // Set up real-time subscription for new notifications
+      const channel = supabase
+        .channel('notifications-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            // Refresh notifications when new ones arrive
+            loadNotifications();
+          }
+        )
+        .subscribe();
+      
+      // Refresh every 30 seconds as fallback
       const interval = setInterval(loadNotifications, 30000);
-      return () => clearInterval(interval);
+      
+      return () => {
+        supabase.removeChannel(channel);
+        clearInterval(interval);
+      };
     }
   }, [user?.id]);
 
