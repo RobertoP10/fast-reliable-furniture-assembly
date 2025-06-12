@@ -8,6 +8,9 @@ import { TaskBudget } from "./form/TaskBudget";
 import { TaskLocation } from "./form/TaskLocation";
 import { TaskSchedule } from "./form/TaskSchedule";
 import { TaskPayment } from "./form/TaskPayment";
+import type { Database } from '@/integrations/supabase/types';
+
+type PaymentMethod = Database['public']['Enums']['payment_method'];
 
 const CreateTaskForm = () => {
   const { formData, isSubmitting, handleSubmit, updateFormData } = useTaskForm();
@@ -60,8 +63,10 @@ const CreateTaskForm = () => {
           />
 
           <TaskPayment
-            paymentMethod={formData.paymentMethod}
-            onUpdate={updateFormData}
+            paymentMethod={formData.paymentMethod as PaymentMethod}
+            onUpdate={(updates) => updateFormData({
+              paymentMethod: updates.paymentMethod
+            })}
           />
 
           <Button 
