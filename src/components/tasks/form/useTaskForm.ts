@@ -49,7 +49,7 @@ export const useTaskForm = () => {
         return;
       }
 
-      // Determine if task needs location review - fixed logic
+      // Determine if task needs location review
       const isOtherLocation = formData.location === "Other (not listed)";
       const isOutsideOperationalArea = !isLocationInOperationalArea(formData.location);
       const needsLocationReview = isOtherLocation || isOutsideOperationalArea;
@@ -59,7 +59,8 @@ export const useTaskForm = () => {
         isOtherLocation,
         isOutsideOperationalArea,
         isInOperationalArea: isLocationInOperationalArea(formData.location),
-        needsLocationReview
+        needsLocationReview,
+        westMidlandsTowns: westMidlandsTowns.slice(0, 5) // Log first 5 for verification
       });
 
       const taskData = {

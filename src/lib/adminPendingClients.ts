@@ -23,6 +23,7 @@ export const fetchPendingClients = async () => {
   }
 
   console.log('✅ [ADMIN] Fetched pending client tasks:', data?.length || 0);
+  console.log('🔍 [ADMIN] Sample pending tasks:', data?.slice(0, 3));
   return data || [];
 };
 
