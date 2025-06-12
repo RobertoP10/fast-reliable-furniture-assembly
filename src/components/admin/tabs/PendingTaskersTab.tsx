@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, CheckCircle, X } from "lucide-react";
-import { acceptTasker, rejectTasker } from "@/lib/admin";
+import { approveTasker, rejectTasker } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
 
 interface PendingTaskersTabProps {
@@ -18,9 +18,12 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
 
   const handleApproveTasker = async (taskerId: string) => {
     try {
-      console.log('✅ [ADMIN] Approving tasker:', taskerId);
-      await acceptTasker(taskerId);
+      console.log('✅ [ADMIN] Starting tasker approval for:', taskerId);
+      await approveTasker(taskerId);
+      
+      // Remove from pending list immediately
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      
       toast({
         title: "Tasker Approved",
         description: "The tasker has been successfully approved and can now start bidding on tasks.",
@@ -37,9 +40,12 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
 
   const handleRejectTasker = async (taskerId: string) => {
     try {
-      console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
+      console.log('❌ [ADMIN] Starting tasker rejection for:', taskerId);
       await rejectTasker(taskerId);
+      
+      // Remove from pending list immediately
       setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      
       toast({
         title: "Tasker Rejected",
         description: "The tasker application has been rejected and the account has been removed.",

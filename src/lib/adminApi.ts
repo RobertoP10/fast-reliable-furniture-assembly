@@ -48,10 +48,10 @@ export const acceptTasker = approveTasker; // Alias for compatibility
 export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
   
-  // Mark as rejected instead of deleting
+  // Delete the tasker account entirely for rejection
   const { data, error } = await supabase
     .from('users')
-    .update({ approved: false })
+    .delete()
     .eq('id', taskerId)
     .eq('role', 'tasker')
     .select();
@@ -61,7 +61,7 @@ export const rejectTasker = async (taskerId: string) => {
     throw error;
   }
 
-  console.log('✅ [ADMIN] Tasker marked as rejected');
+  console.log('✅ [ADMIN] Tasker account deleted successfully');
   return data;
 };
 

@@ -34,7 +34,7 @@ export const approveClientTask = async (taskId: string) => {
     .from('task_requests')
     .update({ 
       needs_location_review: false,
-      status: 'pending'
+      status: 'pending' // Make it visible to taskers
     })
     .eq('id', taskId)
     .select();

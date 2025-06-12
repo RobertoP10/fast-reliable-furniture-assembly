@@ -76,7 +76,8 @@ export const useTaskForm = () => {
         required_date: formData.requiredDate || null,
         required_time: formData.requiredTime || null,
         client_id: user.id,
-        needs_location_review: needsLocationReview
+        needs_location_review: needsLocationReview,
+        status: needsLocationReview ? 'pending' : 'pending' // Keep status as pending but flag for review
       };
 
       console.log('📝 [TASK CREATION] Submitting task with data:', taskData);
