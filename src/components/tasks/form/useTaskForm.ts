@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -48,7 +49,7 @@ export const useTaskForm = () => {
         return;
       }
 
-      // Determine if task needs location review - this is the key fix
+      // Determine if task needs location review - fixed logic
       const isOtherLocation = formData.location === "Other (not listed)";
       const isOutsideOperationalArea = !isLocationInOperationalArea(formData.location);
       const needsLocationReview = isOtherLocation || isOutsideOperationalArea;

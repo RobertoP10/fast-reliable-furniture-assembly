@@ -14,6 +14,7 @@ export const fetchPendingClients = async () => {
       )
     `)
     .eq('needs_location_review', true)
+    .neq('status', 'cancelled')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -30,7 +31,10 @@ export const approveClientTask = async (taskId: string) => {
   
   const { data, error } = await supabase
     .from('task_requests')
-    .update({ needs_location_review: false })
+    .update({ 
+      needs_location_review: false,
+      status: 'pending'
+    })
     .eq('id', taskId)
     .select();
 
@@ -46,13 +50,14 @@ export const approveClientTask = async (taskId: string) => {
 export const rejectClientTask = async (taskId: string, rejectionReason?: string) => {
   console.log('❌ [ADMIN] Rejecting client task:', taskId);
   
-  // For now, we'll set the task status to 'cancelled' with a reason
+  // Set the task status to 'cancelled' with a reason
   const { data, error } = await supabase
     .from('task_requests')
     .update({ 
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
-      cancellation_reason: rejectionReason || 'Task rejected due to location outside service area'
+      cancellation_reason: rejectionReason || 'Task rejected due to location outside service area',
+      needs_location_review: false
     })
     .eq('id', taskId)
     .select();

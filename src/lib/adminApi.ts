@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -23,31 +22,12 @@ export const fetchPendingTaskers = async () => {
 export const approveTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker:', taskerId);
   
-  // First check if the tasker exists and is pending
-  const { data: existingTasker, error: checkError } = await supabase
-    .from('users')
-    .select('id, role, approved')
-    .eq('id', taskerId)
-    .eq('role', 'tasker')
-    .single();
-
-  if (checkError || !existingTasker) {
-    console.error('❌ [ADMIN] Tasker not found:', checkError);
-    throw new Error('Tasker not found');
-  }
-
-  if (existingTasker.approved) {
-    console.error('❌ [ADMIN] Tasker already approved:', taskerId);
-    throw new Error('Tasker is already approved');
-  }
-
-  // Update the tasker to approved
+  // Simplified approval - just update the tasker to approved
   const { data, error } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
     .eq('role', 'tasker')
-    .eq('approved', false)
     .select();
 
   if (error) {
