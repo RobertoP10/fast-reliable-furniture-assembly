@@ -114,7 +114,7 @@ export const confirmTransaction = async (transactionId: string) => {
   const { data, error } = await supabase
     .from('transactions')
     .update({ 
-      status: 'paid',
+      status: 'confirmed',
       admin_confirmed_at: new Date().toISOString()
     })
     .eq('id', transactionId)
