@@ -12,6 +12,7 @@ import TaskerDashboard from "./pages/TaskerDashboard";
 import TaskerPending from "./pages/TaskerPending";
 import AdminDashboard from "./pages/AdminDashboard";
 import TermsOfService from "./pages/TermsOfService";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const AppRoutes = () => {
       <Route path="/tasker-pending" element={<TaskerPending />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
+      <Route path="/contact" element={<Contact />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
