@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { TaskFormData } from "./taskFormConstants";
-import { westMidlandsTowns } from "./taskFormConstants";
+import type { TaskFormData, westMidlandsTowns } from "./taskFormConstants";
 
 export const useTaskForm = () => {
   const [formData, setFormData] = useState<TaskFormData>({
@@ -49,11 +48,15 @@ export const useTaskForm = () => {
         return;
       }
 
-      // Determine if task needs location review
-      const needsLocationReview = formData.location === "Other (not listed)" || !isLocationInOperationalArea(formData.location);
+      // Determine if task needs location review - this is the key fix
+      const isOtherLocation = formData.location === "Other (not listed)";
+      const isOutsideOperationalArea = !isLocationInOperationalArea(formData.location);
+      const needsLocationReview = isOtherLocation || isOutsideOperationalArea;
       
       console.log('🔍 [TASK CREATION] Location check:', {
         selectedLocation: formData.location,
+        isOtherLocation,
+        isOutsideOperationalArea,
         isInOperationalArea: isLocationInOperationalArea(formData.location),
         needsLocationReview
       });
@@ -64,7 +67,7 @@ export const useTaskForm = () => {
         category: formData.category,
         subcategory: formData.subcategory,
         location: formData.location,
-        manual_address: formData.location === "Other (not listed)" ? formData.manualAddress : null,
+        manual_address: isOtherLocation ? formData.manualAddress : null,
         price_range_min: formData.priceRangeMin,
         price_range_max: formData.priceRangeMax,
         payment_method: formData.paymentMethod,
