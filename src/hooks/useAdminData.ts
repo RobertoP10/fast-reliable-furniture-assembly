@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   fetchPendingTaskers, 
-  fetchPendingClients,
   fetchAllUsers, 
   fetchPendingTransactions, 
   fetchAllTransactions,
@@ -22,7 +21,6 @@ export const useAdminData = (
 ) => {
   const { toast } = useToast();
   const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
-  const [pendingClients, setPendingClients] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -53,10 +51,6 @@ export const useAdminData = (
         const taskers = await fetchPendingTaskers();
         setPendingTaskers(taskers);
         console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
-      } else if (activeTab === 'pending-clients') {
-        const clients = await fetchPendingClients();
-        setPendingClients(clients);
-        console.log('✅ [ADMIN] Loaded pending client tasks:', clients.length);
       } else if (activeTab === 'users') {
         const users = await fetchAllUsers();
         setAllUsers(users);
@@ -109,8 +103,6 @@ export const useAdminData = (
   return {
     pendingTaskers,
     setPendingTaskers,
-    pendingClients,
-    setPendingClients,
     allUsers,
     pendingTransactions,
     setPendingTransactions,

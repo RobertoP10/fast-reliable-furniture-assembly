@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, CheckCircle, X } from "lucide-react";
-import { approveTasker, rejectTasker } from "@/lib/admin";
+import { acceptTasker, rejectTasker } from "@/lib/admin";
 import { useToast } from "@/hooks/use-toast";
 
 interface PendingTaskersTabProps {
@@ -17,74 +17,38 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const { toast } = useToast();
 
   const handleApproveTasker = async (taskerId: string) => {
-    console.log('✅ [ADMIN] UI: Starting tasker approval for:', taskerId);
-    
-    const taskerToApprove = pendingTaskers.find(t => t.id === taskerId);
-    if (!taskerToApprove) {
+    try {
+      console.log('✅ [ADMIN] Approving tasker:', taskerId);
+      await acceptTasker(taskerId);
+      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      toast({
+        title: "Tasker Approved",
+        description: "The tasker has been successfully approved and can now start bidding on tasks.",
+      });
+    } catch (error) {
+      console.error('❌ [ADMIN] Error approving tasker:', error);
       toast({
         title: "Error",
-        description: "Tasker not found in the current list.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      console.log('🔄 [ADMIN] UI: Calling approveTasker function...');
-      const result = await approveTasker(taskerId);
-      
-      // Remove from pending list immediately on success
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
-      
-      toast({
-        title: "Success",
-        description: `${taskerToApprove.full_name} has been approved successfully.`,
-      });
-
-      console.log('✅ [ADMIN] UI: Approval successful:', result);
-
-    } catch (error) {
-      console.error('❌ [ADMIN] UI: Approval error:', error);
-      toast({
-        title: "Approval Failed",
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        description: `Failed to approve tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
   };
 
   const handleRejectTasker = async (taskerId: string) => {
-    console.log('❌ [ADMIN] UI: Starting tasker rejection for:', taskerId);
-    
-    const taskerToReject = pendingTaskers.find(t => t.id === taskerId);
-    if (!taskerToReject) {
+    try {
+      console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
+      await rejectTasker(taskerId);
+      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      toast({
+        title: "Tasker Rejected",
+        description: "The tasker application has been rejected and the account has been removed.",
+      });
+    } catch (error) {
+      console.error('❌ [ADMIN] Error rejecting tasker:', error);
       toast({
         title: "Error",
-        description: "Tasker not found in the current list.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      console.log('🔄 [ADMIN] UI: Calling rejectTasker function...');
-      const result = await rejectTasker(taskerId);
-      
-      // Remove from pending list immediately on success
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
-      
-      toast({
-        title: "Success",
-        description: `${taskerToReject.full_name} has been rejected and removed from the system.`,
-      });
-
-      console.log('✅ [ADMIN] UI: Rejection successful:', result);
-
-    } catch (error) {
-      console.error('❌ [ADMIN] UI: Rejection error:', error);
-      toast({
-        title: "Rejection Failed",
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        description: `Failed to reject tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }

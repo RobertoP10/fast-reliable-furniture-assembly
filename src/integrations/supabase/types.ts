@@ -383,8 +383,6 @@ export type Database = {
           description: string
           id: string
           location: string
-          manual_address: string | null
-          needs_location_review: boolean | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           price_range_max: number
           price_range_min: number
@@ -407,8 +405,6 @@ export type Database = {
           description: string
           id?: string
           location: string
-          manual_address?: string | null
-          needs_location_review?: boolean | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           price_range_max: number
           price_range_min: number
@@ -431,8 +427,6 @@ export type Database = {
           description?: string
           id?: string
           location?: string
-          manual_address?: string | null
-          needs_location_review?: boolean | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           price_range_max?: number
           price_range_min?: number

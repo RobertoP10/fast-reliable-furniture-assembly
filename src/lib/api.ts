@@ -29,18 +29,7 @@ export {
   fetchPendingTaskers,
   fetchPendingTransactions,
   acceptTasker,
-  rejectTasker,
-  confirmTransaction,
-  getAdminStats,
-  fetchAllTransactions,
-  fetchTransactionsByDateRange,
-  fetchTransactionsByTasker,
-  fetchTransactionsByClient,
-  getPlatformAnalytics,
-  // Pending clients functions
-  fetchPendingClients,
-  approveClientTask,
-  rejectClientTask
+  rejectTasker
 } from './admin';
 
 // 💬 Chat

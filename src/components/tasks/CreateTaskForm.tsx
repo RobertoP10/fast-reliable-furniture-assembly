@@ -8,9 +8,6 @@ import { TaskBudget } from "./form/TaskBudget";
 import { TaskLocation } from "./form/TaskLocation";
 import { TaskSchedule } from "./form/TaskSchedule";
 import { TaskPayment } from "./form/TaskPayment";
-import type { Database } from '@/integrations/supabase/types';
-
-type PaymentMethod = Database['public']['Enums']['payment_method'];
 
 const CreateTaskForm = () => {
   const { formData, isSubmitting, handleSubmit, updateFormData } = useTaskForm();
@@ -38,22 +35,14 @@ const CreateTaskForm = () => {
           />
 
           <TaskBudget
-            minBudget={formData.priceRangeMin.toString()}
-            maxBudget={formData.priceRangeMax.toString()}
-            onUpdate={(updates) => updateFormData({
-              priceRangeMin: updates.minBudget ? Number(updates.minBudget) : formData.priceRangeMin,
-              priceRangeMax: updates.maxBudget ? Number(updates.maxBudget) : formData.priceRangeMax
-            })}
+            minBudget={formData.minBudget}
+            maxBudget={formData.maxBudget}
+            onUpdate={updateFormData}
           />
 
           <TaskLocation
             address={formData.address}
-            manualAddress={formData.manualAddress}
-            onUpdate={(updates) => updateFormData({
-              address: updates.address ?? formData.address,
-              manualAddress: updates.manualAddress ?? formData.manualAddress,
-              needsLocationReview: updates.needsLocationReview ?? formData.needsLocationReview
-            })}
+            onUpdate={updateFormData}
           />
 
           <TaskSchedule
@@ -63,10 +52,8 @@ const CreateTaskForm = () => {
           />
 
           <TaskPayment
-            paymentMethod={formData.paymentMethod as PaymentMethod}
-            onUpdate={(updates) => updateFormData({
-              paymentMethod: updates.paymentMethod
-            })}
+            paymentMethod={formData.paymentMethod}
+            onUpdate={updateFormData}
           />
 
           <Button 

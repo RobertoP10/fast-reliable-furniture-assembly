@@ -4,14 +4,13 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { PendingTaskersTab } from "@/components/admin/tabs/PendingTaskersTab";
-import { PendingClientsTab } from "@/components/admin/tabs/PendingClientsTab";
 import { UsersTab } from "@/components/admin/tabs/UsersTab";
 import { PendingTransactionsTab } from "@/components/admin/tabs/PendingTransactionsTab";
 import { TransactionsTab } from "@/components/admin/tabs/TransactionsTab";
 import { AnalyticsTab } from "@/components/admin/tabs/AnalyticsTab";
 import { useAdminData } from "@/hooks/useAdminData";
 
-type ActiveTab = 'pending-taskers' | 'pending-clients' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
+type ActiveTab = 'pending-taskers' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('pending-taskers');
@@ -24,8 +23,6 @@ const AdminDashboard = () => {
   const {
     pendingTaskers,
     setPendingTaskers,
-    pendingClients,
-    setPendingClients,
     allUsers,
     pendingTransactions,
     setPendingTransactions,
@@ -82,16 +79,6 @@ const AdminDashboard = () => {
                 setPendingTaskers={setPendingTaskers}
                 loading={loading}
                 formatDate={formatDate}
-              />
-            )}
-
-            {activeTab === 'pending-clients' && (
-              <PendingClientsTab
-                pendingClients={pendingClients}
-                setPendingClients={setPendingClients}
-                loading={loading}
-                formatDate={formatDate}
-                formatCurrency={formatCurrency}
               />
             )}
 

@@ -2,9 +2,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye, Clock, DollarSign, BarChart3, RefreshCw, MapPin } from "lucide-react";
+import { Users, Eye, Clock, DollarSign, BarChart3, RefreshCw } from "lucide-react";
 
-type ActiveTab = 'pending-taskers' | 'pending-clients' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
+type ActiveTab = 'pending-taskers' | 'users' | 'pending-transactions' | 'transactions' | 'analytics';
 
 interface AdminSidebarProps {
   activeTab: ActiveTab;
@@ -38,19 +38,6 @@ export const AdminSidebar = ({ activeTab, setActiveTab, stats, loading, onRefres
             {stats.pendingTaskers > 0 && (
               <Badge className="ml-auto bg-yellow-100 text-yellow-700">
                 {stats.pendingTaskers}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            variant={activeTab === 'pending-clients' ? 'default' : 'ghost'}
-            className="w-full justify-start"
-            onClick={() => setActiveTab('pending-clients')}
-          >
-            <MapPin className="h-4 w-4 mr-2" />
-            Pending Clients
-            {stats.pendingClients > 0 && (
-              <Badge className="ml-auto bg-orange-100 text-orange-700">
-                {stats.pendingClients}
               </Badge>
             )}
           </Button>
