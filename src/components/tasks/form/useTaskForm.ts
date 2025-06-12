@@ -1,79 +1,94 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import type { TaskFormData } from "./taskFormConstants";
+import { useAuth } from "@/contexts/AuthContext";
+import { createTask } from "@/lib/tasks";
+import { useToast } from "@/hooks/use-toast";
 
-export const useTaskForm = () => {
+export interface TaskFormData {
+  title: string;
+  description: string;
+  category: string;
+  subcategory: string;
+  priceRangeMin: number;
+  priceRangeMax: number;
+  address: string;
+  manualAddress: string;
+  paymentMethod: string;
+  requiredDate: string;
+  requiredTime: string;
+  needsLocationReview?: boolean;
+}
+
+export const useTaskForm = (onTaskCreated?: () => void) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState<TaskFormData>({
     title: "",
     description: "",
     category: "",
     subcategory: "",
-    location: "",
-    manualAddress: "",
     priceRangeMin: 0,
     priceRangeMax: 0,
-    paymentMethod: "cash",
+    address: "",
+    manualAddress: "",
+    paymentMethod: "",
     requiredDate: "",
     requiredTime: "",
+    needsLocationReview: false,
   });
 
-  const [loading, setLoading] = useState(false);
-
   const updateFormData = (updates: Partial<TaskFormData>) => {
-    setFormData(prev => ({
-      ...prev,
-      ...updates
-    }));
+    setFormData(prev => ({ ...prev, ...updates }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitTask();
-  };
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a task",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const submitTask = async () => {
+    setIsSubmitting(true);
+
     try {
-      setLoading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("You must be logged in to create a task");
-        return;
-      }
-
+      console.log('🚀 [TASK] Creating task with data:', formData);
+      
       const taskData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
         subcategory: formData.subcategory,
-        location: formData.location,
-        manual_address: formData.location === "Other (not listed)" ? formData.manualAddress : null,
         price_range_min: formData.priceRangeMin,
         price_range_max: formData.priceRangeMax,
-        payment_method: formData.paymentMethod,
+        location: formData.address,
+        manual_address: formData.address === "Other (not listed)" ? formData.manualAddress : null,
+        payment_method: formData.paymentMethod as any,
         required_date: formData.requiredDate || null,
         required_time: formData.requiredTime || null,
         client_id: user.id,
-        status: 'pending' as const
+        needs_location_review: formData.address === "Other (not listed)",
       };
 
-      console.log('📝 [TASK CREATION] Submitting task with data:', taskData);
-
-      const { data, error } = await supabase
-        .from('task_requests')
-        .insert(taskData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ [TASK CREATION] Error creating task:', error);
-        throw error;
+      const newTask = await createTask(taskData);
+      
+      if (formData.address === "Other (not listed)") {
+        toast({
+          title: "Task Created Successfully!",
+          description: "Your task has been submitted for location review. It will be visible to taskers once approved by our team.",
+        });
+      } else {
+        toast({
+          title: "Task Created Successfully!",
+          description: "Your task is now live and taskers can start making offers.",
+        });
       }
-
-      console.log('✅ [TASK CREATION] Task created successfully:', data);
-      toast.success("Task created successfully!");
 
       // Reset form
       setFormData({
@@ -81,31 +96,33 @@ export const useTaskForm = () => {
         description: "",
         category: "",
         subcategory: "",
-        location: "",
-        manualAddress: "",
         priceRangeMin: 0,
         priceRangeMax: 0,
-        paymentMethod: "cash",
+        address: "",
+        manualAddress: "",
+        paymentMethod: "",
         requiredDate: "",
         requiredTime: "",
+        needsLocationReview: false,
       });
 
-      return data;
+      onTaskCreated?.();
     } catch (error) {
-      console.error('❌ [TASK CREATION] Error:', error);
-      toast.error("Failed to create task. Please try again.");
-      throw error;
+      console.error('❌ [TASK] Error creating task:', error);
+      toast({
+        title: "Error",
+        description: `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return {
     formData,
-    loading,
-    isSubmitting: loading,
     updateFormData,
-    submitTask,
-    handleSubmit
+    handleSubmit,
+    isSubmitting,
   };
 };

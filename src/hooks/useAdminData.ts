@@ -56,7 +56,7 @@ export const useAdminData = (
       } else if (activeTab === 'pending-clients') {
         const clients = await fetchPendingClients();
         setPendingClients(clients);
-        console.log('✅ [ADMIN] Loaded pending clients:', clients.length);
+        console.log('✅ [ADMIN] Loaded pending client tasks:', clients.length);
       } else if (activeTab === 'users') {
         const users = await fetchAllUsers();
         setAllUsers(users);

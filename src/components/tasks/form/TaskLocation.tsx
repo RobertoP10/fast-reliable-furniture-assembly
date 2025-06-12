@@ -7,16 +7,23 @@ import { locations } from "./taskFormConstants";
 interface TaskLocationProps {
   address: string;
   manualAddress: string;
-  onUpdate: (updates: { address?: string; manualAddress?: string }) => void;
+  onUpdate: (updates: { address?: string; manualAddress?: string; needsLocationReview?: boolean }) => void;
 }
 
 export const TaskLocation = ({ address, manualAddress, onUpdate }: TaskLocationProps) => {
   const isOtherSelected = address === "Other (not listed)";
 
+  const handleLocationChange = (value: string) => {
+    onUpdate({ 
+      address: value, 
+      needsLocationReview: value === "Other (not listed)"
+    });
+  };
+
   return (
     <div className="space-y-3">
       <Label>Location</Label>
-      <Select value={address} onValueChange={(value) => onUpdate({ address: value })}>
+      <Select value={address} onValueChange={handleLocationChange}>
         <SelectTrigger className="mt-1">
           <SelectValue placeholder="Select your location" />
         </SelectTrigger>

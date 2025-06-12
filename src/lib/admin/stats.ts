@@ -24,14 +24,19 @@ export const getAdminStats = async () => {
     .select('id')
     .eq('status', 'pending');
 
-  if (pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError) {
+  const { data: pendingClientTasks, error: pendingClientTasksError } = await supabase
+    .from('task_requests')
+    .select('id')
+    .eq('needs_location_review', true);
+
+  if (pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError || pendingClientTasksError) {
     console.error('❌ [ADMIN] Error fetching admin stats');
-    throw pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError;
+    throw pendingTaskersError || allUsersError || activeUsersError || pendingTransactionsError || pendingClientTasksError;
   }
 
   const stats = {
     pendingTaskers: pendingTaskers?.length || 0,
-    pendingClients: 0, // Remove pending clients functionality for now
+    pendingClients: pendingClientTasks?.length || 0,
     totalUsers: allUsers?.length || 0,
     activeUsers: activeUsers?.length || 0,
     pendingTransactions: pendingTransactions?.length || 0
