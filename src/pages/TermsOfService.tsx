@@ -35,105 +35,115 @@ const TermsOfService = () => {
       {/* Content */}
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-4xl font-bold text-blue-900 mb-8 text-center">Terms of Service</h1>
-          <p className="text-gray-600 mb-8 text-center">Last updated: {new Date().toLocaleDateString()}</p>
+          <h1 className="text-4xl font-bold text-blue-900 mb-8 text-center">MGSDEAL Terms of Service</h1>
+          <p className="text-gray-600 mb-8 text-center">Last updated: 12 June 2025</p>
 
           <div className="prose prose-lg max-w-none space-y-6">
             <section>
               <h2 className="text-2xl font-semibold text-blue-800 mb-4">1. Acceptance of Terms</h2>
               <p className="text-gray-700 leading-relaxed">
-                By accessing and using MGSDEAL, you accept and agree to be bound by the terms and provision of this agreement. 
-                If you do not agree to abide by the above, please do not use this service.
+                By accessing and using MGSDEAL, you accept and agree to be bound by the terms and 
+                provisions of this agreement. If you do not agree to abide by the terms, please do not use this 
+                service.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-blue-800 mb-4">2. Service Description</h2>
               <p className="text-gray-700 leading-relaxed">
-                MGSDEAL is a marketplace platform that connects clients who need furniture assembly services with verified taskers 
-                who provide professional assembly services. We facilitate the connection but are not directly involved in the 
-                actual service provision.
+                MGSDEAL is a UK-based marketplace platform that connects clients with taskers for furniture 
+                assembly and related services. The platform facilitates this connection but is not involved in the 
+                actual service delivery.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-blue-800 mb-4">3. User Responsibilities</h2>
               <div className="space-y-3">
-                <h3 className="text-lg font-medium text-blue-700">For Clients:</h3>
+                <h3 className="text-lg font-medium text-blue-700">Clients:</h3>
                 <ul className="list-disc pl-6 text-gray-700 space-y-2">
-                  <li>Provide accurate and complete task descriptions</li>
-                  <li>Make payment as agreed upon task completion</li>
-                  <li>Treat taskers with respect and professionalism</li>
-                  <li>Ensure safe working conditions for taskers</li>
+                  <li>Provide clear and accurate task details</li>
+                  <li>Ensure safe and respectful working environments</li>
+                  <li>Pay the agreed amount after task completion</li>
                 </ul>
 
-                <h3 className="text-lg font-medium text-blue-700 mt-6">For Taskers:</h3>
+                <h3 className="text-lg font-medium text-blue-700 mt-6">Taskers:</h3>
                 <ul className="list-disc pl-6 text-gray-700 space-y-2">
-                  <li>Provide services professionally and to the best of your ability</li>
-                  <li>Arrive on time and communicate any delays</li>
-                  <li>Complete tasks as described and agreed upon</li>
-                  <li>Maintain appropriate insurance and licenses where required</li>
+                  <li>Deliver services professionally and reliably</li>
+                  <li>Arrive on time and communicate delays</li>
+                  <li>Comply with all relevant insurance and license requirements</li>
                 </ul>
               </div>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">4. Payment and Fees</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">4. Payments and Commission</h2>
               <p className="text-gray-700 leading-relaxed">
-                MGSDEAL charges a service fee for facilitating connections between clients and taskers. Payment terms 
-                and fee structures are clearly displayed during the booking process. All payments are processed securely 
-                through our platform.
+                Clients pay only upon task completion. Taskers are charged a 20% commission from the 
+                accepted task value. All payments are processed securely. No hidden fees apply.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">5. Account Approval</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">5. Platform Guarantee</h2>
               <p className="text-gray-700 leading-relaxed">
-                Tasker accounts require manual approval before services can be offered. This verification process helps 
-                ensure service quality and platform safety. Client accounts are automatically approved upon registration.
+                While Taskers are independent, MGSDEAL guarantees up to £10,000 in compensation for any 
+                damage caused to Clients due to a Tasker's actions. The platform may permanently suspend 
+                any Tasker violating terms or causing damages.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">6. Privacy and Data Protection</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">6. Independent Contractor Clause</h2>
               <p className="text-gray-700 leading-relaxed">
-                We are committed to protecting your privacy. Personal information collected is used solely for platform 
-                operations and improving our services. We do not sell or share personal data with third parties except 
-                as required for service delivery.
+                Taskers are not employees of MGSDEAL. They act as independent contractors and are fully 
+                responsible for their taxes, insurances, and compliance. No employment relationship is 
+                established through use of this platform.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">7. Limitation of Liability</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">7. Disputes and Reviews</h2>
               <p className="text-gray-700 leading-relaxed">
-                MGSDEAL serves as a platform connecting clients and taskers. We are not liable for the quality of services 
-                provided, damages that may occur during service delivery, or disputes between users. Users engage with each 
-                other at their own risk.
+                Any disputes should be reported immediately via platform support. Reviews are visible to both 
+                parties after task completion and cannot be edited after submission.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">8. Termination</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">8. Data Protection and Privacy</h2>
               <p className="text-gray-700 leading-relaxed">
-                We reserve the right to terminate or suspend accounts that violate these terms or engage in inappropriate 
-                behavior on the platform. Users may also terminate their accounts at any time by contacting support.
+                MGSDEAL processes user data in accordance with the UK GDPR. Details can be found in our 
+                Privacy Policy available at /privacy-policy.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">9. Changes to Terms</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">9. Account Termination</h2>
               <p className="text-gray-700 leading-relaxed">
-                These terms may be updated periodically. Users will be notified of significant changes via email or 
-                platform notifications. Continued use of the platform after changes constitutes acceptance of the new terms.
+                Users may terminate their account at any time. MGSDEAL reserves the right to suspend or 
+                terminate accounts in breach of these terms.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">10. Contact Information</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">10. Changes to Terms</h2>
               <p className="text-gray-700 leading-relaxed">
-                For questions about these Terms of Service, please contact us through our support channels available 
-                on the platform.
+                These terms may change from time to time. Users will be notified via email or platform banner. 
+                Continued use implies acceptance of updated terms.
               </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">11. Contact</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                For any questions regarding these Terms, contact:
+              </p>
+              <ul className="list-disc pl-6 text-gray-700 space-y-2">
+                <li>client@mgsdeal.com</li>
+                <li>tasker@mgsdeal.com</li>
+                <li>tehnic@mgsdeal.com</li>
+              </ul>
             </section>
           </div>
 
