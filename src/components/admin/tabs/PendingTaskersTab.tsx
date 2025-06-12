@@ -19,14 +19,34 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const handleApproveTasker = async (taskerId: string) => {
     try {
       console.log('✅ [ADMIN] Starting tasker approval for:', taskerId);
+      console.log('📋 [ADMIN] Current pending taskers:', pendingTaskers.length);
+      
+      // Find the tasker in the current list
+      const taskerToApprove = pendingTaskers.find(t => t.id === taskerId);
+      console.log('📋 [ADMIN] Tasker to approve:', taskerToApprove);
+      
+      if (!taskerToApprove) {
+        console.error('❌ [ADMIN] Tasker not found in current list:', taskerId);
+        toast({
+          title: "Error",
+          description: "Tasker not found in the current list. Please refresh and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await approveTasker(taskerId);
       
-      // Remove from pending list immediately
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      // Remove from pending list immediately for instant UI feedback
+      setPendingTaskers(prev => {
+        const updated = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('✅ [ADMIN] Updated pending list length:', updated.length);
+        return updated;
+      });
       
       toast({
         title: "Tasker Approved",
-        description: "The tasker has been successfully approved and can now start bidding on tasks.",
+        description: `${taskerToApprove.full_name} has been successfully approved and can now start bidding on tasks.`,
       });
     } catch (error) {
       console.error('❌ [ADMIN] Error approving tasker:', error);
@@ -41,14 +61,33 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const handleRejectTasker = async (taskerId: string) => {
     try {
       console.log('❌ [ADMIN] Starting tasker rejection for:', taskerId);
+      
+      // Find the tasker in the current list
+      const taskerToReject = pendingTaskers.find(t => t.id === taskerId);
+      console.log('📋 [ADMIN] Tasker to reject:', taskerToReject);
+      
+      if (!taskerToReject) {
+        console.error('❌ [ADMIN] Tasker not found in current list:', taskerId);
+        toast({
+          title: "Error",
+          description: "Tasker not found in the current list. Please refresh and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await rejectTasker(taskerId);
       
-      // Remove from pending list immediately
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      // Remove from pending list immediately for instant UI feedback
+      setPendingTaskers(prev => {
+        const updated = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('✅ [ADMIN] Updated pending list length after rejection:', updated.length);
+        return updated;
+      });
       
       toast({
         title: "Tasker Rejected",
-        description: "The tasker application has been rejected and the account has been removed.",
+        description: `${taskerToReject.full_name}'s application has been rejected and the account has been removed.`,
       });
     } catch (error) {
       console.error('❌ [ADMIN] Error rejecting tasker:', error);

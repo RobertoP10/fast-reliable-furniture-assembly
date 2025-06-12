@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -22,22 +23,52 @@ export const fetchPendingTaskers = async () => {
 export const approveTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker:', taskerId);
   
+  // First, let's verify the user exists and get their current state
+  const { data: currentUser, error: fetchError } = await supabase
+    .from('users')
+    .select('id, role, approved, email, full_name')
+    .eq('id', taskerId)
+    .single();
+
+  if (fetchError) {
+    console.error('❌ [ADMIN] Error fetching user:', fetchError);
+    throw new Error(`User not found: ${fetchError.message}`);
+  }
+
+  if (!currentUser) {
+    console.error('❌ [ADMIN] User not found:', taskerId);
+    throw new Error('User not found');
+  }
+
+  console.log('📋 [ADMIN] Current user state:', currentUser);
+
+  // Check if user is a tasker
+  if (currentUser.role !== 'tasker') {
+    console.error('❌ [ADMIN] User is not a tasker:', currentUser.role);
+    throw new Error('User is not a tasker');
+  }
+
+  // Check if already approved
+  if (currentUser.approved) {
+    console.error('❌ [ADMIN] Tasker already approved:', taskerId);
+    throw new Error('Tasker is already approved');
+  }
+
+  // Now update the approval status
   const { data, error } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
-    .eq('role', 'tasker')
-    .eq('approved', false)
     .select();
 
   if (error) {
     console.error('❌ [ADMIN] Error approving tasker:', error);
-    throw error;
+    throw new Error(`Failed to approve tasker: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    console.error('❌ [ADMIN] No tasker found to approve or already approved:', taskerId);
-    throw new Error('Tasker not found or already approved');
+    console.error('❌ [ADMIN] No rows were updated for tasker:', taskerId);
+    throw new Error('Failed to update tasker approval status');
   }
 
   console.log('✅ [ADMIN] Tasker approved successfully:', data[0]);
@@ -49,18 +80,43 @@ export const acceptTasker = approveTasker; // Alias for compatibility
 export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
   
+  // First verify the user exists and is a pending tasker
+  const { data: currentUser, error: fetchError } = await supabase
+    .from('users')
+    .select('id, role, approved')
+    .eq('id', taskerId)
+    .single();
+
+  if (fetchError) {
+    console.error('❌ [ADMIN] Error fetching user for rejection:', fetchError);
+    throw new Error(`User not found: ${fetchError.message}`);
+  }
+
+  if (!currentUser) {
+    console.error('❌ [ADMIN] User not found for rejection:', taskerId);
+    throw new Error('User not found');
+  }
+
+  if (currentUser.role !== 'tasker') {
+    console.error('❌ [ADMIN] User is not a tasker:', currentUser.role);
+    throw new Error('User is not a tasker');
+  }
+
+  if (currentUser.approved) {
+    console.error('❌ [ADMIN] Cannot reject approved tasker:', taskerId);
+    throw new Error('Cannot reject an already approved tasker');
+  }
+
   // Delete the tasker account entirely for rejection
   const { data, error } = await supabase
     .from('users')
     .delete()
     .eq('id', taskerId)
-    .eq('role', 'tasker')
-    .eq('approved', false)
     .select();
 
   if (error) {
     console.error('❌ [ADMIN] Error rejecting tasker:', error);
-    throw error;
+    throw new Error(`Failed to reject tasker: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
