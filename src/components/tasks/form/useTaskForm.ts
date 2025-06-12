@@ -51,6 +51,16 @@ export const useTaskForm = () => {
       return false;
     }
 
+    // Validate manual address if "Other" is selected
+    if (formData.address === "Other (not listed)" && !formData.manualAddress.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your full address.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     if (!formData.requiredDate || !formData.requiredTime) {
       toast({
         title: "Error",
@@ -83,6 +93,8 @@ export const useTaskForm = () => {
     setIsSubmitting(true);
 
     try {
+      const isOtherLocation = formData.address === "Other (not listed)";
+      
       const taskData = {
         title: formData.title,
         description: formData.description,
@@ -90,7 +102,9 @@ export const useTaskForm = () => {
         subcategory: formData.subcategory,
         price_range_min: Number(formData.minBudget),
         price_range_max: Number(formData.maxBudget),
-        location: formData.address,
+        location: isOtherLocation ? formData.manualAddress : formData.address,
+        manual_address: isOtherLocation ? formData.manualAddress : null,
+        needs_location_review: isOtherLocation,
         payment_method: formData.paymentMethod,
         required_date: formData.requiredDate,
         required_time: formData.requiredTime,
@@ -99,10 +113,17 @@ export const useTaskForm = () => {
 
       await createTask(taskData);
 
-      toast({
-        title: "Task created successfully!",
-        description: "Your task has been posted and will be visible to taskers.",
-      });
+      if (isOtherLocation) {
+        toast({
+          title: "Task submitted for review!",
+          description: "Your task has been submitted and will be reviewed since your location is outside our standard service area.",
+        });
+      } else {
+        toast({
+          title: "Task created successfully!",
+          description: "Your task has been posted and will be visible to taskers.",
+        });
+      }
 
       // Reset form
       setFormData(initialFormData);

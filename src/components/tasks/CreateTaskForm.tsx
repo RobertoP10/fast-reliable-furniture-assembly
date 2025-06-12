@@ -42,6 +42,7 @@ const CreateTaskForm = () => {
 
           <TaskLocation
             address={formData.address}
+            manualAddress={formData.manualAddress}
             onUpdate={updateFormData}
           />
 

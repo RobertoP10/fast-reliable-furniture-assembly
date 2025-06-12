@@ -13,11 +13,35 @@ export const categories = {
 };
 
 export const locations = [
-  "Birmingham, West Midlands",
-  "Telford, Shropshire", 
-  "Wolverhampton, West Midlands",
-  "Stoke on Trent, Staffordshire",
-  "Shrewsbury, Shropshire"
+  "Birmingham",
+  "Dudley", 
+  "Wolverhampton",
+  "Walsall",
+  "West Bromwich",
+  "Solihull",
+  "Sutton Coldfield",
+  "Tamworth",
+  "Lichfield",
+  "Redditch",
+  "Shrewsbury",
+  "Stoke-on-Trent",
+  "Cannock",
+  "Telford",
+  "Kidderminster",
+  "Nuneaton",
+  "Halesowen",
+  "Tipton",
+  "Oldbury",
+  "Smethwick",
+  "Brierley Hill",
+  "Bilston",
+  "Brownhills",
+  "Wednesbury",
+  "Sedgley",
+  "Kingswinford",
+  "Stourbridge",
+  "Willenhall",
+  "Other (not listed)"
 ];
 
 export const initialFormData = {
@@ -28,6 +52,7 @@ export const initialFormData = {
   minBudget: "",
   maxBudget: "",
   address: "",
+  manualAddress: "",
   paymentMethod: "cash" as PaymentMethod,
   requiredDate: "",
   requiredTime: ""
