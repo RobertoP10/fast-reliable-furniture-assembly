@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const fetchPendingTaskers = async () => {
@@ -23,34 +22,12 @@ export const fetchPendingTaskers = async () => {
 export const approveTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker:', taskerId);
   
-  // First check if the tasker exists and is actually pending
-  const { data: existingTasker, error: checkError } = await supabase
-    .from('users')
-    .select('id, role, approved')
-    .eq('id', taskerId)
-    .eq('role', 'tasker')
-    .single();
-
-  if (checkError) {
-    console.error('❌ [ADMIN] Error checking tasker:', checkError);
-    throw new Error('Tasker not found');
-  }
-
-  if (!existingTasker) {
-    console.error('❌ [ADMIN] Tasker not found:', taskerId);
-    throw new Error('Tasker not found');
-  }
-
-  if (existingTasker.approved) {
-    console.error('❌ [ADMIN] Tasker already approved:', taskerId);
-    throw new Error('Tasker already approved');
-  }
-
   const { data, error } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
     .eq('role', 'tasker')
+    .eq('approved', false)
     .select();
 
   if (error) {
@@ -59,11 +36,11 @@ export const approveTasker = async (taskerId: string) => {
   }
 
   if (!data || data.length === 0) {
-    console.error('❌ [ADMIN] No rows updated for tasker:', taskerId);
-    throw new Error('Failed to update tasker approval status');
+    console.error('❌ [ADMIN] No tasker found to approve or already approved:', taskerId);
+    throw new Error('Tasker not found or already approved');
   }
 
-  console.log('✅ [ADMIN] Tasker approved successfully:', data);
+  console.log('✅ [ADMIN] Tasker approved successfully:', data[0]);
   return data[0];
 };
 
@@ -78,7 +55,7 @@ export const rejectTasker = async (taskerId: string) => {
     .delete()
     .eq('id', taskerId)
     .eq('role', 'tasker')
-    .eq('approved', false) // Only delete if not approved yet
+    .eq('approved', false)
     .select();
 
   if (error) {
