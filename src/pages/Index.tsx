@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   Users, Shield, Star, CheckCircle, MessageSquare, Loader2
 } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -212,6 +213,18 @@ const Index = () => {
               className="text-gray-400 hover:text-white transition-colors"
             >
               Terms of Service
+            </button>
+            <button
+              onClick={() => navigate("/privacy-policy")}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </button>
+            <button
+              onClick={() => navigate("/contact")}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Contact
             </button>
           </div>
           <p className="text-gray-400">© 2025 MGSDEAL. All rights reserved.</p>

@@ -9,6 +9,9 @@ export const Footer = () => {
           <Link to="/terms-of-service" className="hover:text-foreground">
             Terms of Service
           </Link>
+          <Link to="/privacy-policy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
           <Link to="/contact" className="hover:text-foreground">
             Contact
           </Link>

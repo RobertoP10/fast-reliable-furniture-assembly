@@ -21,7 +21,7 @@ export default function TermsAcceptance({ checked, onChange, disabled }: TermsAc
         className="mt-1"
       />
       <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
-        I agree to the{" "}
+        ☑ I agree to the{" "}
         <button
           type="button"
           onClick={() => navigate("/terms-of-service")}
@@ -29,7 +29,14 @@ export default function TermsAcceptance({ checked, onChange, disabled }: TermsAc
         >
           Terms of Service
         </button>
-        {" "}and Privacy Policy
+        {" "}and{" "}
+        <button
+          type="button"
+          onClick={() => navigate("/privacy-policy")}
+          className="text-blue-600 hover:underline font-medium"
+        >
+          Privacy Policy
+        </button>
       </label>
     </div>
   );
