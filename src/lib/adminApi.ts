@@ -20,7 +20,7 @@ export const fetchPendingTaskers = async () => {
   return data || [];
 };
 
-export const approveTasker = async (taskerId: string) => {
+export const acceptTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker:', taskerId);
   
   const { data, error } = await supabase
@@ -41,9 +41,7 @@ export const approveTasker = async (taskerId: string) => {
 export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Rejecting tasker:', taskerId);
   
-  // For now, we'll just delete the user. In a production app, 
-  // you might want to set a 'rejected' status instead
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('users')
     .delete()
     .eq('id', taskerId);
@@ -54,5 +52,5 @@ export const rejectTasker = async (taskerId: string) => {
   }
 
   console.log('✅ [ADMIN] Tasker rejected successfully');
-  return data;
+  return true;
 };

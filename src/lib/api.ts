@@ -30,7 +30,7 @@ export {
   fetchPendingTransactions,
   acceptTasker,
   rejectTasker
-} from './admin';
+} from './adminApi';
 
 // 💬 Chat
 export {
