@@ -267,8 +267,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         id: authData.user.id,
         email: data.email,
         full_name: data.full_name,
+        phone_number: data.phone_number,
+        location: data.location,
         role: data.role,
         approved: data.role === "client",
+        terms_accepted: data.terms_accepted,
+        terms_accepted_at: data.terms_accepted_at
       });
 
       if (insertError) throw new Error("Failed to insert user profile");

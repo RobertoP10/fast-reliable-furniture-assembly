@@ -638,8 +638,11 @@ export type Database = {
           full_name: string
           id: string
           location: string | null
+          phone_number: string | null
           rating: number | null
           role: Database["public"]["Enums"]["user_role"]
+          terms_accepted: boolean | null
+          terms_accepted_at: string | null
           total_reviews: number | null
           updated_at: string
         }
@@ -650,8 +653,11 @@ export type Database = {
           full_name: string
           id: string
           location?: string | null
+          phone_number?: string | null
           rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           total_reviews?: number | null
           updated_at?: string
         }
@@ -662,8 +668,11 @@ export type Database = {
           full_name?: string
           id?: string
           location?: string | null
+          phone_number?: string | null
           rating?: number | null
           role?: Database["public"]["Enums"]["user_role"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           total_reviews?: number | null
           updated_at?: string
         }

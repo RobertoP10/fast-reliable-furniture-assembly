@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +11,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
 import TaskerPending from "./pages/TaskerPending";
 import AdminDashboard from "./pages/AdminDashboard";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,7 @@ const AppRoutes = () => {
       <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
       <Route path="/tasker-pending" element={<TaskerPending />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

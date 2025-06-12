@@ -206,6 +206,14 @@ const Index = () => {
             />
             <span className="text-xl font-bold">MGSDEAL</span>
           </div>
+          <div className="flex justify-center space-x-6 mb-4">
+            <button
+              onClick={() => navigate("/terms-of-service")}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Terms of Service
+            </button>
+          </div>
           <p className="text-gray-400">© 2025 MGSDEAL. All rights reserved.</p>
         </div>
       </footer>

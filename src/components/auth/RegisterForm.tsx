@@ -3,7 +3,9 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface RegisterFormProps {
   onBack?: () => void;
@@ -12,12 +14,15 @@ interface RegisterFormProps {
 
 export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormProps) {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     password: "",
     location: "",
-    role: "client" as "client" | "tasker"
+    phone_number: "",
+    role: "client" as "client" | "tasker",
+    terms_accepted: false
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +32,7 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
     setError(null);
     setLoading(true);
 
-    if (!form.full_name || !form.email || !form.password || !form.location) {
+    if (!form.full_name || !form.email || !form.password || !form.location || !form.phone_number) {
       setError("Please fill in all fields.");
       setLoading(false);
       return;
@@ -39,8 +44,25 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
       return;
     }
 
+    if (!form.terms_accepted) {
+      setError("You must agree to the Terms of Service and Privacy Policy to create an account.");
+      setLoading(false);
+      return;
+    }
+
+    // Basic phone number validation
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(form.phone_number.replace(/\s/g, ""))) {
+      setError("Please enter a valid phone number.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await register(form);
+      await register({
+        ...form,
+        terms_accepted_at: new Date().toISOString()
+      });
       // AuthContext will handle the redirect
     } catch (registerError: any) {
       setError(registerError.message || "Registration failed. Please try again.");
@@ -92,6 +114,15 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
             required
             disabled={loading}
           />
+
+          <Input
+            type="tel"
+            placeholder="Phone Number"
+            value={form.phone_number}
+            onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+            required
+            disabled={loading}
+          />
           
           <Input
             type="text"
@@ -123,6 +154,27 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
               </p>
             </div>
           )}
+
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="terms"
+              checked={form.terms_accepted}
+              onCheckedChange={(checked) => setForm({ ...form, terms_accepted: checked as boolean })}
+              disabled={loading}
+              className="mt-1"
+            />
+            <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed">
+              I agree to the{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/terms-of-service")}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Terms of Service
+              </button>
+              {" "}and Privacy Policy
+            </label>
+          </div>
 
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
