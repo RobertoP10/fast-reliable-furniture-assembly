@@ -66,7 +66,7 @@ export const acceptTasker = async (taskerId: string) => {
     throw new Error('Invalid tasker ID provided');
   }
 
-  // Simple update - just set approved to true for the specific user ID
+  // Simplified: just update approved = true by ID
   const { data, error } = await supabase
     .from('users')
     .update({ approved: true })
@@ -94,7 +94,7 @@ export const rejectTasker = async (taskerId: string) => {
     throw new Error('Invalid tasker ID provided');
   }
 
-  // Simple delete - just delete the user by ID
+  // Simplified: just delete by ID
   const { error } = await supabase
     .from('users')
     .delete()
