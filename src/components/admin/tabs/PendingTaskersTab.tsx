@@ -22,6 +22,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     if (processingTaskers.has(taskerId)) return;
     
     console.log('🔄 [UI] Starting approval for tasker:', { id: taskerId, name: taskerName });
+    console.log('🔍 [UI] TaskerId type:', typeof taskerId, 'length:', taskerId?.length);
     
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
@@ -43,9 +44,15 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
       });
     } catch (error) {
       console.error('❌ [UI] Error approving tasker:', error);
+      
+      let errorMessage = 'Failed to approve tasker';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Approval Failed",
-        description: error instanceof Error ? error.message : 'Failed to approve tasker',
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -61,6 +68,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     if (processingTaskers.has(taskerId)) return;
     
     console.log('🔄 [UI] Starting rejection for tasker:', { id: taskerId, name: taskerName });
+    console.log('🔍 [UI] TaskerId type:', typeof taskerId, 'length:', taskerId?.length);
     
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
@@ -82,9 +90,15 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
       });
     } catch (error) {
       console.error('❌ [UI] Error rejecting tasker:', error);
+      
+      let errorMessage = 'Failed to reject tasker';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Rejection Failed",
-        description: error instanceof Error ? error.message : 'Failed to reject tasker',
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -123,6 +137,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Registration Date</TableHead>
+                <TableHead>ID (Debug)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -135,6 +150,9 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                     <TableCell className="font-medium">{tasker.full_name}</TableCell>
                     <TableCell>{tasker.email}</TableCell>
                     <TableCell>{formatDate(tasker.created_at)}</TableCell>
+                    <TableCell className="text-xs text-gray-500 max-w-[100px] truncate" title={tasker.id}>
+                      {tasker.id}
+                    </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

@@ -62,16 +62,44 @@ export const fetchPendingTransactions = async () => {
 export const acceptTasker = async (taskerId: string) => {
   console.log('✅ [ADMIN] Approving tasker with ID:', taskerId);
   
+  // Validate taskerId
   if (!taskerId || taskerId.trim() === '') {
+    console.error('❌ [ADMIN] Invalid tasker ID provided:', taskerId);
     throw new Error('Invalid tasker ID provided');
   }
 
-  // Simplified: just update approved = true by ID
-  const { data, error } = await supabase
+  // First, let's check if the tasker exists
+  const { data: existingTasker, error: checkError } = await supabase
+    .from('users')
+    .select('id, role, approved')
+    .eq('id', taskerId)
+    .single();
+
+  if (checkError) {
+    console.error('❌ [ADMIN] Error checking tasker existence:', checkError);
+    throw new Error(`Failed to verify tasker exists: ${checkError.message}`);
+  }
+
+  if (!existingTasker) {
+    console.error('❌ [ADMIN] Tasker not found with ID:', taskerId);
+    throw new Error('Tasker not found');
+  }
+
+  console.log('📋 [ADMIN] Found tasker:', existingTasker);
+
+  if (existingTasker.approved) {
+    console.log('⚠️ [ADMIN] Tasker already approved:', taskerId);
+    throw new Error('Tasker is already approved');
+  }
+
+  // Now update the tasker
+  const { data, error, count } = await supabase
     .from('users')
     .update({ approved: true })
     .eq('id', taskerId)
     .select('*');
+
+  console.log('📊 [ADMIN] Update result:', { data, error, count, affectedRows: data?.length });
 
   if (error) {
     console.error('❌ [ADMIN] Database error during tasker approval:', error);
@@ -79,8 +107,8 @@ export const acceptTasker = async (taskerId: string) => {
   }
 
   if (!data || data.length === 0) {
-    console.error('❌ [ADMIN] No rows updated - tasker not found:', taskerId);
-    throw new Error('Tasker not found or already processed');
+    console.error('❌ [ADMIN] No rows updated - tasker not found or already processed:', taskerId);
+    throw new Error('No tasker was approved - tasker may not exist or already processed');
   }
 
   console.log('✅ [ADMIN] Tasker approved successfully:', data[0]);
@@ -90,15 +118,38 @@ export const acceptTasker = async (taskerId: string) => {
 export const rejectTasker = async (taskerId: string) => {
   console.log('❌ [ADMIN] Rejecting tasker with ID:', taskerId);
   
+  // Validate taskerId
   if (!taskerId || taskerId.trim() === '') {
+    console.error('❌ [ADMIN] Invalid tasker ID provided:', taskerId);
     throw new Error('Invalid tasker ID provided');
   }
 
-  // Simplified: just delete by ID
-  const { error } = await supabase
+  // First, let's check if the tasker exists
+  const { data: existingTasker, error: checkError } = await supabase
+    .from('users')
+    .select('id, role, approved')
+    .eq('id', taskerId)
+    .single();
+
+  if (checkError) {
+    console.error('❌ [ADMIN] Error checking tasker existence:', checkError);
+    throw new Error(`Failed to verify tasker exists: ${checkError.message}`);
+  }
+
+  if (!existingTasker) {
+    console.error('❌ [ADMIN] Tasker not found with ID:', taskerId);
+    throw new Error('Tasker not found');
+  }
+
+  console.log('📋 [ADMIN] Found tasker for deletion:', existingTasker);
+
+  // Now delete the tasker
+  const { error, count } = await supabase
     .from('users')
     .delete()
     .eq('id', taskerId);
+
+  console.log('📊 [ADMIN] Delete result:', { error, count });
 
   if (error) {
     console.error('❌ [ADMIN] Database error during tasker rejection:', error);
