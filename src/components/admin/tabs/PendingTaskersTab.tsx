@@ -21,27 +21,44 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const handleApproveTasker = async (taskerId: string) => {
     if (processingTaskers.has(taskerId)) return;
     
+    console.log('🔄 [UI] Starting approval process for tasker ID:', taskerId);
+    
+    if (!taskerId) {
+      console.error('❌ [UI] No taskerId provided');
+      toast({
+        title: "Error",
+        description: "Invalid tasker ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
     try {
-      console.log('✅ [ADMIN] Starting tasker approval process for:', taskerId);
+      console.log('✅ [UI] Calling acceptTasker API with ID:', taskerId);
       
       const updatedTasker = await acceptTasker(taskerId);
       
-      // Remove the tasker from the pending list immediately after successful update
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      console.log('✅ [UI] Tasker approved successfully:', updatedTasker);
       
-      console.log('✅ [ADMIN] Tasker approved and removed from list:', updatedTasker);
+      // Remove the tasker from the pending list immediately after successful update
+      setPendingTaskers(prev => {
+        const filtered = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('✅ [UI] Updated pending taskers list. Remaining:', filtered.length);
+        return filtered;
+      });
       
       toast({
         title: "Tasker Approved",
         description: "The tasker has been successfully approved and can now start bidding on tasks.",
       });
     } catch (error) {
-      console.error('❌ [ADMIN] Error approving tasker:', error);
+      console.error('❌ [UI] Error approving tasker:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Error",
-        description: `Failed to approve tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `Failed to approve tasker: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -56,27 +73,44 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const handleRejectTasker = async (taskerId: string) => {
     if (processingTaskers.has(taskerId)) return;
     
+    console.log('🔄 [UI] Starting rejection process for tasker ID:', taskerId);
+    
+    if (!taskerId) {
+      console.error('❌ [UI] No taskerId provided');
+      toast({
+        title: "Error",
+        description: "Invalid tasker ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
     try {
-      console.log('❌ [ADMIN] Starting tasker rejection process for:', taskerId);
+      console.log('❌ [UI] Calling rejectTasker API with ID:', taskerId);
       
       await rejectTasker(taskerId);
       
-      // Remove the tasker from the pending list immediately after successful deletion
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      console.log('✅ [UI] Tasker rejected successfully');
       
-      console.log('✅ [ADMIN] Tasker rejected and removed from list');
+      // Remove the tasker from the pending list immediately after successful deletion
+      setPendingTaskers(prev => {
+        const filtered = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('✅ [UI] Updated pending taskers list. Remaining:', filtered.length);
+        return filtered;
+      });
       
       toast({
         title: "Tasker Rejected",
         description: "The tasker application has been rejected and the account has been removed.",
       });
     } catch (error) {
-      console.error('❌ [ADMIN] Error rejecting tasker:', error);
+      console.error('❌ [UI] Error rejecting tasker:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Error",
-        description: `Failed to reject tasker: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `Failed to reject tasker: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -119,35 +153,43 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingTaskers.map((tasker) => (
-                <TableRow key={tasker.id}>
-                  <TableCell className="font-medium">{tasker.full_name}</TableCell>
-                  <TableCell>{tasker.email}</TableCell>
-                  <TableCell>{formatDate(tasker.created_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveTasker(tasker.id)}
-                        disabled={processingTaskers.has(tasker.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                        title="Approve tasker"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleRejectTasker(tasker.id)}
-                        disabled={processingTaskers.has(tasker.id)}
-                        title="Reject tasker"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pendingTaskers.map((tasker) => {
+                const isProcessing = processingTaskers.has(tasker.id);
+                console.log('🔍 [UI] Rendering tasker:', { id: tasker.id, name: tasker.full_name, isProcessing });
+                
+                return (
+                  <TableRow key={tasker.id}>
+                    <TableCell className="font-medium">{tasker.full_name}</TableCell>
+                    <TableCell>{tasker.email}</TableCell>
+                    <TableCell>{formatDate(tasker.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveTasker(tasker.id)}
+                          disabled={isProcessing}
+                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                          title="Approve tasker"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          {isProcessing ? "..." : ""}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRejectTasker(tasker.id)}
+                          disabled={isProcessing}
+                          className="disabled:opacity-50"
+                          title="Reject tasker"
+                        >
+                          <X className="h-4 w-4" />
+                          {isProcessing ? "..." : ""}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
