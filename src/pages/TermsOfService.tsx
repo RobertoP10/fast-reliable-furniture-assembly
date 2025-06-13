@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -135,7 +134,16 @@ const TermsOfService = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-blue-800 mb-4">11. Contact</h2>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">11. Brand Disclaimer</h2>
+              <p className="text-gray-700 leading-relaxed">
+                MGSDEAL is an independent platform and is not affiliated with, endorsed by, or sponsored by IKEA.  
+                Any use of the IKEA name or other brand names on this website is solely for identification purposes.  
+                All trademarks and brand names are the property of their respective owners.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-semibold text-blue-800 mb-4">12. Contact</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 For any questions regarding these Terms, contact:
               </p>
