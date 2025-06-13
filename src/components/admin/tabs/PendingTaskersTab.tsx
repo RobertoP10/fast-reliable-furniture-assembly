@@ -26,12 +26,16 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
     try {
-      await acceptTasker(taskerId);
+      const result = await acceptTasker(taskerId);
       
-      console.log('✅ [UI] Tasker approved, updating UI state');
+      console.log('✅ [UI] Tasker approved successfully, result:', result);
       
-      // Remove from pending list
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      // Remove from pending list immediately
+      setPendingTaskers(prev => {
+        const updated = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('📝 [UI] Updated pending list, remaining:', updated.length);
+        return updated;
+      });
       
       toast({
         title: "Tasker Approved",
@@ -63,10 +67,14 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     try {
       await rejectTasker(taskerId);
       
-      console.log('✅ [UI] Tasker rejected, updating UI state');
+      console.log('✅ [UI] Tasker rejected successfully');
       
-      // Remove from pending list
-      setPendingTaskers(prev => prev.filter(tasker => tasker.id !== taskerId));
+      // Remove from pending list immediately
+      setPendingTaskers(prev => {
+        const updated = prev.filter(tasker => tasker.id !== taskerId);
+        console.log('📝 [UI] Updated pending list, remaining:', updated.length);
+        return updated;
+      });
       
       toast({
         title: "Tasker Rejected",
