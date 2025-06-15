@@ -19,7 +19,11 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const [processingTaskers, setProcessingTaskers] = useState<Set<string>>(new Set());
 
   const handleApproveTasker = async (taskerId: string, taskerName: string) => {
-    console.log('🎯 [UI] APPROVE BUTTON CLICKED for:', { taskerId, taskerName });
+    console.log('🎯 [UI] APPROVE BUTTON CLICKED');
+    console.log('🆔 [UI] Raw taskerId received:', JSON.stringify(taskerId));
+    console.log('🆔 [UI] taskerId type:', typeof taskerId);
+    console.log('🆔 [UI] taskerId length:', taskerId?.length);
+    console.log('👤 [UI] taskerName:', taskerName);
     
     if (processingTaskers.has(taskerId)) {
       console.log('⏸️ [UI] Already processing this tasker, skipping...');
@@ -29,7 +33,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
     try {
-      console.log('📤 [UI] Calling acceptTasker API...');
+      console.log('📤 [UI] Calling acceptTasker API with taskerId:', taskerId);
       const result = await acceptTasker(taskerId);
       
       console.log('✅ [UI] API call successful, result:', result);
@@ -69,7 +73,11 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   };
 
   const handleRejectTasker = async (taskerId: string, taskerName: string) => {
-    console.log('🎯 [UI] REJECT BUTTON CLICKED for:', { taskerId, taskerName });
+    console.log('🎯 [UI] REJECT BUTTON CLICKED');
+    console.log('🆔 [UI] Raw taskerId received:', JSON.stringify(taskerId));
+    console.log('🆔 [UI] taskerId type:', typeof taskerId);
+    console.log('🆔 [UI] taskerId length:', taskerId?.length);
+    console.log('👤 [UI] taskerName:', taskerName);
     
     if (processingTaskers.has(taskerId)) {
       console.log('⏸️ [UI] Already processing this tasker, skipping...');
@@ -79,7 +87,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
     setProcessingTaskers(prev => new Set(prev).add(taskerId));
     
     try {
-      console.log('📤 [UI] Calling rejectTasker API...');
+      console.log('📤 [UI] Calling rejectTasker API with taskerId:', taskerId);
       await rejectTasker(taskerId);
       
       console.log('✅ [UI] API call successful');
@@ -159,7 +167,8 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                   email: tasker.email,
                   role: tasker.role,
                   approved: tasker.approved,
-                  isProcessing
+                  isProcessing,
+                  rawTaskerObject: tasker
                 });
                 
                 return (
@@ -174,7 +183,13 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                       <div className="flex space-x-2">
                         <Button
                           size="sm"
-                          onClick={() => handleApproveTasker(tasker.id, tasker.full_name)}
+                          onClick={() => {
+                            console.log('🔥 [UI] Button onClick triggered with:', { 
+                              taskerId: tasker.id, 
+                              taskerName: tasker.full_name 
+                            });
+                            handleApproveTasker(tasker.id, tasker.full_name);
+                          }}
                           disabled={isProcessing}
                           className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                           title="Approve tasker"
@@ -185,7 +200,13 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleRejectTasker(tasker.id, tasker.full_name)}
+                          onClick={() => {
+                            console.log('🔥 [UI] Reject button onClick triggered with:', { 
+                              taskerId: tasker.id, 
+                              taskerName: tasker.full_name 
+                            });
+                            handleRejectTasker(tasker.id, tasker.full_name);
+                          }}
                           disabled={isProcessing}
                           className="disabled:opacity-50"
                           title="Reject tasker"
