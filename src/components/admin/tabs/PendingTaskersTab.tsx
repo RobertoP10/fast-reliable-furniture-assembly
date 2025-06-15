@@ -19,11 +19,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   const [processingTaskers, setProcessingTaskers] = useState<Set<string>>(new Set());
 
   const handleApproveTasker = async (taskerId: string, taskerName: string) => {
-    console.log('🎯 [UI] APPROVE BUTTON CLICKED');
-    console.log('🎯 [UI] taskerId received:', taskerId);
-    console.log('🎯 [UI] taskerId type:', typeof taskerId);
-    console.log('🎯 [UI] taskerId length:', taskerId?.length);
-    console.log('🎯 [UI] taskerName:', taskerName);
+    console.log('🎯 [UI] APPROVE BUTTON CLICKED for:', { taskerId, taskerName });
     
     if (processingTaskers.has(taskerId)) {
       console.log('⏸️ [UI] Already processing this tasker, skipping...');
@@ -73,11 +69,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
   };
 
   const handleRejectTasker = async (taskerId: string, taskerName: string) => {
-    console.log('🎯 [UI] REJECT BUTTON CLICKED');
-    console.log('🎯 [UI] taskerId received:', taskerId);
-    console.log('🎯 [UI] taskerId type:', typeof taskerId);
-    console.log('🎯 [UI] taskerId length:', taskerId?.length);
-    console.log('🎯 [UI] taskerName:', taskerName);
+    console.log('🎯 [UI] REJECT BUTTON CLICKED for:', { taskerId, taskerName });
     
     if (processingTaskers.has(taskerId)) {
       console.log('⏸️ [UI] Already processing this tasker, skipping...');
@@ -165,8 +157,8 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                   id: tasker.id,
                   name: tasker.full_name,
                   email: tasker.email,
-                  idType: typeof tasker.id,
-                  idLength: tasker.id?.length,
+                  role: tasker.role,
+                  approved: tasker.approved,
                   isProcessing
                 });
                 
@@ -182,10 +174,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                       <div className="flex space-x-2">
                         <Button
                           size="sm"
-                          onClick={() => {
-                            console.log('🖱️ [UI] Approve button clicked for:', tasker.id);
-                            handleApproveTasker(tasker.id, tasker.full_name);
-                          }}
+                          onClick={() => handleApproveTasker(tasker.id, tasker.full_name)}
                           disabled={isProcessing}
                           className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                           title="Approve tasker"
@@ -196,10 +185,7 @@ export const PendingTaskersTab = ({ pendingTaskers, setPendingTaskers, loading, 
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => {
-                            console.log('🖱️ [UI] Reject button clicked for:', tasker.id);
-                            handleRejectTasker(tasker.id, tasker.full_name);
-                          }}
+                          onClick={() => handleRejectTasker(tasker.id, tasker.full_name)}
                           disabled={isProcessing}
                           className="disabled:opacity-50"
                           title="Reject tasker"
