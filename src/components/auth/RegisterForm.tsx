@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,11 +55,20 @@ export default function RegisterForm({ onBack, onSwitchToLogin }: RegisterFormPr
     }
 
     try {
-      await register({
-        ...form,
-        terms_accepted_at: new Date().toISOString()
-      });
-      // AuthContext will handle the redirect
+      const result = await register(
+        form.email,
+        form.password,
+        form.full_name,
+        form.phone_number,
+        form.location,
+        form.role,
+        form.terms_accepted
+      );
+      
+      if (!result.success) {
+        setError(result.error || "Registration failed. Please try again.");
+      }
+      // AuthContext will handle the redirect on success
     } catch (registerError: any) {
       setError(registerError.message || "Registration failed. Please try again.");
     }
