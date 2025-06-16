@@ -28,7 +28,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
-        .eq('reviewee_id', user.id as string);
+        .eq('reviewee_id', user.id);
 
       if (reviewsError) {
         console.error('Error fetching reviews:', reviewsError);
@@ -49,7 +49,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         const { data: clientTasks, error: clientTasksError } = await supabase
           .from('task_requests')
           .select('status')
-          .eq('client_id', user.id as string);
+          .eq('client_id', user.id);
 
         if (clientTasksError) {
           console.error('Error fetching client tasks:', clientTasksError);
@@ -66,7 +66,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         const { data: taskerOffers, error: offersError } = await supabase
           .from('offers')
           .select('id, task_id, price, is_accepted')
-          .eq('tasker_id', user.id as string)
+          .eq('tasker_id', user.id)
           .eq('is_accepted', true);
 
         if (offersError) {

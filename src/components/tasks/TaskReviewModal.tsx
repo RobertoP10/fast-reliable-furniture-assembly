@@ -72,9 +72,9 @@ export const TaskReviewModal = ({
       const { data: existingReview, error: checkError } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', taskId as string)
-        .eq('reviewer_id', user.id as string)
-        .eq('reviewee_id', taskerId as string)
+        .eq('task_id', taskId)
+        .eq('reviewer_id', user.id)
+        .eq('reviewee_id', taskerId)
         .maybeSingle();
 
       if (checkError) {
@@ -95,9 +95,9 @@ export const TaskReviewModal = ({
       const { error } = await supabase
         .from('reviews')
         .insert({
-          task_id: taskId as string,
-          reviewer_id: user.id as string,
-          reviewee_id: taskerId as string,
+          task_id: taskId,
+          reviewer_id: user.id,
+          reviewee_id: taskerId,
           rating,
           comment: comment.trim() || null
         });

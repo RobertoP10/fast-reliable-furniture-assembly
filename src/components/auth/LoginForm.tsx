@@ -51,11 +51,11 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
         return;
       }
 
-      // Obține rolul din tabela users - use proper UUID type
+      // Obține rolul din tabela users - use proper error handling
       const { data: userData, error: userFetchError } = await supabase
         .from("users")
         .select("role, approved")
-        .eq("id", user.id as string)
+        .eq("id", user.id)
         .maybeSingle();
 
       if (userFetchError) {
