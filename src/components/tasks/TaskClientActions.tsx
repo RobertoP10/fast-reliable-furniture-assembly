@@ -56,9 +56,9 @@ export const TaskClientActions = ({
         .eq('task_id', task.id)
         .eq('reviewer_id', user.id)
         .eq('reviewee_id', acceptedOffer.tasker_id)
-        .maybeSingle();
+        .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error checking existing review:', error);
         return;
       }

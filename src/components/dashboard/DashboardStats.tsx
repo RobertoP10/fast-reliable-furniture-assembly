@@ -36,7 +36,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       }
 
       const rating = reviews && reviews.length > 0 
-        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+        ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length 
         : 0;
       const totalReviews = reviews?.length || 0;
 

@@ -56,7 +56,7 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
         .from("users")
         .select("role, approved")
         .eq("id", user.id)
-        .maybeSingle();
+        .single();
 
       if (userFetchError) {
         console.error("User fetch error:", userFetchError);
