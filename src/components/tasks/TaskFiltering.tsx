@@ -203,10 +203,14 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
 
   const completedTotal = useMemo(() => {
     const allTasks = propTasks || tasks;
+    let completedTasksForUser: Task[] = [];
+    
     if (userRole === "client") {
-      return allTasks.filter(task => task.client_id === user?.id && task.status === 'completed').length;
+      completedTasksForUser = allTasks.filter(task => 
+        task.client_id === user?.id && task.status === 'completed'
+      );
     } else {
-      return allTasks.filter(task => 
+      completedTasksForUser = allTasks.filter(task => 
         task.status === 'completed' && 
         task.accepted_offer_id &&
         task.offers &&
@@ -214,8 +218,22 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
           offer.id === task.accepted_offer_id && 
           offer.tasker_id === user?.id
         )
-      ).length;
+      );
     }
+
+    // Calculate the total value by summing the prices of accepted offers
+    const totalValue = completedTasksForUser.reduce((total, task) => {
+      if (task.accepted_offer_id && task.offers) {
+        const acceptedOffer = task.offers.find(offer => offer.id === task.accepted_offer_id);
+        if (acceptedOffer && acceptedOffer.price) {
+          return total + Number(acceptedOffer.price);
+        }
+      }
+      return total;
+    }, 0);
+
+    console.log("💰 [FILTERING] Completed total value:", totalValue, "for", completedTasksForUser.length, "tasks");
+    return totalValue;
   }, [tasks, propTasks, userRole, user?.id]);
 
   return {
