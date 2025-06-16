@@ -72,9 +72,9 @@ export const TaskReviewModal = ({
       const { data: existingReview, error: checkError } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', taskId)
-        .eq('reviewer_id', user.id)
-        .eq('reviewee_id', taskerId)
+        .eq('task_id', taskId as any)
+        .eq('reviewer_id', user.id as any)
+        .eq('reviewee_id', taskerId as any)
         .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
@@ -95,12 +95,12 @@ export const TaskReviewModal = ({
       const { error } = await supabase
         .from('reviews')
         .insert({
-          task_id: taskId,
-          reviewer_id: user.id,
-          reviewee_id: taskerId,
+          task_id: taskId as any,
+          reviewer_id: user.id as any,
+          reviewee_id: taskerId as any,
           rating,
           comment: comment.trim() || null
-        });
+        } as any);
 
       if (error) throw error;
 

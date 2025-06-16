@@ -28,7 +28,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
-        .eq('reviewee_id', user.id);
+        .eq('reviewee_id', user.id as any);
 
       if (reviewsError) {
         console.error('Error fetching reviews:', reviewsError);
@@ -36,7 +36,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       }
 
       const rating = reviews && reviews.length > 0 
-        ? reviews.reduce((sum, review) => sum + (review?.rating || 0), 0) / reviews.length 
+        ? reviews.reduce((sum, review) => sum + ((review as any)?.rating || 0), 0) / reviews.length 
         : 0;
       const totalReviews = reviews?.length || 0;
 
@@ -49,16 +49,16 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         const { data: clientTasks, error: clientTasksError } = await supabase
           .from('task_requests')
           .select('status')
-          .eq('client_id', user.id);
+          .eq('client_id', user.id as any);
 
         if (clientTasksError) {
           console.error('Error fetching client tasks:', clientTasksError);
         } else if (clientTasks) {
           activeTasks = clientTasks.filter(task => 
-            task?.status === 'pending' || task?.status === 'accepted'
+            (task as any)?.status === 'pending' || (task as any)?.status === 'accepted'
           ).length;
           completedTasks = clientTasks.filter(task => 
-            task?.status === 'completed'
+            (task as any)?.status === 'completed'
           ).length;
         }
       } else {
@@ -66,13 +66,13 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         const { data: taskerOffers, error: offersError } = await supabase
           .from('offers')
           .select('id, task_id, price, is_accepted')
-          .eq('tasker_id', user.id)
-          .eq('is_accepted', true);
+          .eq('tasker_id', user.id as any)
+          .eq('is_accepted', true as any);
 
         if (offersError) {
           console.error('Error fetching tasker offers:', offersError);
         } else if (taskerOffers && taskerOffers.length > 0) {
-          const taskIds = taskerOffers.map(offer => offer?.task_id).filter(Boolean);
+          const taskIds = taskerOffers.map(offer => (offer as any)?.task_id).filter(Boolean);
           
           if (taskIds.length > 0) {
             // Get the corresponding tasks
@@ -85,11 +85,11 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
               console.error('Error fetching tasker tasks:', taskerTasksError);
             } else if (taskerTasks) {
               activeTasks = taskerTasks.filter(task => 
-                task?.status === 'accepted'
+                (task as any)?.status === 'accepted'
               ).length;
               
               completedTasks = taskerTasks.filter(task => 
-                task?.status === 'completed'
+                (task as any)?.status === 'completed'
               ).length;
 
               // Calculate monthly earnings
@@ -98,16 +98,16 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
               
               monthlyEarnings = taskerTasks
                 .filter(task => 
-                  task?.status === 'completed' &&
-                  task?.completed_at &&
-                  new Date(task.completed_at).getMonth() === currentMonth &&
-                  new Date(task.completed_at).getFullYear() === currentYear
+                  (task as any)?.status === 'completed' &&
+                  (task as any)?.completed_at &&
+                  new Date((task as any).completed_at).getMonth() === currentMonth &&
+                  new Date((task as any).completed_at).getFullYear() === currentYear
                 )
                 .reduce((total, task) => {
                   const correspondingOffer = taskerOffers.find(offer => 
-                    offer?.task_id === task?.id && offer?.id === task?.accepted_offer_id
+                    (offer as any)?.task_id === (task as any)?.id && (offer as any)?.id === (task as any)?.accepted_offer_id
                   );
-                  return total + (Number(correspondingOffer?.price) || 0);
+                  return total + (Number((correspondingOffer as any)?.price) || 0);
                 }, 0);
             }
           }

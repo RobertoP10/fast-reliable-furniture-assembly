@@ -53,9 +53,9 @@ export const TaskClientActions = ({
       const { data: existingReview, error } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', task.id)
-        .eq('reviewer_id', user.id)
-        .eq('reviewee_id', acceptedOffer.tasker_id)
+        .eq('task_id', task.id as any)
+        .eq('reviewer_id', user.id as any)
+        .eq('reviewee_id', acceptedOffer.tasker_id as any)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {

@@ -55,10 +55,10 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
       const { data: userData, error: userFetchError } = await supabase
         .from("users")
         .select("role, approved")
-        .eq("id", user.id)
-        .single();
+        .eq("id", user.id as any)
+        .maybeSingle();
 
-      if (userFetchError) {
+      if (userFetchError && userFetchError.code !== 'PGRST116') {
         console.error("User fetch error:", userFetchError);
         setError("Failed to fetch user role.");
         setLoading(false);
@@ -72,7 +72,7 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
       }
 
       // Redirecționare în funcție de rol
-      const { role, approved } = userData;
+      const { role, approved } = userData as any;
 
       if (role === "client") {
         navigate("/client-dashboard");
