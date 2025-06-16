@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,10 +74,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Add a small delay on retries to prevent rapid successive calls
       if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * retryCount, 3000)));
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * retryCount, 2000)));
       }
 
-      const sessionValidation = await validateSession();
+      // Use a more direct approach for session validation on retries
+      let sessionValidation;
+      if (retryCount > 0) {
+        console.log('🔄 [AUTH] Using direct session check for retry...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session?.user?.id) {
+          sessionValidation = { isValid: false, userId: null, error: error?.message || 'No session' };
+        } else {
+          sessionValidation = { isValid: true, userId: session.user.id };
+        }
+      } else {
+        sessionValidation = await validateSession();
+      }
       
       if (!sessionValidation.isValid || !sessionValidation.userId) {
         console.log('ℹ️ [AUTH] No valid session found:', sessionValidation.error);
@@ -108,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           console.error("❌ [AUTH] No user profile found for user:", sessionValidation.userId);
           
-          // If we can't find the profile but have a valid session, retry once
+          // If we can't find the profile but have a valid session, retry once with direct approach
           if (retryCount < 1) {
             console.log('🔄 [AUTH] Retrying profile fetch due to missing profile...');
             return syncSessionAndProfile(retryCount + 1, skipRedirect);
@@ -119,9 +132,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err: any) {
         console.error("❌ [AUTH] Error fetching profile:", err);
         
-        // Retry logic for profile fetch failures, but be more conservative
-        if (retryCount < 1 && err.message?.includes('Authentication required')) {
-          console.log('🔄 [AUTH] Retrying profile fetch due to auth error...');
+        // Be more conservative with retries to prevent loops
+        if (retryCount < 1 && (err.message?.includes('Authentication required') || err.message?.includes('timeout'))) {
+          console.log('🔄 [AUTH] Retrying profile fetch due to error...');
           return syncSessionAndProfile(retryCount + 1, skipRedirect);
         }
         
@@ -176,24 +189,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         );
 
-        // Add a small delay to ensure auth listener is set up before checking session
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Add a smaller delay to ensure auth listener is set up
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Then check for existing session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ [AUTH] Error getting session:', error);
-          setLoading(false);
-          setInitialized(true);
-          return;
-        }
+        // Try to get existing session with a timeout
+        try {
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Initial session check timeout')), 3000);
+          });
 
-        if (session?.user && mounted) {
-          console.log('🔍 [AUTH] Found existing session, syncing...');
-          await syncSessionAndProfile();
-        } else {
-          console.log('ℹ️ [AUTH] No existing session found');
+          const { data: { session }, error } = await Promise.race([
+            sessionPromise,
+            timeoutPromise
+          ]) as any;
+          
+          if (error) {
+            console.error('❌ [AUTH] Error getting initial session:', error);
+            setLoading(false);
+            setInitialized(true);
+            return;
+          }
+
+          if (session?.user && mounted) {
+            console.log('🔍 [AUTH] Found existing session, syncing...');
+            await syncSessionAndProfile();
+          } else {
+            console.log('ℹ️ [AUTH] No existing session found');
+            setLoading(false);
+            setInitialized(true);
+          }
+        } catch (sessionError) {
+          console.warn('⚠️ [AUTH] Initial session check failed:', sessionError);
           setLoading(false);
           setInitialized(true);
         }

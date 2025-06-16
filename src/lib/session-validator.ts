@@ -11,9 +11,9 @@ export const validateSession = async (): Promise<SessionValidation> => {
   try {
     console.log('🔍 [SESSION] Validating current session...');
     
-    // Add timeout to prevent hanging requests
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Session validation timeout')), 15000); // Increased timeout
+    // Reduced timeout to prevent hanging - 8 seconds should be sufficient
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Session validation timeout')), 8000);
     });
 
     const sessionPromise = supabase.auth.getSession();
@@ -21,7 +21,7 @@ export const validateSession = async (): Promise<SessionValidation> => {
     const { data: { session }, error } = await Promise.race([
       sessionPromise,
       timeoutPromise
-    ]) as any;
+    ]);
     
     if (error) {
       console.error('❌ [SESSION] Session validation error:', error);
@@ -33,15 +33,25 @@ export const validateSession = async (): Promise<SessionValidation> => {
       return { isValid: false, userId: null, error: 'No active session' };
     }
 
-    // Check if token is expired (with some buffer)
+    // Check if token is expired with a smaller buffer
     const now = Math.floor(Date.now() / 1000);
-    const tokenBuffer = 300; // 5 minutes buffer
+    const tokenBuffer = 180; // Reduced to 3 minutes buffer
     
     if (session.expires_at && (session.expires_at - tokenBuffer) < now) {
       console.warn('⚠️ [SESSION] Token expiring soon, attempting refresh...');
       
       try {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        // Use a shorter timeout for token refresh
+        const refreshTimeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Token refresh timeout')), 5000);
+        });
+
+        const refreshPromise = supabase.auth.refreshSession();
+        
+        const { data: refreshed, error: refreshError } = await Promise.race([
+          refreshPromise,
+          refreshTimeoutPromise
+        ]);
         
         if (refreshError || !refreshed.session) {
           console.error('❌ [SESSION] Token refresh failed:', refreshError);
@@ -67,11 +77,17 @@ export const validateSession = async (): Promise<SessionValidation> => {
   } catch (error: any) {
     console.error('❌ [SESSION] Unexpected error:', error);
     
-    // Handle network errors gracefully
-    if (error.message?.includes('timeout') || error.message?.includes('fetch') || error.message?.includes('NetworkError')) {
-      return { isValid: false, userId: null, error: 'Network error during session validation' };
+    // Handle specific timeout and network errors more gracefully
+    if (error.message?.includes('timeout')) {
+      console.warn('⚠️ [SESSION] Session validation timed out, treating as no session');
+      return { isValid: false, userId: null, error: 'Session validation timeout - please try logging in again' };
     }
     
-    return { isValid: false, userId: null, error: 'Unexpected session validation error' };
+    if (error.message?.includes('fetch') || error.message?.includes('NetworkError') || error.message?.includes('CORS')) {
+      console.warn('⚠️ [SESSION] Network error during validation, treating as no session');
+      return { isValid: false, userId: null, error: 'Network error - please check your connection' };
+    }
+    
+    return { isValid: false, userId: null, error: 'Session validation failed' };
   }
 };
