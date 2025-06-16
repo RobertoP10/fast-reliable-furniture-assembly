@@ -1,7 +1,7 @@
 
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { validateUserSession, fetchUserProfile } from '@/lib/auth';
+import { fetchUserProfile } from '@/lib/auth';
 import type { UserData } from './types';
 
 export const createAuthStateManager = (
@@ -20,6 +20,9 @@ export const createAuthStateManager = (
     }
 
     try {
+      // Add a small delay to allow session to stabilize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const profile = await fetchUserProfile(currentUser);
       
       if (profile) {
@@ -55,6 +58,7 @@ export const createAuthStateManager = (
           setUser(null);
           setUserData(null);
           setLoading(false);
+          // Redirect to home page
           window.location.href = '/';
         }
       }
@@ -66,11 +70,19 @@ export const createAuthStateManager = (
   const initializeAuth = async () => {
     try {
       console.log('🔍 [AUTH_CONTEXT] Checking for existing session...');
-      const sessionData = await validateUserSession();
       
-      if (sessionData?.session?.user) {
+      // Use a simpler approach - just get the session without complex validation
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('❌ [AUTH_CONTEXT] Session error:', error);
+        setLoading(false);
+        return;
+      }
+      
+      if (session?.user) {
         console.log('✅ [AUTH_CONTEXT] Found existing session');
-        await loadUserData(sessionData.session.user);
+        await loadUserData(session.user);
       } else {
         console.log('ℹ️ [AUTH_CONTEXT] No existing session found');
         setLoading(false);

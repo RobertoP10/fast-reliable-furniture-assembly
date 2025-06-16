@@ -100,7 +100,15 @@ export const createAuthOperations = (
 
         if (role === 'client') {
           console.log('🔄 [AUTH_CONTEXT] Auto-signing in client...');
-          const { error: signInError } = await supabase.auth.signInWithPassword({
+          
+          // Sign out first to ensure clean state
+          await supabase.auth.signOut();
+          
+          // Wait a moment for signout to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Then sign in the client
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password,
           });
@@ -108,19 +116,24 @@ export const createAuthOperations = (
           if (signInError) {
             console.error('❌ [AUTH_CONTEXT] Auto sign-in error:', signInError);
             setWaitingForProfile(false);
-            return { success: false, error: 'Registration successful but auto sign-in failed. Please log in manually.' };
+            toast({
+              title: "Registration Successful!",
+              description: "Your account has been created. Please log in manually.",
+            });
+            return { success: true };
           }
-        }
 
-        if (role === 'tasker') {
+          if (signInData.user) {
+            console.log('✅ [AUTH_CONTEXT] Client auto sign-in successful');
+            toast({
+              title: "Welcome!",
+              description: "Your account has been created successfully. Welcome to our platform!",
+            });
+          }
+        } else if (role === 'tasker') {
           toast({
             title: "Registration Successful!",
             description: "Your tasker application has been submitted for review. You'll be notified once approved.",
-          });
-        } else {
-          toast({
-            title: "Welcome!",
-            description: "Your account has been created successfully. Welcome to our platform!",
           });
         }
 
@@ -142,8 +155,10 @@ export const createAuthOperations = (
       console.log('🚪 [AUTH_CONTEXT] Logging out...');
       await supabase.auth.signOut();
       console.log('✅ [AUTH_CONTEXT] Logout successful');
+      // Redirect will be handled by the auth state change event
     } catch (error) {
       console.error('❌ [AUTH_CONTEXT] Logout error:', error);
+      // Force redirect as fallback
       window.location.href = '/';
     }
   };
