@@ -110,7 +110,9 @@ export const PendingTransactionsTab = ({
                       <div className="text-sm text-gray-500">{transaction.tasker?.email || 'No email'}</div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{formatCurrency(Number(transaction.amount))}</TableCell>
+                  <TableCell className="font-medium">
+                    {formatCurrency(Number(transaction.amount))}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={
                       transaction.payment_method === 'cash' ? 'text-green-700' : 'text-blue-700'
