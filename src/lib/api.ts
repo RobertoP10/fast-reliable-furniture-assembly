@@ -23,7 +23,7 @@ export {
   declineOffer
 } from './offers';
 
-// 🛠️ Admin tools
+// 🛠️ Admin tools - Import from the modular admin structure
 export {
   fetchAllUsers,
   fetchPendingTaskers,
@@ -33,7 +33,7 @@ export {
   acceptTasker,
   rejectTasker,
   confirmTransaction
-} from './admin';
+} from './admin/index';
 
 // 💬 Chat
 export {

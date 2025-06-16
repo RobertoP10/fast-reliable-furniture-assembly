@@ -6,7 +6,7 @@ import {
   fetchPendingTransactions, 
   fetchAllTransactions,
   fetchAnalyticsData 
-} from '@/lib/adminApi';
+} from '@/lib/admin/index';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AdminStats {

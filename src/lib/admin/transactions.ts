@@ -10,8 +10,8 @@ export const fetchPendingTransactions = async (): Promise<Transaction[]> => {
     .select(`
       *,
       task_requests!task_id(title, completed_at),
-      client:users!client_id(full_name, email),
-      tasker:users!tasker_id(full_name, email)
+      client:users!client_id(id, full_name, email),
+      tasker:users!tasker_id(id, full_name, email)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
@@ -42,8 +42,8 @@ export const fetchAllTransactions = async (): Promise<Transaction[]> => {
     .select(`
       *,
       task_requests!task_id(title, completed_at),
-      client:users!client_id(full_name, email),
-      tasker:users!tasker_id(full_name, email)
+      client:users!client_id(id, full_name, email),
+      tasker:users!tasker_id(id, full_name, email)
     `)
     .order('created_at', { ascending: false });
 
