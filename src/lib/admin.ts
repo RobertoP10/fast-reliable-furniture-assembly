@@ -106,3 +106,49 @@ export const updateTransactionStatus = async (transactionId: string, status: str
     return { success: false, error: error.message };
   }
 };
+
+// Add missing exports that are referenced in other files
+export const confirmTransaction = async (transactionId: string) => {
+  return updateTransactionStatus(transactionId, "confirmed");
+};
+
+export const getAdminStats = async () => {
+  try {
+    // Get basic counts
+    const { count: usersCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: tasksCount } = await supabase
+      .from('task_requests')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: pendingTaskersCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'tasker' as any)
+      .eq('approved', false as any);
+
+    // Get total revenue
+    const { data: revenueData } = await supabase
+      .from('transactions')
+      .select('amount');
+
+    const totalRevenue = revenueData?.reduce((sum, transaction) => sum + (transaction.amount || 0), 0) || 0;
+
+    return {
+      totalUsers: usersCount || 0,
+      totalTasks: tasksCount || 0,
+      pendingTaskers: pendingTaskersCount || 0,
+      totalRevenue
+    };
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    return {
+      totalUsers: 0,
+      totalTasks: 0,
+      pendingTaskers: 0,
+      totalRevenue: 0
+    };
+  }
+};

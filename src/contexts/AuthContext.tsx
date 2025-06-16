@@ -23,6 +23,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   hasAcceptedTerms: boolean;
+  waitingForProfile: boolean;
   refreshUserData: () => Promise<void>;
 }
 
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [waitingForProfile, setWaitingForProfile] = useState(false);
   const { toast } = useToast();
 
   // Check if user exists and refresh user data
@@ -145,6 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     termsAccepted: boolean
   ) => {
     try {
+      setWaitingForProfile(true);
+      
       // First, sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -196,6 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
+    } finally {
+      setWaitingForProfile(false);
     }
   };
 
@@ -231,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     isAuthenticated,
     hasAcceptedTerms,
+    waitingForProfile,
     refreshUserData,
   };
 
