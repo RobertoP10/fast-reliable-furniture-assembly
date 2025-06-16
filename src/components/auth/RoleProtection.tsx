@@ -12,7 +12,7 @@ interface RoleProtectionProps {
 }
 
 const RoleProtection = ({ children, allowedRoles, redirectTo }: RoleProtectionProps) => {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const navigate = useNavigate();
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [timeoutReached, setTimeoutReached] = useState(false);
@@ -34,26 +34,26 @@ const RoleProtection = ({ children, allowedRoles, redirectTo }: RoleProtectionPr
   }, [loading, user]);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && userData) {
       console.log('✅ [ROLE_PROTECTION] User loaded:', { 
-        role: user.role, 
+        role: userData.role, 
         allowedRoles, 
-        hasAccess: allowedRoles.includes(user.role) 
+        hasAccess: allowedRoles.includes(userData.role) 
       });
 
-      if (!allowedRoles.includes(user.role)) {
+      if (!allowedRoles.includes(userData.role)) {
         console.log('🔄 [ROLE_PROTECTION] Redirecting user to correct dashboard...');
         
         // Redirect based on user role
         if (redirectTo) {
           navigate(redirectTo);
         } else {
-          switch (user.role) {
+          switch (userData.role) {
             case 'client':
               navigate('/client-dashboard');
               break;
             case 'tasker':
-              if (user.approved) {
+              if (userData.approved) {
                 navigate('/tasker-dashboard');
               } else {
                 navigate('/tasker-pending');
@@ -72,7 +72,7 @@ const RoleProtection = ({ children, allowedRoles, redirectTo }: RoleProtectionPr
       console.log('❌ [ROLE_PROTECTION] No user found after timeout');
       setShowAccessDenied(true);
     }
-  }, [user, loading, allowedRoles, navigate, redirectTo, timeoutReached]);
+  }, [user, userData, loading, allowedRoles, navigate, redirectTo, timeoutReached]);
 
   // Show loading while auth is initializing (and timeout hasn't been reached)
   if (loading && !timeoutReached) {
@@ -112,8 +112,8 @@ const RoleProtection = ({ children, allowedRoles, redirectTo }: RoleProtectionPr
   }
 
   // Show role-based access denied only if user exists but doesn't have the right role
-  if (user && !allowedRoles.includes(user.role)) {
-    console.log('🚫 [ROLE_PROTECTION] User has wrong role:', { userRole: user.role, allowedRoles });
+  if (user && userData && !allowedRoles.includes(userData.role)) {
+    console.log('🚫 [ROLE_PROTECTION] User has wrong role:', { userRole: userData.role, allowedRoles });
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
         <Card className="w-full max-w-md shadow-xl border-0">
@@ -124,7 +124,7 @@ const RoleProtection = ({ children, allowedRoles, redirectTo }: RoleProtectionPr
           <CardContent className="text-center">
             <p className="text-gray-600">
               You don't have permission to access this page. 
-              Your role is: <span className="font-semibold">{user.role}</span>
+              Your role is: <span className="font-semibold">{userData.role}</span>
             </p>
           </CardContent>
         </Card>

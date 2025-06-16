@@ -13,7 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 const TaskerDashboard = () => {
-  const { user, logout } = useAuth();
+  const { userData, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'available' | 'appointments' | 'my-offers' | 'completed' | 'chat'>('available');
   const [selectedChatTask, setSelectedChatTask] = useState<{ taskId: string; clientId: string } | null>(null);
   const { unreadCount, refreshNotifications } = useNotifications();
@@ -30,7 +30,7 @@ const TaskerDashboard = () => {
   };
 
   // Additional check for approved status to prevent flash of unapproved content
-  if (!user?.approved && user?.role === 'tasker') {
+  if (!userData?.approved && userData?.role === 'tasker') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
         <Card className="w-full max-w-md shadow-xl border-0">
@@ -77,7 +77,7 @@ const TaskerDashboard = () => {
                 <NotificationBadge count={unreadCount} onClick={handleNotificationClick} />
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium">{user?.full_name}</span>
+                  <span className="text-sm font-medium">{userData?.full_name}</span>
                   <Badge className="bg-green-100 text-green-700">Tasker</Badge>
                 </div>
                 <Button variant="ghost" size="sm" onClick={logout}>
@@ -94,7 +94,7 @@ const TaskerDashboard = () => {
               <Card className="shadow-lg border-0">
                 <CardHeader>
                   <CardTitle className="text-blue-900">Tasker Dashboard</CardTitle>
-                  <CardDescription>Welcome, {user?.full_name}!</CardDescription>
+                  <CardDescription>Welcome, {userData?.full_name}!</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <Button

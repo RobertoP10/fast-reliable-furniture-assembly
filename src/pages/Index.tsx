@@ -13,7 +13,7 @@ import { CTASection } from "@/components/landing/CTASection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
@@ -22,24 +22,24 @@ const Index = () => {
   useEffect(() => {
     console.log("🏠 [INDEX] Component mounted - Auth state:", {
       user: user?.id || "none",
-      role: user?.role || "none",
-      approved: user?.approved || false,
+      role: userData?.role || "none",
+      approved: userData?.approved || false,
       loading,
       currentPath: window.location.pathname,
     });
 
-    if (!loading && user) {
-      if (user.role === "client") {
+    if (!loading && user && userData) {
+      if (userData.role === "client") {
         navigate("/client-dashboard");
-      } else if (user.role === "tasker" && user.approved) {
+      } else if (userData.role === "tasker" && userData.approved) {
         navigate("/tasker-dashboard");
-      } else if (user.role === "tasker" && !user.approved) {
+      } else if (userData.role === "tasker" && !userData.approved) {
         navigate("/tasker-pending");
-      } else if (user.role === "admin") {
+      } else if (userData.role === "admin") {
         navigate("/admin-dashboard");
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, userData, loading, navigate]);
 
   // Loader când verificăm userul
   if (loading) {
@@ -55,14 +55,14 @@ const Index = () => {
   }
 
   // Interfață de redirect în timp ce navighează
-  if (user && !loading) {
+  if (user && userData && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600 font-medium">Redirecting to your dashboard...</p>
           <p className="mt-2 text-xs text-gray-500">
-            User: {user.id} | Role: {user.role} | Approved: {user.approved.toString()}
+            User: {user.id} | Role: {userData.role} | Approved: {userData.approved.toString()}
           </p>
         </div>
       </div>

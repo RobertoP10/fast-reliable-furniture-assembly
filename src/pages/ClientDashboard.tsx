@@ -12,7 +12,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 const ClientDashboard = () => {
-  const { user, logout } = useAuth();
+  const { userData, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'tasks' | 'received-offers' | 'appointments' | 'completed' | 'create' | 'chat'>('tasks');
   const { unreadCount, refreshNotifications } = useNotifications();
 
@@ -53,7 +53,7 @@ const ClientDashboard = () => {
               <NotificationBadge count={unreadCount} />
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.full_name}</span>
+                <span className="text-sm font-medium">{userData?.full_name}</span>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>
                 <LogOut className="h-4 w-4" />
@@ -69,7 +69,7 @@ const ClientDashboard = () => {
             <Card className="shadow-lg border-0">
               <CardHeader>
                 <CardTitle className="text-blue-900">Client Dashboard</CardTitle>
-                <CardDescription>Welcome, {user?.full_name}!</CardDescription>
+                <CardDescription>Welcome, {userData?.full_name}!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button

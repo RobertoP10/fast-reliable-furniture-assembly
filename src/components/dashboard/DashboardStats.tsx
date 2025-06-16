@@ -11,7 +11,7 @@ interface DashboardStatsProps {
 }
 
 export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [stats, setStats] = useState({
     activeTasks: 0,
     completedTasks: 0,
@@ -217,7 +217,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
               <div className="flex items-center space-x-1">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium text-green-600">
-                  {user?.approved ? 'Verified' : 'Pending'}
+                  {userData?.approved ? 'Verified' : 'Pending'}
                 </span>
               </div>
             </div>

@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Wrench, Clock, User, LogOut } from "lucide-react";
 
 const TaskerPending = () => {
-  const { user, logout } = useAuth();
+  const { userData, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -22,7 +22,7 @@ const TaskerPending = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">{user?.full_name}</span>
+                <span className="text-sm font-medium">{userData?.full_name}</span>
               </div>
               <Button variant="ghost" size="sm" onClick={logout}>
                 <LogOut className="h-4 w-4" />

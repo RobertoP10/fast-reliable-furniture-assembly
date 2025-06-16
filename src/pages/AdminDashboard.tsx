@@ -34,7 +34,7 @@ const AdminDashboard = () => {
     taskers,
     clients,
     loadData
-  } = useAdminData(activeTab, dateFilter, selectedTasker, selectedClient);
+  } = useAdminData();
 
   const clearFilters = () => {
     setDateFilter({ start: '', end: '' });
