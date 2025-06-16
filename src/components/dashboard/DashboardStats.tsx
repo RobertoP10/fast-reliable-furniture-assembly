@@ -36,7 +36,7 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
       }
 
       const rating = reviews && reviews.length > 0 
-        ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length 
+        ? reviews.reduce((sum, review) => sum + (review?.rating || 0), 0) / reviews.length 
         : 0;
       const totalReviews = reviews?.length || 0;
 
@@ -55,10 +55,10 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
           console.error('Error fetching client tasks:', clientTasksError);
         } else if (clientTasks) {
           activeTasks = clientTasks.filter(task => 
-            task.status === 'pending' || task.status === 'accepted'
+            task?.status === 'pending' || task?.status === 'accepted'
           ).length;
           completedTasks = clientTasks.filter(task => 
-            task.status === 'completed'
+            task?.status === 'completed'
           ).length;
         }
       } else {
@@ -72,42 +72,44 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         if (offersError) {
           console.error('Error fetching tasker offers:', offersError);
         } else if (taskerOffers && taskerOffers.length > 0) {
-          const taskIds = taskerOffers.map(offer => offer.task_id);
+          const taskIds = taskerOffers.map(offer => offer?.task_id).filter(Boolean);
           
-          // Get the corresponding tasks
-          const { data: taskerTasks, error: taskerTasksError } = await supabase
-            .from('task_requests')
-            .select('id, status, completed_at, accepted_offer_id')
-            .in('id', taskIds);
+          if (taskIds.length > 0) {
+            // Get the corresponding tasks
+            const { data: taskerTasks, error: taskerTasksError } = await supabase
+              .from('task_requests')
+              .select('id, status, completed_at, accepted_offer_id')
+              .in('id', taskIds);
 
-          if (taskerTasksError) {
-            console.error('Error fetching tasker tasks:', taskerTasksError);
-          } else if (taskerTasks) {
-            activeTasks = taskerTasks.filter(task => 
-              task.status === 'accepted'
-            ).length;
-            
-            completedTasks = taskerTasks.filter(task => 
-              task.status === 'completed'
-            ).length;
+            if (taskerTasksError) {
+              console.error('Error fetching tasker tasks:', taskerTasksError);
+            } else if (taskerTasks) {
+              activeTasks = taskerTasks.filter(task => 
+                task?.status === 'accepted'
+              ).length;
+              
+              completedTasks = taskerTasks.filter(task => 
+                task?.status === 'completed'
+              ).length;
 
-            // Calculate monthly earnings
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            
-            monthlyEarnings = taskerTasks
-              .filter(task => 
-                task.status === 'completed' &&
-                task.completed_at &&
-                new Date(task.completed_at).getMonth() === currentMonth &&
-                new Date(task.completed_at).getFullYear() === currentYear
-              )
-              .reduce((total, task) => {
-                const correspondingOffer = taskerOffers.find(offer => 
-                  offer.task_id === task.id && offer.id === task.accepted_offer_id
-                );
-                return total + (Number(correspondingOffer?.price) || 0);
-              }, 0);
+              // Calculate monthly earnings
+              const currentMonth = new Date().getMonth();
+              const currentYear = new Date().getFullYear();
+              
+              monthlyEarnings = taskerTasks
+                .filter(task => 
+                  task?.status === 'completed' &&
+                  task?.completed_at &&
+                  new Date(task.completed_at).getMonth() === currentMonth &&
+                  new Date(task.completed_at).getFullYear() === currentYear
+                )
+                .reduce((total, task) => {
+                  const correspondingOffer = taskerOffers.find(offer => 
+                    offer?.task_id === task?.id && offer?.id === task?.accepted_offer_id
+                  );
+                  return total + (Number(correspondingOffer?.price) || 0);
+                }, 0);
+            }
           }
         }
       }

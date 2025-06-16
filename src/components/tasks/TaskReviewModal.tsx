@@ -75,7 +75,7 @@ export const TaskReviewModal = ({
         .eq('task_id', taskId)
         .eq('reviewer_id', user.id)
         .eq('reviewee_id', taskerId)
-        .single();
+        .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking existing review:', checkError);
