@@ -192,11 +192,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Add a smaller delay to ensure auth listener is set up
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Try to get existing session with a timeout
+        // Try to get existing session with increased timeout for better persistence
         try {
           const sessionPromise = supabase.auth.getSession();
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Initial session check timeout')), 3000);
+            setTimeout(() => reject(new Error('Initial session check timeout')), 5000); // Increased to 5 seconds
           });
 
           const { data: { session }, error } = await Promise.race([

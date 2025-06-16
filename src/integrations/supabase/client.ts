@@ -15,7 +15,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    // Extended session persistence - sessions will persist for longer periods
+    storageKey: 'mgsdeal-auth-token',
+    // Refresh token before it expires with a larger buffer
+    expiryMargin: 600 // 10 minutes margin for token refresh
   },
   global: {
     headers: {
