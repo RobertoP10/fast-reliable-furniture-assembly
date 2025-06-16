@@ -8,6 +8,7 @@ import {
   fetchAnalyticsData 
 } from '@/lib/adminApi';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AdminStats {
   totalUsers: number;
@@ -49,6 +50,7 @@ interface User {
 }
 
 export const useAdminData = () => {
+  const { toast } = useToast();
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalTasks: 0,
@@ -67,9 +69,12 @@ export const useAdminData = () => {
   const [taskers, setTaskers] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastPendingCount, setLastPendingCount] = useState(0);
 
   const fetchAdminData = async () => {
     try {
+      console.log('🔍 [ADMIN_DATA] Fetching admin data...');
+      
       // Get current user to check admin status
       const { data: currentUser, error: userError } = await supabase
         .from('users')
@@ -78,12 +83,12 @@ export const useAdminData = () => {
         .maybeSingle();
 
       if (userError && userError.code !== 'PGRST116') {
-        console.error('Error checking user role:', userError);
+        console.error('❌ [ADMIN_DATA] Error checking user role:', userError);
         return;
       }
 
       if (!currentUser || (currentUser.role !== 'admin' && currentUser.approved !== true)) {
-        console.error('Unauthorized access to admin data');
+        console.error('❌ [ADMIN_DATA] Unauthorized access to admin data');
         return;
       }
 
@@ -101,6 +106,23 @@ export const useAdminData = () => {
         fetchAllTransactions(),
         fetchAnalyticsData()
       ]);
+
+      console.log('📊 [ADMIN_DATA] Fetched data:', {
+        users: usersData.length,
+        pendingTaskers: pendingTaskersData.length,
+        pendingTransactions: pendingTransactionsData.length,
+        allTransactions: allTransactionsData.length
+      });
+
+      // Check for new pending taskers and show notification
+      if (pendingTaskersData.length > lastPendingCount && lastPendingCount > 0) {
+        const newTaskersCount = pendingTaskersData.length - lastPendingCount;
+        toast({
+          title: "New Tasker Applications!",
+          description: `${newTaskersCount} new tasker${newTaskersCount > 1 ? 's' : ''} waiting for approval.`,
+        });
+      }
+      setLastPendingCount(pendingTaskersData.length);
 
       // Fetch basic stats
       const { count: tasksCount } = await supabase
@@ -130,8 +152,10 @@ export const useAdminData = () => {
       setTaskers(taskersData);
       setClients(clientsData);
 
+      console.log('✅ [ADMIN_DATA] Admin data loaded successfully');
+
     } catch (error) {
-      console.error('Error fetching admin data:', error);
+      console.error('❌ [ADMIN_DATA] Error fetching admin data:', error);
     } finally {
       setLoading(false);
     }
@@ -139,6 +163,33 @@ export const useAdminData = () => {
 
   useEffect(() => {
     fetchAdminData();
+    
+    // Set up real-time subscription for new user registrations
+    const userSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'users',
+          filter: 'role=eq.tasker'
+        }, 
+        (payload) => {
+          console.log('🔔 [ADMIN_DATA] New tasker registered:', payload.new);
+          toast({
+            title: "New Tasker Application!",
+            description: `${(payload.new as any).full_name} has applied to become a tasker.`,
+          });
+          // Refresh data to show new pending tasker
+          fetchAdminData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🧹 [ADMIN_DATA] Cleaning up subscriptions');
+      userSubscription.unsubscribe();
+    };
   }, []);
 
   return {
