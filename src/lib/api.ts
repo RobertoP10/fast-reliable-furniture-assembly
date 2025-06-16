@@ -23,17 +23,23 @@ export {
   declineOffer
 } from './offers';
 
-// 🛠️ Admin tools
+// 🛠️ Admin tools - import from the new admin modules
 export {
   fetchAllUsers,
   fetchPendingTaskers,
+  acceptTasker,
+  rejectTasker
+} from './admin/users';
+
+export {
   fetchPendingTransactions,
   fetchAllTransactions,
-  fetchAnalyticsData,
-  acceptTasker,
-  rejectTasker,
   confirmTransaction
-} from './admin';
+} from './admin/transactions';
+
+export {
+  fetchAnalyticsData
+} from './admin/analytics';
 
 // 💬 Chat
 export {
