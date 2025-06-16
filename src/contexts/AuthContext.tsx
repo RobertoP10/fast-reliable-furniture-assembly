@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchUserProfile } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import type { UserData, AuthContextType } from './auth/types';
 
@@ -23,8 +22,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [waitingForProfile, setWaitingForProfile] = useState(false);
   const { toast } = useToast();
 
+  const fetchUserProfile = async (authUser: User) => {
+    try {
+      console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, full_name, role, approved, created_at, updated_at, rating, total_reviews')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('❌ [AUTH] Error fetching user profile:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.warn('⚠️ [AUTH] No profile found for user:', authUser.id);
+        return null;
+      }
+
+      console.log('✅ [AUTH] Fetched user profile successfully:', {
+        id: data.id,
+        role: data.role,
+        approved: data.approved,
+        email: data.email
+      });
+      
+      return data;
+    } catch (error: any) {
+      console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
+      return null;
+    }
+  };
+
   const loadUserData = async (currentUser: User | null) => {
-    console.log('🔄 [AUTH_CONTEXT] Loading user data for:', currentUser?.id || 'no user');
+    console.log('🔄 [AUTH] Loading user data for:', currentUser?.id || 'no user');
     
     if (!currentUser) {
       setUser(null);
@@ -37,16 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = await fetchUserProfile(currentUser);
       
       if (profile) {
-        console.log('✅ [AUTH_CONTEXT] Profile loaded successfully:', profile.role);
+        console.log('✅ [AUTH] Profile loaded successfully:', profile.role);
         setUser(currentUser);
         setUserData(profile);
       } else {
-        console.warn('⚠️ [AUTH_CONTEXT] No profile found for user');
+        console.warn('⚠️ [AUTH] No profile found for user');
         setUser(currentUser);
         setUserData(null);
       }
     } catch (error) {
-      console.error('❌ [AUTH_CONTEXT] Error loading profile:', error);
+      console.error('❌ [AUTH] Error loading profile:', error);
       setUser(currentUser);
       setUserData(null);
     } finally {
@@ -56,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔐 [AUTH_CONTEXT] Attempting login for:', email);
+      console.log('🔐 [AUTH] Attempting login for:', email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -64,18 +97,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        console.error('❌ [AUTH_CONTEXT] Login error:', error);
+        console.error('❌ [AUTH] Login error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        console.log('✅ [AUTH_CONTEXT] Login successful');
+        console.log('✅ [AUTH] Login successful');
         return { success: true };
       }
 
       return { success: false, error: 'Login failed' };
     } catch (error: any) {
-      console.error('❌ [AUTH_CONTEXT] Login exception:', error);
+      console.error('❌ [AUTH] Login exception:', error);
       return { success: false, error: error.message || 'Login failed' };
     }
   };
@@ -90,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     termsAccepted: boolean
   ) => {
     try {
-      console.log('📝 [AUTH_CONTEXT] Attempting registration for:', email, 'as', role);
+      console.log('📝 [AUTH] Attempting registration for:', email, 'as', role);
       setWaitingForProfile(true);
 
       const redirectUrl = `${window.location.origin}/`;
@@ -112,13 +145,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        console.error('❌ [AUTH_CONTEXT] Registration error:', error);
+        console.error('❌ [AUTH] Registration error:', error);
         setWaitingForProfile(false);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        console.log('✅ [AUTH_CONTEXT] Registration successful, creating profile...');
+        console.log('✅ [AUTH] Registration successful, creating profile...');
 
         const { error: profileError } = await supabase
           .from('users')
@@ -137,35 +170,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
         if (profileError) {
-          console.error('❌ [AUTH_CONTEXT] Profile creation error:', profileError);
+          console.error('❌ [AUTH] Profile creation error:', profileError);
           setWaitingForProfile(false);
           return { success: false, error: 'Failed to create user profile' };
         }
 
-        console.log('✅ [AUTH_CONTEXT] Profile created successfully');
+        console.log('✅ [AUTH] Profile created successfully');
 
         if (role === 'client') {
-          // For clients, sign out and sign back in to trigger proper auth flow
-          await supabase.auth.signOut();
-          
+          // For clients, wait a moment and then load their data
           setTimeout(async () => {
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
+            await loadUserData(data.user);
+            toast({
+              title: "Welcome!",
+              description: "Your account has been created successfully. Welcome to our platform!",
             });
-
-            if (signInError) {
-              console.error('❌ [AUTH_CONTEXT] Auto sign-in error:', signInError);
-              toast({
-                title: "Registration Successful!",
-                description: "Your account has been created. Please log in manually.",
-              });
-            } else {
-              toast({
-                title: "Welcome!",
-                description: "Your account has been created successfully. Welcome to our platform!",
-              });
-            }
             setWaitingForProfile(false);
           }, 1000);
         } else if (role === 'tasker') {
@@ -182,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setWaitingForProfile(false);
       return { success: false, error: 'Registration failed' };
     } catch (error: any) {
-      console.error('❌ [AUTH_CONTEXT] Registration exception:', error);
+      console.error('❌ [AUTH] Registration exception:', error);
       setWaitingForProfile(false);
       return { success: false, error: error.message || 'Registration failed' };
     }
@@ -190,21 +209,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      console.log('🚪 [AUTH_CONTEXT] Logging out...');
+      console.log('🚪 [AUTH] Logging out...');
       await supabase.auth.signOut();
-      console.log('✅ [AUTH_CONTEXT] Logout successful');
+      console.log('✅ [AUTH] Logout successful');
     } catch (error) {
-      console.error('❌ [AUTH_CONTEXT] Logout error:', error);
+      console.error('❌ [AUTH] Logout error:', error);
       window.location.href = '/';
     }
   };
 
   useEffect(() => {
-    console.log('🔄 [AUTH_CONTEXT] Setting up auth state listener...');
+    console.log('🔄 [AUTH] Setting up auth state listener...');
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔔 [AUTH_CONTEXT] Auth state changed:', event, session?.user?.id || 'no user');
+        console.log('🔔 [AUTH] Auth state changed:', event, session?.user?.id || 'no user');
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user) {
@@ -222,25 +241,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize auth
     const initializeAuth = async () => {
       try {
-        console.log('🔍 [AUTH_CONTEXT] Checking for existing session...');
+        console.log('🔍 [AUTH] Checking for existing session...');
         
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('❌ [AUTH_CONTEXT] Session error:', error);
+          console.error('❌ [AUTH] Session error:', error);
           setLoading(false);
           return;
         }
         
         if (session?.user) {
-          console.log('✅ [AUTH_CONTEXT] Found existing session');
+          console.log('✅ [AUTH] Found existing session');
           await loadUserData(session.user);
         } else {
-          console.log('ℹ️ [AUTH_CONTEXT] No existing session found');
+          console.log('ℹ️ [AUTH] No existing session found');
           setLoading(false);
         }
       } catch (error) {
-        console.error('❌ [AUTH_CONTEXT] Error initializing auth:', error);
+        console.error('❌ [AUTH] Error initializing auth:', error);
         setLoading(false);
       }
     };
@@ -248,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     return () => {
-      console.log('🧹 [AUTH_CONTEXT] Cleaning up auth listener');
+      console.log('🧹 [AUTH] Cleaning up auth listener');
       subscription.unsubscribe();
     };
   }, []);
