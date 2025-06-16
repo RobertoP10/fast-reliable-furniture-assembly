@@ -51,15 +51,22 @@ export default function LoginForm({ onBack, onSwitchToRegister }: LoginFormProps
         return;
       }
 
-      // Obține rolul din tabela users
+      // Obține rolul din tabela users - use proper UUID type
       const { data: userData, error: userFetchError } = await supabase
         .from("users")
         .select("role, approved")
-        .eq("id", user.id)
-        .single();
+        .eq("id", user.id as string)
+        .maybeSingle();
 
-      if (userFetchError || !userData) {
+      if (userFetchError) {
+        console.error("User fetch error:", userFetchError);
         setError("Failed to fetch user role.");
+        setLoading(false);
+        return;
+      }
+
+      if (!userData) {
+        setError("User data not found.");
         setLoading(false);
         return;
       }

@@ -69,13 +69,18 @@ export const TaskReviewModal = ({
       if (!user) throw new Error("User not authenticated");
 
       // Check if review already exists
-      const { data: existingReview } = await supabase
+      const { data: existingReview, error: checkError } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', taskId)
-        .eq('reviewer_id', user.id)
-        .eq('reviewee_id', taskerId)
+        .eq('task_id', taskId as string)
+        .eq('reviewer_id', user.id as string)
+        .eq('reviewee_id', taskerId as string)
         .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing review:', checkError);
+        throw checkError;
+      }
 
       if (existingReview) {
         toast({
@@ -90,9 +95,9 @@ export const TaskReviewModal = ({
       const { error } = await supabase
         .from('reviews')
         .insert({
-          task_id: taskId,
-          reviewer_id: user.id,
-          reviewee_id: taskerId,
+          task_id: taskId as string,
+          reviewer_id: user.id as string,
+          reviewee_id: taskerId as string,
           rating,
           comment: comment.trim() || null
         });

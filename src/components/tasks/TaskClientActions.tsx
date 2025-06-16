@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,13 +50,18 @@ export const TaskClientActions = ({
     if (!acceptedOffer || !user?.id) return;
 
     try {
-      const { data: existingReview } = await supabase
+      const { data: existingReview, error } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', task.id)
-        .eq('reviewer_id', user.id)
-        .eq('reviewee_id', acceptedOffer.tasker_id)
+        .eq('task_id', task.id as string)
+        .eq('reviewer_id', user.id as string)
+        .eq('reviewee_id', acceptedOffer.tasker_id as string)
         .maybeSingle();
+
+      if (error) {
+        console.error('Error checking existing review:', error);
+        return;
+      }
 
       setHasExistingReview(!!existingReview);
     } catch (error) {
