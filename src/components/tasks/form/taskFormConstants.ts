@@ -1,10 +1,11 @@
+
 export const categories = {
-  wardrobe: ['PAX Wardrobe', 'KLEPPSTAD Wardrobe', 'BRIMNES Wardrobe', 'HEMNES Wardrobe'],
-  desk: ['BEKANT Desk', 'LINNMON Desk', 'GALANT Desk', 'ALEX Desk'],
-  bed: ['HEMNES Bed Frame', 'MALM Bed Frame', 'BRIMNES Bed Frame', 'TARVA Bed Frame'],
-  chest: ['HEMNES Chest', 'MALM Chest', 'RAST Chest', 'KOPPANG Chest'],
-  table: ['INGATORP Table', 'BJURSTA Table', 'NORDEN Table', 'LERHAMN Table'],
-  shelf: ['BILLY Bookcase', 'HEMNES Bookcase', 'IVAR Shelf', 'KALLAX Shelf'],
+  wardrobe: ['PAX Wardrobe', 'KLEPPSTAD Wardrobe', 'BRIMNES Wardrobe', 'HEMNES Wardrobe', 'Other (not listed)'],
+  desk: ['BEKANT Desk', 'LINNMON Desk', 'GALANT Desk', 'ALEX Desk', 'Other (not listed)'],
+  bed: ['HEMNES Bed Frame', 'MALM Bed Frame', 'BRIMNES Bed Frame', 'TARVA Bed Frame', 'Other (not listed)'],
+  chest: ['HEMNES Chest', 'MALM Chest', 'RAST Chest', 'KOPPANG Chest', 'Other (not listed)'],
+  table: ['INGATORP Table', 'BJURSTA Table', 'NORDEN Table', 'LERHAMN Table', 'Other (not listed)'],
+  shelf: ['BILLY Bookcase', 'HEMNES Bookcase', 'IVAR Shelf', 'KALLAX Shelf', 'Other (not listed)'],
   other: ['Other (not listed)']
 };
 
