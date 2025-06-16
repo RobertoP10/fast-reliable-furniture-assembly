@@ -57,14 +57,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from("users")
           .select("*")
           .eq("id", user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle to handle 0 results gracefully
 
         if (error) {
           console.error("❌ [AUTH] Error fetching user profile:", error);
           setUserData(null);
-        } else {
+        } else if (profile) {
           console.log('✅ [AUTH] User profile loaded:', { role: profile.role, approved: profile.approved });
           setUserData(profile);
+        } else {
+          console.warn('⚠️ [AUTH] No profile found for user:', user.id);
+          setUserData(null);
         }
       } else {
         setUserData(null);
@@ -178,7 +181,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('📝 [AUTH] Starting registration for:', { email, role });
       setWaitingForProfile(true);
       
-      // Sign up the user
+      // First check if user already exists in our users table
+      const { data: existingProfile } = await supabase
+        .from("users")
+        .select("id, email, role")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (existingProfile) {
+        console.log('⚠️ [AUTH] User profile already exists, attempting login instead');
+        setWaitingForProfile(false);
+        return { success: false, error: "User already registered. Please try logging in instead." };
+      }
+
+      // Try to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -197,6 +213,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('❌ [AUTH] Registration error:', error);
+        
+        // If user already exists in auth but not in our table, try to create profile
+        if (error.message === "User already registered") {
+          console.log('🔄 [AUTH] User exists in auth, trying to get user and create profile...');
+          
+          // Try to sign in to get the user
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInData?.user && !signInError) {
+            console.log('✅ [AUTH] Successfully signed in existing user, creating profile...');
+            
+            // Create the user profile in our users table
+            const approved = role === "client" ? true : false;
+            
+            const { error: profileError } = await supabase
+              .from("users")
+              .insert({
+                id: signInData.user.id,
+                email,
+                full_name: fullName,
+                phone_number: phoneNumber,
+                location: location,
+                role: role,
+                approved: approved,
+                terms_accepted: termsAccepted,
+                terms_accepted_at: termsAccepted ? new Date().toISOString() : null,
+              });
+
+            if (profileError) {
+              console.error("❌ [AUTH] Error creating user profile:", profileError);
+              return { success: false, error: "Failed to create user profile" };
+            }
+
+            console.log('✅ [AUTH] Profile created for existing auth user');
+            setUser(signInData.user);
+            await refreshUserData();
+
+            // Handle redirection
+            if (role === "client") {
+              toast({
+                title: "✅ Registration successful",
+                description: "Welcome! Redirecting to your dashboard...",
+              });
+              
+              setTimeout(() => {
+                navigate("/client-dashboard");
+              }, 1000);
+            } else {
+              toast({
+                title: "✅ Registration successful",
+                description: "Your tasker account is pending approval.",
+              });
+              
+              setTimeout(() => {
+                navigate("/tasker-pending");
+              }, 1000);
+            }
+
+            return { success: true };
+          }
+        }
+        
         return { success: false, error: error.message };
       }
 
@@ -231,14 +312,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         await refreshUserData();
 
-        // Show success message
+        // Show success message and redirect
         if (role === "client") {
           toast({
             title: "✅ Registration successful",
             description: "Welcome! Redirecting to your dashboard...",
           });
           
-          // Redirect client to dashboard
           setTimeout(() => {
             navigate("/client-dashboard");
           }, 1000);
@@ -248,7 +328,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: "Your tasker account is pending approval.",
           });
           
-          // Redirect tasker to pending page
           setTimeout(() => {
             navigate("/tasker-pending");
           }, 1000);
