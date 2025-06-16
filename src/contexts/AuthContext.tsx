@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,6 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setUserData(null);
           setLoading(false);
+          // Redirect to home page after logout
+          window.location.href = '/';
         }
       }
     );
@@ -267,8 +268,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setUserData(null);
       console.log('✅ [AUTH_CONTEXT] Logout successful');
+      // The redirect will be handled by the auth state change listener
     } catch (error) {
       console.error('❌ [AUTH_CONTEXT] Logout error:', error);
+      // Even if there's an error, redirect to home page
+      window.location.href = '/';
     }
   };
 
