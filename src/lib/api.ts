@@ -28,9 +28,12 @@ export {
   fetchAllUsers,
   fetchPendingTaskers,
   fetchPendingTransactions,
+  fetchAllTransactions,
+  fetchAnalyticsData,
   acceptTasker,
-  rejectTasker
-} from './adminApi';
+  rejectTasker,
+  confirmTransaction
+} from './admin';
 
 // 💬 Chat
 export {
