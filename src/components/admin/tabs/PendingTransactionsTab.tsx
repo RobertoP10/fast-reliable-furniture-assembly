@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Clock, CheckCircle } from "lucide-react";
-import { confirmTransaction, getAdminStats } from "@/lib/admin";
+import { confirmTransaction } from "@/lib/adminApi";
 import { useToast } from "@/hooks/use-toast";
 
 interface PendingTransactionsTabProps {
@@ -29,15 +29,26 @@ export const PendingTransactionsTab = ({
   const handleConfirmTransaction = async (transactionId: string) => {
     try {
       console.log('✅ [ADMIN] Confirming transaction:', transactionId);
+      
       await confirmTransaction(transactionId);
+      
+      // Remove transaction from pending list
       setPendingTransactions(prev => prev.filter(transaction => transaction.id !== transactionId));
+      
       toast({
         title: "Transaction Confirmed",
         description: "The transaction has been confirmed and marked as paid.",
       });
-      // Reload stats to reflect the change
-      const statsData = await getAdminStats();
-      setStats(statsData);
+
+      // Update stats to reflect the confirmed transaction
+      const confirmedTransaction = pendingTransactions.find(t => t.id === transactionId);
+      if (confirmedTransaction) {
+        setStats(prev => ({
+          ...prev,
+          totalRevenue: prev.totalRevenue + Number(confirmedTransaction.amount)
+        }));
+      }
+
     } catch (error) {
       console.error('❌ [ADMIN] Error confirming transaction:', error);
       toast({
@@ -104,7 +115,8 @@ export const PendingTransactionsTab = ({
                     <Badge variant="outline" className={
                       transaction.payment_method === 'cash' ? 'text-green-700' : 'text-blue-700'
                     }>
-                      {transaction.payment_method === 'cash' ? 'Cash' : 'Transfer'}
+                      {transaction.payment_method === 'cash' ? 'Cash' : 
+                       transaction.payment_method === 'bank_transfer' ? 'Bank Transfer' : 'Card'}
                     </Badge>
                   </TableCell>
                   <TableCell>

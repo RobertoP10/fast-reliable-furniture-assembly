@@ -1,5 +1,12 @@
 
 import { useState, useEffect } from 'react';
+import { 
+  fetchAllUsers, 
+  fetchPendingTaskers, 
+  fetchPendingTransactions, 
+  fetchAllTransactions,
+  fetchAnalyticsData 
+} from '@/lib/adminApi';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AdminStats {
@@ -21,15 +28,15 @@ interface Transaction {
   amount: number;
   status: string;
   created_at: string;
-  task_requests?: { title: string };
+  task_requests?: { title: string; completed_at?: string };
   client?: { full_name: string };
   tasker?: { full_name: string };
 }
 
 interface Analytics {
-  totalEarnings: number;
-  totalTasks: number;
-  averageRating: number;
+  taskerBreakdown: any[];
+  clientBreakdown: any[];
+  confirmedTransactions: Transaction[];
 }
 
 interface User {
@@ -53,9 +60,9 @@ export const useAdminData = () => {
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [analytics, setAnalytics] = useState<Analytics>({
-    totalEarnings: 0,
-    totalTasks: 0,
-    averageRating: 0
+    taskerBreakdown: [],
+    clientBreakdown: [],
+    confirmedTransactions: []
   });
   const [taskers, setTaskers] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
@@ -80,73 +87,48 @@ export const useAdminData = () => {
         return;
       }
 
-      // Fetch all users count
-      const { count: usersCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
+      // Fetch all data using the new API functions
+      const [
+        usersData,
+        pendingTaskersData,
+        pendingTransactionsData,
+        allTransactionsData,
+        analyticsData
+      ] = await Promise.all([
+        fetchAllUsers(),
+        fetchPendingTaskers(),
+        fetchPendingTransactions(),
+        fetchAllTransactions(),
+        fetchAnalyticsData()
+      ]);
 
-      // Fetch all tasks count
+      // Fetch basic stats
       const { count: tasksCount } = await supabase
         .from('task_requests')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch pending taskers count and data
-      const { data: pendingTaskersData, count: pendingCount } = await supabase
-        .from('users')
-        .select('id, full_name, email, created_at')
-        .eq('role', 'tasker' as any)
-        .eq('approved', false as any);
-
-      // Fetch all users
-      const { data: allUsersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Fetch transactions
-      const { data: transactionsData } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          task_requests(title),
-          client:users!transactions_client_id_fkey(full_name),
-          tasker:users!transactions_tasker_id_fkey(full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      // Fetch total revenue (sum of all transaction amounts)
-      const { data: revenueData } = await supabase
-        .from('transactions')
-        .select('amount');
-
-      const totalRevenue = revenueData?.reduce((sum, transaction) => sum + (transaction.amount || 0), 0) || 0;
+      const totalRevenue = allTransactionsData.reduce((sum, transaction) => sum + (Number(transaction.amount) || 0), 0);
 
       // Set stats
       setStats({
-        totalUsers: usersCount || 0,
+        totalUsers: usersData.length,
         totalTasks: tasksCount || 0,
-        pendingTaskers: pendingCount || 0,
+        pendingTaskers: pendingTaskersData.length,
         totalRevenue
       });
 
       // Set data
-      setPendingTaskers(pendingTaskersData || []);
-      setAllUsers(allUsersData || []);
-      setTransactions(transactionsData || []);
-      setPendingTransactions((transactionsData || []).filter(t => t.status === 'pending'));
+      setPendingTaskers(pendingTaskersData);
+      setAllUsers(usersData);
+      setPendingTransactions(pendingTransactionsData);
+      setTransactions(allTransactionsData);
+      setAnalytics(analyticsData);
       
       // Set taskers and clients
-      const taskersData = (allUsersData || []).filter(u => u.role === 'tasker');
-      const clientsData = (allUsersData || []).filter(u => u.role === 'client');
+      const taskersData = usersData.filter(u => u.role === 'tasker');
+      const clientsData = usersData.filter(u => u.role === 'client');
       setTaskers(taskersData);
       setClients(clientsData);
-
-      // Set analytics
-      setAnalytics({
-        totalEarnings: totalRevenue,
-        totalTasks: tasksCount || 0,
-        averageRating: 0 // Calculate this based on reviews if needed
-      });
 
     } catch (error) {
       console.error('Error fetching admin data:', error);
