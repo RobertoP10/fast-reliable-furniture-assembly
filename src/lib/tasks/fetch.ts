@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Task } from "./types";
-import { validateSession } from "../session-validator";
 
 export const fetchTasks = async (
   userId: string,
@@ -9,17 +8,22 @@ export const fetchTasks = async (
 ): Promise<Task[]> => {
   console.log("🔍 [TASKS] Fetching tasks for:", userId, "role:", userRole);
 
-  // Validate session before making requests
-  const sessionValidation = await validateSession();
-  if (!sessionValidation.isValid || !sessionValidation.userId) {
-    console.error("❌ [TASKS] Session validation failed:", sessionValidation.error);
-    throw new Error("Authentication required");
-  }
-
-  // Verify the passed userId matches the session user ID
-  if (sessionValidation.userId !== userId) {
-    console.error("❌ [TASKS] User ID mismatch. Session:", sessionValidation.userId, "Passed:", userId);
-    throw new Error("User ID mismatch");
+  // Quick session check without full validation to avoid timeouts
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn("⚠️ [TASKS] No active session, cannot fetch tasks");
+      return [];
+    }
+    
+    // Verify the passed userId matches the session user ID
+    if (session.user.id !== userId) {
+      console.error("❌ [TASKS] User ID mismatch. Session:", session.user.id, "Passed:", userId);
+      return [];
+    }
+  } catch (sessionError) {
+    console.error("❌ [TASKS] Session check failed:", sessionError);
+    return [];
   }
 
   try {
@@ -91,11 +95,16 @@ export const fetchTasks = async (
 export const fetchTask = async (taskId: string): Promise<Task | null> => {
   console.log("🔍 [TASKS] Fetching single task:", taskId);
   
-  // Validate session
-  const sessionValidation = await validateSession();
-  if (!sessionValidation.isValid) {
-    console.error("❌ [TASKS] Session validation failed for single task fetch:", sessionValidation.error);
-    throw new Error("Authentication required");
+  // Quick session check
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn("⚠️ [TASKS] No active session for single task fetch");
+      return null;
+    }
+  } catch (sessionError) {
+    console.error("❌ [TASKS] Session check failed for single task:", sessionError);
+    return null;
   }
 
   try {

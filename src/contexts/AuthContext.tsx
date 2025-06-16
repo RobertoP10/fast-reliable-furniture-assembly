@@ -72,19 +72,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Get initial session
+    let mounted = true;
+    
+    // Get initial session with reduced timeout
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔄 [AUTH] Getting initial session...');
         
-        if (session?.user) {
+        // Set a 5 second timeout for initial session check
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Initial session timeout')), 5000);
+        });
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]);
+        
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('❌ [AUTH] Initial session error:', error);
+        } else if (session?.user) {
+          console.log('✅ [AUTH] Initial session found');
           setUser(session.user);
           await refreshUserData();
+        } else {
+          console.log('ℹ️ [AUTH] No initial session');
         }
       } catch (error) {
-        console.error("Error getting initial session:", error);
+        console.warn('⚠️ [AUTH] Initial session timeout, will rely on auth state changes');
+        // Don't fail completely, auth state changes will handle it
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -93,11 +117,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+        if (!mounted) return;
+        
+        console.log("🔄 [AUTH] Auth state changed:", event, session?.user?.id);
         
         if (session?.user) {
           setUser(session.user);
-          await refreshUserData();
+          // Don't await here to prevent blocking
+          refreshUserData().catch(console.error);
         } else {
           setUser(null);
           setUserData(null);
@@ -107,7 +134,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

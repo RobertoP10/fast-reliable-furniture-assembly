@@ -46,7 +46,10 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
   const [loading, setLoading] = useState(false);
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("⚠️ [FILTERING] No user ID, skipping data load");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -68,7 +71,7 @@ export const useTaskFiltering = ({ userRole, activeTab, propTasks }: UseTaskFilt
     if (propTasks) {
       setTasks(propTasks);
       setLoading(false);
-    } else {
+    } else if (user?.id) {
       loadData();
     }
   }, [user?.id, userRole, activeTab, propTasks]);
