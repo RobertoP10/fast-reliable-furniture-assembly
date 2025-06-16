@@ -40,13 +40,18 @@ export const TaskCompletedActions = ({
     if (!user?.id || !task.client_id) return;
 
     try {
-      const { data: existingReview } = await supabase
+      const { data: existingReview, error } = await supabase
         .from('reviews')
         .select('id')
-        .eq('task_id', task.id)
-        .eq('reviewer_id', user.id)
-        .eq('reviewee_id', task.client_id)
+        .eq('task_id', task.id as any)
+        .eq('reviewer_id', user.id as any)
+        .eq('reviewee_id', task.client_id as any)
         .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking client review:', error);
+        return;
+      }
 
       setHasReviewedClient(!!existingReview);
     } catch (error) {

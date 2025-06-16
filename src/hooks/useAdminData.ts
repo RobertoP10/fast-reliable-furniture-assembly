@@ -1,122 +1,97 @@
 
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  fetchPendingTaskers, 
-  fetchAllUsers, 
-  fetchPendingTransactions
-} from "@/lib/adminApi";
-import {
-  fetchAllTransactions,
-  fetchTransactionsByDateRange,
-  fetchTransactionsByTasker,
-  fetchTransactionsByClient,
-  getPlatformAnalytics,
-  getAdminStats
-} from "@/lib/admin";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-export const useAdminData = (
-  activeTab: string,
-  dateFilter: { start: string; end: string },
-  selectedTasker: string,
-  selectedClient: string
-) => {
-  const { toast } = useToast();
-  const [pendingTaskers, setPendingTaskers] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [stats, setStats] = useState<any>({});
-  const [loading, setLoading] = useState(false);
-  const [taskers, setTaskers] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+interface AdminStats {
+  totalUsers: number;
+  totalTasks: number;
+  pendingTaskers: number;
+  totalRevenue: number;
+}
 
-  const loadFilterOptions = async () => {
+interface PendingTasker {
+  id: string;
+  full_name: string;
+  email: string;
+  created_at: string;
+}
+
+export const useAdminData = () => {
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 0,
+    totalTasks: 0,
+    pendingTaskers: 0,
+    totalRevenue: 0
+  });
+  const [pendingTaskers, setPendingTaskers] = useState<PendingTasker[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAdminData = async () => {
     try {
-      const users = await fetchAllUsers();
-      const taskerUsers = users.filter(u => u.role === 'tasker' && u.approved);
-      const clientUsers = users.filter(u => u.role === 'client');
-      setTaskers(taskerUsers);
-      setClients(clientUsers);
-    } catch (error) {
-      console.error('Error loading filter options:', error);
-    }
-  };
+      // Get current user to check admin status
+      const { data: currentUser, error: userError } = await supabase
+        .from('users')
+        .select('role, approved')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id as any)
+        .maybeSingle();
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      console.log('🔄 [ADMIN] Loading data for tab:', activeTab);
-      
-      if (activeTab === 'pending-taskers') {
-        const taskers = await fetchPendingTaskers();
-        setPendingTaskers(taskers);
-        console.log('✅ [ADMIN] Loaded pending taskers:', taskers.length);
-      } else if (activeTab === 'users') {
-        const users = await fetchAllUsers();
-        setAllUsers(users);
-        console.log('✅ [ADMIN] Loaded all users:', users.length);
-      } else if (activeTab === 'pending-transactions') {
-        const pendingTxns = await fetchPendingTransactions();
-        setPendingTransactions(pendingTxns);
-        console.log('✅ [ADMIN] Loaded pending transactions:', pendingTxns.length);
-      } else if (activeTab === 'transactions') {
-        let transactionData;
-        if (dateFilter.start && dateFilter.end) {
-          transactionData = await fetchTransactionsByDateRange(dateFilter.start, dateFilter.end);
-        } else if (selectedTasker) {
-          transactionData = await fetchTransactionsByTasker(selectedTasker);
-        } else if (selectedClient) {
-          transactionData = await fetchTransactionsByClient(selectedClient);
-        } else {
-          transactionData = await fetchAllTransactions();
-        }
-        setTransactions(transactionData);
-        console.log('✅ [ADMIN] Loaded transactions:', transactionData.length);
-      } else if (activeTab === 'analytics') {
-        const analyticsData = await getPlatformAnalytics();
-        setAnalytics(analyticsData);
-        console.log('✅ [ADMIN] Loaded analytics:', analyticsData);
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('Error checking user role:', userError);
+        return;
       }
 
-      // Always load stats
-      const statsData = await getAdminStats();
-      setStats(statsData);
-    } catch (error) {
-      console.error('❌ [ADMIN] Error loading data:', error);
-      toast({
-        title: "Error",
-        description: `Failed to load ${activeTab.replace('-', ' ')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.approved !== true)) {
+        console.error('Unauthorized access to admin data');
+        return;
+      }
+
+      // Fetch all users count
+      const { count: usersCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch all tasks count
+      const { count: tasksCount } = await supabase
+        .from('task_requests')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch pending taskers count and data
+      const { data: pendingTaskersData, count: pendingCount } = await supabase
+        .from('users')
+        .select('id, full_name, email, created_at')
+        .eq('role', 'tasker' as any)
+        .eq('approved', false as any);
+
+      // Fetch total revenue (sum of all transaction amounts)
+      const { data: revenueData } = await supabase
+        .from('transactions')
+        .select('amount');
+
+      const totalRevenue = revenueData?.reduce((sum, transaction) => sum + (transaction.amount || 0), 0) || 0;
+
+      setStats({
+        totalUsers: usersCount || 0,
+        totalTasks: tasksCount || 0,
+        pendingTaskers: pendingCount || 0,
+        totalRevenue
       });
+
+      setPendingTaskers(pendingTaskersData || []);
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Force refresh when tab changes or when filters change
   useEffect(() => {
-    loadData();
-    if (activeTab === 'transactions') {
-      loadFilterOptions();
-    }
-  }, [activeTab, dateFilter, selectedTasker, selectedClient]);
+    fetchAdminData();
+  }, []);
 
   return {
-    pendingTaskers,
-    setPendingTaskers,
-    allUsers,
-    pendingTransactions,
-    setPendingTransactions,
-    transactions,
-    analytics,
     stats,
-    setStats,
+    pendingTaskers,
     loading,
-    taskers,
-    clients,
-    loadData,
-    loadFilterOptions
+    refetch: fetchAdminData
   };
 };
