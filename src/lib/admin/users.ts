@@ -79,14 +79,12 @@ export const acceptTasker = async (taskerId: string) => {
       throw new Error('Tasker is already approved');
     }
 
-    // Perform the approval update
+    // Perform the approval update with simpler WHERE clause
     console.log('🔄 [ADMIN] Performing approval update...');
     const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ approved: true })
       .eq('id', trimmedId)
-      .eq('role', 'tasker')
-      .eq('approved', false)
       .select('*');
 
     console.log('📊 [ADMIN] Update result:', { 
@@ -101,7 +99,7 @@ export const acceptTasker = async (taskerId: string) => {
     }
 
     if (!updateData || updateData.length === 0) {
-      throw new Error('No rows updated - tasker may have been modified by another process');
+      throw new Error('No rows updated - user not found');
     }
 
     console.log('✅ [ADMIN] Tasker approved successfully:', updateData[0]);
@@ -150,13 +148,12 @@ export const rejectTasker = async (taskerId: string) => {
       throw new Error(`User is not a tasker (current role: ${userCheck.role})`);
     }
 
-    // Perform the rejection deletion
+    // Perform the rejection deletion with simpler WHERE clause
     console.log('🔄 [ADMIN] Performing rejection deletion...');
     const { data: deleteData, error: deleteError } = await supabase
       .from('users')
       .delete()
       .eq('id', trimmedId)
-      .eq('role', 'tasker')
       .select('*');
 
     console.log('📊 [ADMIN] Delete result:', { 
@@ -171,7 +168,7 @@ export const rejectTasker = async (taskerId: string) => {
     }
 
     if (!deleteData || deleteData.length === 0) {
-      throw new Error('No rows deleted - tasker may have been modified by another process');
+      throw new Error('No rows deleted - user not found');
     }
 
     console.log('✅ [ADMIN] Tasker deleted successfully:', deleteData[0]);
