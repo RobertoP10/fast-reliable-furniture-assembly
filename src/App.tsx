@@ -25,6 +25,7 @@ const LoadingScreen = () => (
   </div>
 );
 
+// This component is now properly nested inside AuthProvider
 const AppRoutes = () => {
   const { waitingForProfile } = useAuth();
 
