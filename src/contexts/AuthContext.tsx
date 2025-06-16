@@ -1,290 +1,280 @@
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import type { UserData, AuthContextType } from './auth/types';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+
+interface AuthContextType {
+  user: User | null;
+  userData: any;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    email: string,
+    password: string,
+    fullName: string,
+    phoneNumber: string,
+    location: string,
+    role: "client" | "tasker",
+    termsAccepted: boolean
+  ) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  loading: boolean;
+  isAuthenticated: boolean;
+  hasAcceptedTerms: boolean;
+  waitingForProfile: boolean;
+  refreshUserData: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [waitingForProfile, setWaitingForProfile] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const fetchUserProfile = async (authUser: User) => {
+  // Check if user exists and refresh user data
+  const refreshUserData = async () => {
     try {
-      console.log('🔍 [AUTH] Fetching profile for user:', authUser.id);
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, email, full_name, role, approved, created_at, updated_at, rating, total_reviews')
-        .eq('id', authUser.id)
-        .maybeSingle();
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id as any)
+          .single();
 
-      if (error) {
-        console.error('❌ [AUTH] Error fetching user profile:', error);
-        return null;
-      }
-
-      if (!data) {
-        console.warn('⚠️ [AUTH] No profile found for user:', authUser.id);
-        return null;
-      }
-
-      console.log('✅ [AUTH] Fetched user profile successfully:', {
-        id: data.id,
-        role: data.role,
-        approved: data.approved,
-        email: data.email
-      });
-      
-      return data;
-    } catch (error: any) {
-      console.error('❌ [AUTH] Exception in fetchUserProfile:', error);
-      return null;
-    }
-  };
-
-  const loadUserData = async (currentUser: User | null) => {
-    console.log('🔄 [AUTH] Loading user data for:', currentUser?.id || 'no user');
-    
-    if (!currentUser) {
-      setUser(null);
-      setUserData(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const profile = await fetchUserProfile(currentUser);
-      
-      if (profile) {
-        console.log('✅ [AUTH] Profile loaded successfully:', profile.role);
-        setUser(currentUser);
-        setUserData(profile);
+        if (error) {
+          console.error("Error fetching user profile:", error);
+          setUserData(null);
+        } else {
+          setUserData(profile);
+        }
       } else {
-        console.warn('⚠️ [AUTH] No profile found for user');
-        setUser(currentUser);
         setUserData(null);
       }
     } catch (error) {
-      console.error('❌ [AUTH] Error loading profile:', error);
-      setUser(currentUser);
+      console.error("Error refreshing user data:", error);
       setUserData(null);
-    } finally {
-      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    let mounted = true;
+    
+    // Get initial session with reduced timeout
+    const getInitialSession = async () => {
+      try {
+        console.log('🔄 [AUTH] Getting initial session...');
+        
+        // Set a 5 second timeout for initial session check
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Initial session timeout')), 5000);
+        });
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]);
+        
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('❌ [AUTH] Initial session error:', error);
+        } else if (session?.user) {
+          console.log('✅ [AUTH] Initial session found');
+          setUser(session.user);
+          await refreshUserData();
+        } else {
+          console.log('ℹ️ [AUTH] No initial session');
+        }
+      } catch (error) {
+        console.warn('⚠️ [AUTH] Initial session timeout, will rely on auth state changes');
+        // Don't fail completely, auth state changes will handle it
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        console.log("🔄 [AUTH] Auth state changed:", event, session?.user?.id);
+        
+        if (session?.user) {
+          setUser(session.user);
+          // Don't await here to prevent blocking
+          refreshUserData().catch(console.error);
+        } else {
+          setUser(null);
+          setUserData(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔐 [AUTH] Attempting login for:', email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('❌ [AUTH] Login error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        console.log('✅ [AUTH] Login successful');
-        return { success: true };
+        setUser(data.user);
+        await refreshUserData();
+        
+        toast({
+          title: "✅ Login successful",
+          description: "Welcome back!",
+        });
       }
 
-      return { success: false, error: 'Login failed' };
+      return { success: true };
     } catch (error: any) {
-      console.error('❌ [AUTH] Login exception:', error);
-      return { success: false, error: error.message || 'Login failed' };
+      return { success: false, error: error.message };
     }
   };
 
   const register = async (
-    email: string, 
-    password: string, 
-    fullName: string, 
-    phoneNumber: string, 
-    location: string, 
-    role: 'client' | 'tasker',
+    email: string,
+    password: string,
+    fullName: string,
+    phoneNumber: string,
+    location: string,
+    role: "client" | "tasker",
     termsAccepted: boolean
   ) => {
     try {
-      console.log('📝 [AUTH] Attempting registration for:', email, 'as', role);
       setWaitingForProfile(true);
-
-      const redirectUrl = `${window.location.origin}/`;
       
+      // First, sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
             phone_number: phoneNumber,
             location: location,
             role: role,
             terms_accepted: termsAccepted,
-            terms_accepted_at: new Date().toISOString()
-          }
-        }
+            terms_accepted_at: termsAccepted ? new Date().toISOString() : null,
+          },
+        },
       });
 
       if (error) {
-        console.error('❌ [AUTH] Registration error:', error);
-        setWaitingForProfile(false);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        console.log('✅ [AUTH] Registration successful, creating profile...');
-
+        // Create the user profile in our users table
+        const approved = role === "client" ? true : false;
+        
         const { error: profileError } = await supabase
-          .from('users')
+          .from("users")
           .insert({
-            id: data.user.id,
-            email: email,
+            email,
             full_name: fullName,
             phone_number: phoneNumber,
             location: location,
-            role: role,
-            approved: role === 'client',
+            role: role as any,
+            approved: approved,
             terms_accepted: termsAccepted,
-            terms_accepted_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
+            terms_accepted_at: termsAccepted ? new Date().toISOString() : null,
+          } as any);
 
         if (profileError) {
-          console.error('❌ [AUTH] Profile creation error:', profileError);
-          setWaitingForProfile(false);
-          return { success: false, error: 'Failed to create user profile' };
+          console.error("Error creating user profile:", profileError);
+          return { success: false, error: "Failed to create user profile" };
         }
 
-        console.log('✅ [AUTH] Profile created successfully');
-
-        if (role === 'client') {
-          // For clients, wait a moment and then load their data
-          setTimeout(async () => {
-            await loadUserData(data.user);
-            toast({
-              title: "Welcome!",
-              description: "Your account has been created successfully. Welcome to our platform!",
-            });
-            setWaitingForProfile(false);
-          }, 1000);
-        } else if (role === 'tasker') {
-          toast({
-            title: "Registration Successful!",
-            description: "Your tasker application has been submitted for review. You'll be notified once approved.",
-          });
-          setWaitingForProfile(false);
-        }
-
-        return { success: true };
+        toast({
+          title: "✅ Registration successful",
+          description: "Please check your email to verify your account.",
+        });
       }
 
-      setWaitingForProfile(false);
-      return { success: false, error: 'Registration failed' };
+      return { success: true };
     } catch (error: any) {
-      console.error('❌ [AUTH] Registration exception:', error);
+      return { success: false, error: error.message };
+    } finally {
       setWaitingForProfile(false);
-      return { success: false, error: error.message || 'Registration failed' };
     }
   };
 
   const logout = async () => {
     try {
-      console.log('🚪 [AUTH] Logging out...');
       await supabase.auth.signOut();
-      console.log('✅ [AUTH] Logout successful');
-    } catch (error) {
-      console.error('❌ [AUTH] Logout error:', error);
-      window.location.href = '/';
+      setUser(null);
+      setUserData(null);
+      
+      toast({
+        title: "✅ Logged out",
+        description: "You have been logged out successfully.",
+      });
+
+      // Redirect to home page after successful logout
+      navigate("/");
+      
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      toast({
+        title: "❌ Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  useEffect(() => {
-    console.log('🔄 [AUTH] Setting up auth state listener...');
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔔 [AUTH] Auth state changed:', event, session?.user?.id || 'no user');
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session?.user) {
-            await loadUserData(session.user);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setUserData(null);
-          setLoading(false);
-          window.location.href = '/';
-        }
-      }
-    );
-
-    // Initialize auth
-    const initializeAuth = async () => {
-      try {
-        console.log('🔍 [AUTH] Checking for existing session...');
-        
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ [AUTH] Session error:', error);
-          setLoading(false);
-          return;
-        }
-        
-        if (session?.user) {
-          console.log('✅ [AUTH] Found existing session');
-          await loadUserData(session.user);
-        } else {
-          console.log('ℹ️ [AUTH] No existing session found');
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('❌ [AUTH] Error initializing auth:', error);
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      console.log('🧹 [AUTH] Cleaning up auth listener');
-      subscription.unsubscribe();
-    };
-  }, []);
+  const isAuthenticated = !!user;
+  const hasAcceptedTerms = userData?.terms_accepted === true;
 
   const value: AuthContextType = {
     user,
     userData,
-    loading,
-    waitingForProfile,
     login,
     register,
     logout,
+    loading,
+    isAuthenticated,
+    hasAcceptedTerms,
+    waitingForProfile,
+    refreshUserData,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

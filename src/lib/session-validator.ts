@@ -11,6 +11,11 @@ export const validateSession = async (): Promise<SessionValidation> => {
   try {
     console.log('🔍 [SESSION] Validating current session...');
     
+    // Reduced timeout to 8 seconds to fail faster and try fallbacks
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Session validation timeout')), 8000);
+    });
+
     // First try to get the session directly (faster, no network call)
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -25,17 +30,17 @@ export const validateSession = async (): Promise<SessionValidation> => {
         return { isValid: false, userId: null, error: 'No active session' };
       }
 
-      // Check if token is still valid with a shorter buffer
+      // Check if token is still valid (5 minute buffer instead of 10)
       const now = Math.floor(Date.now() / 1000);
-      const tokenBuffer = 60; // 1 minute buffer instead of 5
+      const tokenBuffer = 300; // 5 minutes buffer
       
       if (session.expires_at && (session.expires_at - tokenBuffer) < now) {
         console.warn('⚠️ [SESSION] Token expiring soon, attempting refresh...');
         
         try {
-          // Much shorter refresh timeout - 3 seconds
+          // Reduced refresh timeout to 5 seconds
           const refreshTimeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Token refresh timeout')), 3000);
+            setTimeout(() => reject(new Error('Token refresh timeout')), 5000);
           });
 
           const refreshPromise = supabase.auth.refreshSession();
