@@ -21,7 +21,7 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
 
   // Calculate platform-wide metrics from tasker breakdown (completed and paid tasks only)
   const platformMetrics = useMemo(() => {
-    if (!analytics || !analytics.taskerBreakdown) {
+    if (!analytics || !analytics.taskerBreakdown || !Array.isArray(analytics.taskerBreakdown)) {
       return {
         totalCompletedTasks: 0,
         totalValue: 0,
@@ -31,7 +31,7 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
     }
 
     const taskers = analytics.taskerBreakdown;
-    const totalTasks = taskers.reduce((sum: number, tasker: any) => sum + tasker.taskCount, 0);
+    const totalTasks = taskers.reduce((sum: number, tasker: any) => sum + (tasker.taskCount || 0), 0);
     const totalEarnings = taskers.reduce((sum: number, tasker: any) => sum + (tasker.totalEarnings || 0), 0);
     const totalCommission = taskers.reduce((sum: number, tasker: any) => sum + (tasker.totalCommission || 0), 0);
     
@@ -96,25 +96,25 @@ export const AnalyticsTab = ({ analytics, loading, formatCurrency }: AnalyticsTa
         </CardContent>
       </Card>
 
-      {analytics && analytics.taskerBreakdown.length > 0 && (
+      {analytics && analytics.taskerBreakdown && Array.isArray(analytics.taskerBreakdown) && analytics.taskerBreakdown.length > 0 && (
         <EnhancedAnalyticsTable
           title="Top Taskers"
           data={analytics.taskerBreakdown}
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           isTaskerTable={true}
-          transactions={analytics.confirmedTransactions}
+          transactions={analytics.confirmedTransactions || []}
         />
       )}
 
-      {analytics && analytics.clientBreakdown.length > 0 && (
+      {analytics && analytics.clientBreakdown && Array.isArray(analytics.clientBreakdown) && analytics.clientBreakdown.length > 0 && (
         <EnhancedAnalyticsTable
           title="Top Clients"
           data={analytics.clientBreakdown}
           formatCurrency={formatCurrency}
           formatDate={formatDate}
           isTaskerTable={false}
-          transactions={analytics.confirmedTransactions}
+          transactions={analytics.confirmedTransactions || []}
         />
       )}
     </div>
