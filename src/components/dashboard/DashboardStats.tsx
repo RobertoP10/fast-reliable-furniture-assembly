@@ -25,10 +25,15 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
 
     try {
       // Calculate rating and reviews directly from reviews table
-      const { data: reviews } = await supabase
+      const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
         .eq('reviewee_id', user.id);
+
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError);
+        return;
+      }
 
       const rating = reviews && reviews.length > 0 
         ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
@@ -41,12 +46,14 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
 
       if (userRole === "client") {
         // For clients: count their own tasks
-        const { data: clientTasks } = await supabase
+        const { data: clientTasks, error: clientTasksError } = await supabase
           .from('task_requests')
           .select('status')
           .eq('client_id', user.id);
 
-        if (clientTasks) {
+        if (clientTasksError) {
+          console.error('Error fetching client tasks:', clientTasksError);
+        } else if (clientTasks) {
           activeTasks = clientTasks.filter(task => 
             task.status === 'pending' || task.status === 'accepted'
           ).length;
@@ -56,22 +63,26 @@ export const DashboardStats = ({ userRole }: DashboardStatsProps) => {
         }
       } else {
         // For taskers: first get their accepted offers
-        const { data: taskerOffers } = await supabase
+        const { data: taskerOffers, error: offersError } = await supabase
           .from('offers')
           .select('id, task_id, price, is_accepted')
           .eq('tasker_id', user.id)
           .eq('is_accepted', true);
 
-        if (taskerOffers && taskerOffers.length > 0) {
+        if (offersError) {
+          console.error('Error fetching tasker offers:', offersError);
+        } else if (taskerOffers && taskerOffers.length > 0) {
           const taskIds = taskerOffers.map(offer => offer.task_id);
           
           // Get the corresponding tasks
-          const { data: taskerTasks } = await supabase
+          const { data: taskerTasks, error: taskerTasksError } = await supabase
             .from('task_requests')
             .select('id, status, completed_at, accepted_offer_id')
             .in('id', taskIds);
 
-          if (taskerTasks) {
+          if (taskerTasksError) {
+            console.error('Error fetching tasker tasks:', taskerTasksError);
+          } else if (taskerTasks) {
             activeTasks = taskerTasks.filter(task => 
               task.status === 'accepted'
             ).length;
