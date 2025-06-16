@@ -19,13 +19,15 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const LoadingScreen = () => (
-  <div style={{ textAlign: 'center', padding: '4rem' }}>
-    <h2>🛠️ Creating your account...</h2>
-    <p>Please wait a few seconds while we set everything up.</p>
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <h2 className="text-xl font-semibold text-gray-700 mb-2">🛠️ Creating your account...</h2>
+      <p className="text-gray-600">Please wait a few seconds while we set everything up.</p>
+    </div>
   </div>
 );
 
-// This component is now properly nested inside AuthProvider
 const AppRoutes = () => {
   const { waitingForProfile } = useAuth();
 
@@ -41,7 +43,6 @@ const AppRoutes = () => {
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -49,43 +49,12 @@ export const acceptTasker = async (taskerId: string) => {
   console.log('📋 [ADMIN] Processing taskerId:', trimmedId);
 
   try {
-    console.log('🔍 [ADMIN] Checking if user exists...');
-    const { data: userCheck, error: userCheckError } = await supabase
-      .from('users')
-      .select('id, role, approved, full_name, email')
-      .eq('id', trimmedId);
-
-    console.log('🔍 [ADMIN] User check result:', { 
-      data: userCheck, 
-      error: userCheckError,
-      count: userCheck?.length 
-    });
-
-    if (userCheckError) {
-      console.error('❌ [ADMIN] Error checking user exists:', userCheckError);
-      throw new Error(`Database error: ${userCheckError.message}`);
-    }
-
-    if (!userCheck || userCheck.length === 0) {
-      throw new Error('User not found in database');
-    }
-
-    const user = userCheck[0];
-    console.log('👤 [ADMIN] Found user:', user);
-
-    if (user.role !== 'tasker') {
-      throw new Error(`User is not a tasker (current role: ${user.role})`);
-    }
-
-    if (user.approved === true) {
-      throw new Error('Tasker is already approved');
-    }
-
     console.log('🔄 [ADMIN] Performing approval update...');
     const { data: updateData, error: updateError } = await supabase
       .from('users')
-      .update({ approved: true })
+      .update({ approved: true, updated_at: new Date().toISOString() })
       .eq('id', trimmedId)
+      .eq('role', 'tasker')
       .select('*');
 
     console.log('📊 [ADMIN] Update result:', { 
@@ -100,20 +69,7 @@ export const acceptTasker = async (taskerId: string) => {
     }
 
     if (!updateData || updateData.length === 0) {
-      const { data: finalCheck } = await supabase
-        .from('users')
-        .select('id, role, approved')
-        .eq('id', trimmedId)
-        .single();
-      
-      console.log('🔍 [ADMIN] Final state check:', finalCheck);
-      
-      if (finalCheck?.approved === true) {
-        console.log('✅ [ADMIN] User was approved (possibly by another process)');
-        return finalCheck;
-      }
-      
-      throw new Error('Update failed - user may have been deleted or database connection issue');
+      throw new Error('No tasker found with that ID or tasker is already approved');
     }
 
     console.log('✅ [ADMIN] Tasker approved successfully:', updateData[0]);
@@ -136,39 +92,13 @@ export const rejectTasker = async (taskerId: string) => {
   console.log('📋 [ADMIN] Processing taskerId:', trimmedId);
 
   try {
-    console.log('🔍 [ADMIN] Checking if user exists...');
-    const { data: userCheck, error: userCheckError } = await supabase
-      .from('users')
-      .select('id, role, approved, full_name, email')
-      .eq('id', trimmedId);
-
-    console.log('🔍 [ADMIN] User check result:', { 
-      data: userCheck, 
-      error: userCheckError,
-      count: userCheck?.length 
-    });
-
-    if (userCheckError) {
-      console.error('❌ [ADMIN] Error checking user exists:', userCheckError);
-      throw new Error(`Database error: ${userCheckError.message}`);
-    }
-
-    if (!userCheck || userCheck.length === 0) {
-      throw new Error('User not found in database');
-    }
-
-    const user = userCheck[0];
-    console.log('👤 [ADMIN] Found user:', user);
-
-    if (user.role !== 'tasker') {
-      throw new Error(`User is not a tasker (current role: ${user.role})`);
-    }
-
     console.log('🔄 [ADMIN] Performing rejection deletion...');
     const { data: deleteData, error: deleteError } = await supabase
       .from('users')
       .delete()
       .eq('id', trimmedId)
+      .eq('role', 'tasker')
+      .eq('approved', false)
       .select('*');
 
     console.log('📊 [ADMIN] Delete result:', { 
@@ -183,23 +113,10 @@ export const rejectTasker = async (taskerId: string) => {
     }
 
     if (!deleteData || deleteData.length === 0) {
-      const { data: finalCheck } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', trimmedId)
-        .single();
-      
-      console.log('🔍 [ADMIN] User exists after delete attempt:', !!finalCheck);
-      
-      if (!finalCheck) {
-        console.log('✅ [ADMIN] User was deleted (possibly by another process)');
-        return true;
-      }
-      
-      throw new Error('Delete failed - database connection issue or constraints preventing deletion');
+      throw new Error('No pending tasker found with that ID');
     }
 
-    console.log('✅ [ADMIN] Tasker deleted successfully:', deleteData[0]);
+    console.log('✅ [ADMIN] Tasker rejected and deleted successfully:', deleteData[0]);
     return true;
 
   } catch (error) {
