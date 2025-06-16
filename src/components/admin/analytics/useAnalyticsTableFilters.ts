@@ -69,9 +69,13 @@ export const useAnalyticsTableFilters = (
             const completedAt = t.task_requests?.completed_at;
             if (completedAt) {
               const transactionDate = new Date(completedAt);
-              if (dateRangeStart && transactionDate < new Date(dateRangeStart)) matchesDateRange = false;
-              if (dateRangeEnd && transactionDate > new Date(dateRangeEnd)) matchesDateRange = false;
-            } else {
+              const startDate = dateRangeStart ? new Date(dateRangeStart) : null;
+              const endDate = dateRangeEnd ? new Date(dateRangeEnd) : null;
+              
+              if (startDate && transactionDate < startDate) matchesDateRange = false;
+              if (endDate && transactionDate > endDate) matchesDateRange = false;
+            } else if (dateRangeStart || dateRangeEnd) {
+              // If date range is specified but transaction has no completion date, exclude it
               matchesDateRange = false;
             }
           }
@@ -90,7 +94,7 @@ export const useAnalyticsTableFilters = (
           totalSpent: !isTaskerTable ? filteredAmount : item.totalSpent,
           totalCommission: filteredCommission
         };
-      }).filter(item => item.taskCount > 0);
+      }).filter(item => item.taskCount > 0 || (!dateRangeStart && !dateRangeEnd && statusFilter === "all"));
     }
 
     return filtered;

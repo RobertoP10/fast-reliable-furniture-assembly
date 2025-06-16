@@ -55,8 +55,17 @@ export const fetchPendingTransactions = async () => {
     throw error;
   }
 
-  console.log('✅ [ADMIN] Fetched pending transactions:', data?.length || 0);
-  return data || [];
+  // Remove duplicates based on task_id, client_id, and tasker_id
+  const uniqueTransactions = data?.filter((transaction, index, arr) => {
+    return index === arr.findIndex(t => 
+      t.task_id === transaction.task_id && 
+      t.client_id === transaction.client_id && 
+      t.tasker_id === transaction.tasker_id
+    );
+  }) || [];
+
+  console.log('✅ [ADMIN] Fetched pending transactions (after deduplication):', uniqueTransactions.length);
+  return uniqueTransactions;
 };
 
 export const fetchAllTransactions = async () => {
@@ -94,18 +103,28 @@ export const fetchAnalyticsData = async () => {
         client:users!client_id(id, full_name, email),
         tasker:users!tasker_id(id, full_name, email)
       `)
-      .eq('status', 'confirmed');
+      .eq('status', 'confirmed')
+      .order('created_at', { ascending: false });
 
     if (transError) {
       console.error('❌ [ADMIN] Error fetching confirmed transactions:', transError);
       throw transError;
     }
 
+    // Remove duplicates based on task_id, client_id, and tasker_id
+    const uniqueTransactions = confirmedTransactions?.filter((transaction, index, arr) => {
+      return index === arr.findIndex(t => 
+        t.task_id === transaction.task_id && 
+        t.client_id === transaction.client_id && 
+        t.tasker_id === transaction.tasker_id
+      );
+    }) || [];
+
     // Process tasker breakdown
     const taskerMap = new Map();
     const clientMap = new Map();
 
-    confirmedTransactions?.forEach(transaction => {
+    uniqueTransactions.forEach(transaction => {
       const tasker = transaction.tasker;
       const client = transaction.client;
       const amount = Number(transaction.amount) || 0;
@@ -169,7 +188,7 @@ export const fetchAnalyticsData = async () => {
     const analytics = {
       taskerBreakdown: Array.from(taskerMap.values()),
       clientBreakdown: Array.from(clientMap.values()),
-      confirmedTransactions: confirmedTransactions || []
+      confirmedTransactions: uniqueTransactions
     };
 
     console.log('✅ [ADMIN] Analytics data processed:', {
