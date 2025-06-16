@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -51,23 +52,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        console.log('🔄 [AUTH] Fetching user profile for:', user.id);
         const { data: profile, error } = await supabase
           .from("users")
           .select("*")
-          .eq("id", user.id as any)
+          .eq("id", user.id)
           .single();
 
         if (error) {
-          console.error("Error fetching user profile:", error);
+          console.error("❌ [AUTH] Error fetching user profile:", error);
           setUserData(null);
         } else {
+          console.log('✅ [AUTH] User profile loaded:', { role: profile.role, approved: profile.approved });
           setUserData(profile);
         }
       } else {
         setUserData(null);
       }
     } catch (error) {
-      console.error("Error refreshing user data:", error);
+      console.error("❌ [AUTH] Error refreshing user data:", error);
       setUserData(null);
     }
   };
@@ -75,37 +78,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
     
-    // Get initial session with reduced timeout
+    // Get initial session
     const getInitialSession = async () => {
       try {
-        console.log('🔄 [AUTH] Getting initial session...');
+        console.log('🔍 [AUTH] Getting initial session...');
         
-        // Set a 5 second timeout for initial session check
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Initial session timeout')), 5000);
-        });
-        
-        const sessionPromise = supabase.auth.getSession();
-        
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]);
+        const { data: { session }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
         if (error) {
           console.error('❌ [AUTH] Initial session error:', error);
         } else if (session?.user) {
-          console.log('✅ [AUTH] Initial session found');
+          console.log('✅ [AUTH] Initial session found for user:', session.user.id);
           setUser(session.user);
           await refreshUserData();
         } else {
           console.log('ℹ️ [AUTH] No initial session');
         }
       } catch (error) {
-        console.warn('⚠️ [AUTH] Initial session timeout, will rely on auth state changes');
-        // Don't fail completely, auth state changes will handle it
+        console.error('❌ [AUTH] Exception getting initial session:', error);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -124,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           setUser(session.user);
-          // Don't await here to prevent blocking
+          // Refresh user data but don't await to prevent blocking
           refreshUserData().catch(console.error);
         } else {
           setUser(null);
@@ -143,16 +135,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('🔑 [AUTH] Attempting login for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ [AUTH] Login error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
+        console.log('✅ [AUTH] Login successful for user:', data.user.id);
         setUser(data.user);
         await refreshUserData();
         
@@ -164,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true };
     } catch (error: any) {
+      console.error('❌ [AUTH] Login exception:', error);
       return { success: false, error: error.message };
     }
   };
@@ -178,13 +175,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     termsAccepted: boolean
   ) => {
     try {
+      console.log('📝 [AUTH] Starting registration for:', { email, role });
       setWaitingForProfile(true);
       
-      // First, sign up the user
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: fullName,
             phone_number: phoneNumber,
@@ -197,39 +196,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
+        console.error('❌ [AUTH] Registration error:', error);
         return { success: false, error: error.message };
       }
 
       if (data.user) {
+        console.log('✅ [AUTH] User signed up, creating profile...');
+        
         // Create the user profile in our users table
         const approved = role === "client" ? true : false;
         
         const { error: profileError } = await supabase
           .from("users")
           .insert({
+            id: data.user.id,
             email,
             full_name: fullName,
             phone_number: phoneNumber,
             location: location,
-            role: role as any,
+            role: role,
             approved: approved,
             terms_accepted: termsAccepted,
             terms_accepted_at: termsAccepted ? new Date().toISOString() : null,
-          } as any);
+          });
 
         if (profileError) {
-          console.error("Error creating user profile:", profileError);
+          console.error("❌ [AUTH] Error creating user profile:", profileError);
           return { success: false, error: "Failed to create user profile" };
         }
 
-        toast({
-          title: "✅ Registration successful",
-          description: "Please check your email to verify your account.",
-        });
+        console.log('✅ [AUTH] Profile created successfully');
+
+        // Set user and refresh data
+        setUser(data.user);
+        await refreshUserData();
+
+        // Show success message
+        if (role === "client") {
+          toast({
+            title: "✅ Registration successful",
+            description: "Welcome! Redirecting to your dashboard...",
+          });
+          
+          // Redirect client to dashboard
+          setTimeout(() => {
+            navigate("/client-dashboard");
+          }, 1000);
+        } else {
+          toast({
+            title: "✅ Registration successful",
+            description: "Your tasker account is pending approval.",
+          });
+          
+          // Redirect tasker to pending page
+          setTimeout(() => {
+            navigate("/tasker-pending");
+          }, 1000);
+        }
       }
 
       return { success: true };
     } catch (error: any) {
+      console.error('❌ [AUTH] Registration exception:', error);
       return { success: false, error: error.message };
     } finally {
       setWaitingForProfile(false);
@@ -238,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      console.log('🚪 [AUTH] Logging out...');
       await supabase.auth.signOut();
       setUser(null);
       setUserData(null);
@@ -247,11 +276,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "You have been logged out successfully.",
       });
 
-      // Redirect to home page after successful logout
+      // Redirect to home page
       navigate("/");
       
     } catch (error: any) {
-      console.error("Logout error:", error);
+      console.error("❌ [AUTH] Logout error:", error);
       toast({
         title: "❌ Logout failed",
         description: error.message,
