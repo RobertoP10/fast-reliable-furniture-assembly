@@ -23,6 +23,8 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
       throw transError;
     }
 
+    console.log('🔍 [ADMIN] Raw confirmed transactions:', confirmedTransactions);
+
     // Remove duplicates based on task_id, client_id, and tasker_id
     const uniqueTransactions = confirmedTransactions?.filter((transaction, index, arr) => {
       return index === arr.findIndex(t => 
@@ -31,6 +33,8 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
         t.tasker_id === transaction.tasker_id
       );
     }) || [];
+
+    console.log('🔍 [ADMIN] Unique transactions:', uniqueTransactions);
 
     // Process tasker breakdown
     const taskerMap = new Map<string, TaskerBreakdown>();
@@ -41,6 +45,14 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
       const client = transaction.client;
       const amount = Number(transaction.amount) || 0;
       const commission = amount * 0.2;
+
+      console.log('🔍 [ADMIN] Processing transaction:', {
+        id: transaction.id,
+        task_requests: transaction.task_requests,
+        completed_at: transaction.task_requests?.completed_at,
+        tasker: tasker?.full_name,
+        client: client?.full_name
+      });
 
       // Process tasker data
       if (tasker) {
@@ -61,19 +73,30 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
         taskerData.totalEarnings += amount;
         taskerData.totalCommission += commission;
         
-        // Improved date handling for lastTaskDate
-        if (transaction.task_requests?.completed_at) {
-          const completedAt = new Date(transaction.task_requests.completed_at);
-          
-          // Ensure we have a valid date
-          if (!isNaN(completedAt.getTime())) {
-            if (!taskerData.lastTaskDate || completedAt > new Date(taskerData.lastTaskDate)) {
-              // Store as ISO string for consistency
-              taskerData.lastTaskDate = completedAt.toISOString();
+        // FIXED: Better date handling for lastTaskDate using completed_at from task_requests
+        const completedAt = transaction.task_requests?.completed_at;
+        if (completedAt) {
+          try {
+            const completedDate = new Date(completedAt);
+            console.log('📅 [ADMIN] Processing completed date for tasker:', tasker.full_name, {
+              rawDate: completedAt,
+              parsedDate: completedDate,
+              isValid: !isNaN(completedDate.getTime())
+            });
+            
+            if (!isNaN(completedDate.getTime())) {
+              const currentLastDate = taskerData.lastTaskDate ? new Date(taskerData.lastTaskDate) : null;
+              
+              if (!currentLastDate || completedDate > currentLastDate) {
+                taskerData.lastTaskDate = completedDate.toISOString();
+                console.log('📅 [ADMIN] Updated tasker lastTaskDate:', tasker.full_name, taskerData.lastTaskDate);
+              }
             }
-          } else {
-            console.warn('❌ [ADMIN] Invalid completed_at date for tasker:', tasker.id, transaction.task_requests.completed_at);
+          } catch (error) {
+            console.warn('❌ [ADMIN] Error parsing completed_at for tasker:', tasker.id, completedAt, error);
           }
+        } else {
+          console.warn('❌ [ADMIN] No completed_at date for tasker transaction:', transaction.id);
         }
       }
 
@@ -96,19 +119,30 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
         clientData.totalSpent += amount;
         clientData.totalCommission += commission;
         
-        // Improved date handling for lastTaskDate
-        if (transaction.task_requests?.completed_at) {
-          const completedAt = new Date(transaction.task_requests.completed_at);
-          
-          // Ensure we have a valid date
-          if (!isNaN(completedAt.getTime())) {
-            if (!clientData.lastTaskDate || completedAt > new Date(clientData.lastTaskDate)) {
-              // Store as ISO string for consistency
-              clientData.lastTaskDate = completedAt.toISOString();
+        // FIXED: Better date handling for lastTaskDate using completed_at from task_requests
+        const completedAt = transaction.task_requests?.completed_at;
+        if (completedAt) {
+          try {
+            const completedDate = new Date(completedAt);
+            console.log('📅 [ADMIN] Processing completed date for client:', client.full_name, {
+              rawDate: completedAt,
+              parsedDate: completedDate,
+              isValid: !isNaN(completedDate.getTime())
+            });
+            
+            if (!isNaN(completedDate.getTime())) {
+              const currentLastDate = clientData.lastTaskDate ? new Date(clientData.lastTaskDate) : null;
+              
+              if (!currentLastDate || completedDate > currentLastDate) {
+                clientData.lastTaskDate = completedDate.toISOString();
+                console.log('📅 [ADMIN] Updated client lastTaskDate:', client.full_name, clientData.lastTaskDate);
+              }
             }
-          } else {
-            console.warn('❌ [ADMIN] Invalid completed_at date for client:', client.id, transaction.task_requests.completed_at);
+          } catch (error) {
+            console.warn('❌ [ADMIN] Error parsing completed_at for client:', client.id, completedAt, error);
           }
+        } else {
+          console.warn('❌ [ADMIN] No completed_at date for client transaction:', transaction.id);
         }
       }
     });
@@ -125,9 +159,9 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
       transactions: analytics.confirmedTransactions.length
     });
 
-    // Debug log the date formats
-    console.log('📅 [ADMIN] Sample tasker dates:', analytics.taskerBreakdown.slice(0, 3).map(t => ({ name: t.name, lastTaskDate: t.lastTaskDate })));
-    console.log('📅 [ADMIN] Sample client dates:', analytics.clientBreakdown.slice(0, 3).map(c => ({ name: c.name, lastTaskDate: c.lastTaskDate })));
+    // Debug log the final date formats
+    console.log('📅 [ADMIN] Final tasker dates:', analytics.taskerBreakdown.map(t => ({ name: t.name, lastTaskDate: t.lastTaskDate })));
+    console.log('📅 [ADMIN] Final client dates:', analytics.clientBreakdown.map(c => ({ name: c.name, lastTaskDate: c.lastTaskDate })));
 
     return analytics;
   } catch (error) {
