@@ -41,7 +41,7 @@ export const useAnalyticsTableFilters = (
 
     console.log('🔍 [ANALYTICS FILTER] Starting with data:', filtered.length);
     console.log('🔍 [ANALYTICS FILTER] Date range:', { start: dateRangeStart, end: dateRangeEnd });
-    console.log('🔍 [ANALYTICS FILTER] Sample data dates:', filtered.slice(0, 3).map(item => ({ name: item.name, lastTaskDate: item.lastTaskDate })));
+    console.log('🔍 [ANALYTICS FILTER] Available transactions:', transactions.length);
 
     // Apply name filter
     if (nameFilter.trim()) {
@@ -65,70 +65,85 @@ export const useAnalyticsTableFilters = (
       console.log('🔍 [ANALYTICS FILTER] After tasks filter:', filtered.length);
     }
 
-    // Apply date range filter - IMPROVED LOGIC
-    if (dateRangeStart || dateRangeEnd) {
-      filtered = filtered.filter(item => {
-        if (!item.lastTaskDate) {
-          console.log('📅 [ANALYTICS FILTER] No lastTaskDate for item:', item.name);
-          return false;
-        }
-
-        // Parse the lastTaskDate - handle both ISO strings and date objects
-        let taskDate: Date;
+    // Apply date range filter - IMPROVED LOGIC using transaction data
+    if ((dateRangeStart || dateRangeEnd) && transactions.length > 0) {
+      console.log('📅 [ANALYTICS FILTER] Applying date filter using transaction data');
+      
+      // Get user IDs that have transactions within the date range
+      const userIdsWithTransactionsInRange = new Set<string>();
+      
+      transactions.forEach(transaction => {
+        const userId = isTaskerTable ? transaction.tasker?.id : transaction.client?.id;
+        if (!userId) return;
+        
+        // Use completed_at from task_requests if available, otherwise fall back to created_at
+        let transactionDate: Date;
+        const completedAt = transaction.task_requests?.completed_at;
+        
         try {
-          // Try parsing as ISO string first
-          taskDate = new Date(item.lastTaskDate);
+          if (completedAt) {
+            transactionDate = new Date(completedAt);
+          } else {
+            transactionDate = new Date(transaction.created_at);
+          }
           
-          // Check if date is valid
-          if (isNaN(taskDate.getTime())) {
-            console.log('📅 [ANALYTICS FILTER] Invalid date for item:', item.name, item.lastTaskDate);
-            return false;
+          if (isNaN(transactionDate.getTime())) {
+            console.log('📅 [ANALYTICS FILTER] Invalid date for transaction:', transaction.id);
+            return;
           }
         } catch (error) {
-          console.log('📅 [ANALYTICS FILTER] Error parsing date for item:', item.name, item.lastTaskDate, error);
-          return false;
+          console.log('📅 [ANALYTICS FILTER] Error parsing date for transaction:', transaction.id, error);
+          return;
         }
-
-        // Normalize taskDate to start of day for comparison
-        const taskDateNormalized = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
         
-        console.log('📅 [ANALYTICS FILTER] Processing item:', item.name, {
-          originalDate: item.lastTaskDate,
-          parsedDate: taskDate.toISOString(),
-          normalizedDate: taskDateNormalized.toISOString()
-        });
+        // Normalize transaction date to start of day for comparison
+        const transactionDateNormalized = new Date(
+          transactionDate.getFullYear(), 
+          transactionDate.getMonth(), 
+          transactionDate.getDate()
+        );
+        
+        let isInRange = true;
         
         if (dateRangeStart) {
           const startDate = new Date(dateRangeStart);
           const startDateNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
           
-          if (taskDateNormalized < startDateNormalized) {
-            console.log('📅 [ANALYTICS FILTER] Task date before start:', {
-              taskDate: taskDateNormalized.toISOString(),
-              startDate: startDateNormalized.toISOString(),
-              item: item.name
-            });
-            return false;
+          if (transactionDateNormalized < startDateNormalized) {
+            isInRange = false;
           }
         }
         
-        if (dateRangeEnd) {
+        if (dateRangeEnd && isInRange) {
           const endDate = new Date(dateRangeEnd);
           const endDateNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
           
-          if (taskDateNormalized > endDateNormalized) {
-            console.log('📅 [ANALYTICS FILTER] Task date after end:', {
-              taskDate: taskDateNormalized.toISOString(),
-              endDate: endDateNormalized.toISOString(),
-              item: item.name
-            });
-            return false;
+          if (transactionDateNormalized > endDateNormalized) {
+            isInRange = false;
           }
         }
         
-        console.log('📅 [ANALYTICS FILTER] Date match for item:', item.name);
-        return true;
+        if (isInRange) {
+          userIdsWithTransactionsInRange.add(userId);
+          console.log('📅 [ANALYTICS FILTER] Added user to range:', userId, {
+            date: transactionDateNormalized.toISOString(),
+            completedAt: completedAt,
+            createdAt: transaction.created_at
+          });
+        }
       });
+      
+      console.log('📅 [ANALYTICS FILTER] Users with transactions in range:', Array.from(userIdsWithTransactionsInRange));
+      
+      // Filter data to only include users who have transactions in the date range
+      filtered = filtered.filter(item => {
+        const isInRange = userIdsWithTransactionsInRange.has(item.id);
+        if (!isInRange) {
+          console.log('📅 [ANALYTICS FILTER] Filtering out user (no transactions in range):', item.name);
+        }
+        return isInRange;
+      });
+      
       console.log('🔍 [ANALYTICS FILTER] After date range filter:', filtered.length);
     }
 
@@ -149,19 +164,81 @@ export const useAnalyticsTableFilters = (
     return filtered;
   }, [data, nameFilter, minRating, minTasks, statusFilter, dateRangeStart, dateRangeEnd, transactions, isTaskerTable]);
 
+  // Calculate totals based on filtered data and date range
   const totals = useMemo(() => {
-    const taskCount = filteredData.reduce((sum, item) => sum + item.taskCount, 0);
-    const totalAmount = filteredData.reduce((sum, item) => 
-      sum + (isTaskerTable ? (item.totalEarnings || 0) : (item.totalSpent || 0)), 0
-    );
-    const totalCommission = filteredData.reduce((sum, item) => sum + item.totalCommission, 0);
+    if ((dateRangeStart || dateRangeEnd) && transactions.length > 0) {
+      // Calculate totals from transactions within date range for filtered users
+      const filteredUserIds = new Set(filteredData.map(item => item.id));
+      
+      const relevantTransactions = transactions.filter(transaction => {
+        const userId = isTaskerTable ? transaction.tasker?.id : transaction.client?.id;
+        if (!userId || !filteredUserIds.has(userId)) return false;
+        
+        // Check if transaction is within date range
+        let transactionDate: Date;
+        const completedAt = transaction.task_requests?.completed_at;
+        
+        try {
+          if (completedAt) {
+            transactionDate = new Date(completedAt);
+          } else {
+            transactionDate = new Date(transaction.created_at);
+          }
+          
+          if (isNaN(transactionDate.getTime())) return false;
+        } catch (error) {
+          return false;
+        }
+        
+        const transactionDateNormalized = new Date(
+          transactionDate.getFullYear(), 
+          transactionDate.getMonth(), 
+          transactionDate.getDate()
+        );
+        
+        if (dateRangeStart) {
+          const startDate = new Date(dateRangeStart);
+          const startDateNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          if (transactionDateNormalized < startDateNormalized) return false;
+        }
+        
+        if (dateRangeEnd) {
+          const endDate = new Date(dateRangeEnd);
+          const endDateNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          if (transactionDateNormalized > endDateNormalized) return false;
+        }
+        
+        return true;
+      });
+      
+      console.log('💰 [ANALYTICS FILTER] Calculating totals from transactions in date range:', relevantTransactions.length);
+      
+      const taskCount = relevantTransactions.length;
+      const totalAmount = relevantTransactions.reduce((sum, transaction) => 
+        sum + (Number(transaction.amount) || 0), 0
+      );
+      const totalCommission = totalAmount * 0.2;
+      
+      return {
+        taskCount,
+        totalAmount,
+        totalCommission
+      };
+    } else {
+      // Use the original calculation when no date filter is applied
+      const taskCount = filteredData.reduce((sum, item) => sum + item.taskCount, 0);
+      const totalAmount = filteredData.reduce((sum, item) => 
+        sum + (isTaskerTable ? (item.totalEarnings || 0) : (item.totalSpent || 0)), 0
+      );
+      const totalCommission = filteredData.reduce((sum, item) => sum + item.totalCommission, 0);
 
-    return {
-      taskCount,
-      totalAmount,
-      totalCommission
-    };
-  }, [filteredData, isTaskerTable]);
+      return {
+        taskCount,
+        totalAmount,
+        totalCommission
+      };
+    }
+  }, [filteredData, isTaskerTable, transactions, dateRangeStart, dateRangeEnd]);
 
   const clearFilters = () => {
     console.log('🧹 [ANALYTICS FILTER] Clearing all filters');
