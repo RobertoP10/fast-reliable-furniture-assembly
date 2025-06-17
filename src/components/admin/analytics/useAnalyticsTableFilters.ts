@@ -25,112 +25,129 @@ interface Transaction {
 }
 
 export const useAnalyticsTableFilters = (
-  data: TableData[], 
-  transactions: Transaction[], 
-  isTaskerTable: boolean
+  data: TableData[],
+  transactions: Transaction[] = [],
+  isTaskerTable: boolean = false
 ) => {
   const [nameFilter, setNameFilter] = useState("");
   const [minRating, setMinRating] = useState("");
   const [minTasks, setMinTasks] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
   const [dateRangeStart, setDateRangeStart] = useState("");
   const [dateRangeEnd, setDateRangeEnd] = useState("");
 
   const filteredData = useMemo(() => {
-    let filtered = data.filter(item => {
-      const nameMatch = item.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const ratingMatch = !minRating || item.averageRating >= Number(minRating);
-      const taskMatch = !minTasks || item.taskCount >= Number(minTasks);
-      
-      return nameMatch && ratingMatch && taskMatch;
-    });
+    let filtered = [...data];
 
-    // Apply status and date filters based on transactions
-    if ((statusFilter !== "all" || dateRangeStart || dateRangeEnd) && transactions.length > 0) {
-      filtered = filtered.map(item => {
-        const relevantTransactions = transactions.filter(t => {
-          const matchesUser = isTaskerTable ? 
-            t.tasker?.id === item.id : 
-            t.client?.id === item.id;
-          
-          let matchesStatus = true;
-          if (statusFilter !== "all") {
-            if (statusFilter === "completed") {
-              matchesStatus = t.status === "confirmed" && t.task_requests?.completed_at !== null;
-            } else if (statusFilter === "pending") {
-              matchesStatus = t.status === "pending";
-            } else if (statusFilter === "paid") {
-              matchesStatus = t.status === "confirmed";
-            }
-          }
-          
-          let matchesDateRange = true;
-          if (dateRangeStart || dateRangeEnd) {
-            const completedAt = t.task_requests?.completed_at;
-            if (completedAt) {
-              const transactionDate = new Date(completedAt);
-              const startDate = dateRangeStart ? new Date(dateRangeStart) : null;
-              const endDate = dateRangeEnd ? new Date(dateRangeEnd) : null;
-              
-              if (startDate && transactionDate < startDate) matchesDateRange = false;
-              if (endDate && transactionDate > endDate) matchesDateRange = false;
-            } else if (dateRangeStart || dateRangeEnd) {
-              // If date range is specified but transaction has no completion date, exclude it
-              matchesDateRange = false;
-            }
-          }
+    console.log('🔍 [ANALYTICS FILTER] Starting with data:', filtered.length);
+    console.log('🔍 [ANALYTICS FILTER] Date range:', { start: dateRangeStart, end: dateRangeEnd });
 
-          return matchesUser && matchesStatus && matchesDateRange;
-        });
-
-        const filteredTaskCount = relevantTransactions.length;
-        const filteredAmount = relevantTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-        const filteredCommission = filteredAmount * 0.2;
-
-        return {
-          ...item,
-          taskCount: filteredTaskCount,
-          totalEarnings: isTaskerTable ? filteredAmount : item.totalEarnings,
-          totalSpent: !isTaskerTable ? filteredAmount : item.totalSpent,
-          totalCommission: filteredCommission
-        };
-      }).filter(item => item.taskCount > 0 || (!dateRangeStart && !dateRangeEnd && statusFilter === "all"));
+    // Apply name filter
+    if (nameFilter.trim()) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(nameFilter.toLowerCase())
+      );
+      console.log('🔍 [ANALYTICS FILTER] After name filter:', filtered.length);
     }
 
+    // Apply rating filter
+    if (minRating) {
+      const minRatingNum = parseFloat(minRating);
+      filtered = filtered.filter(item => item.averageRating >= minRatingNum);
+      console.log('🔍 [ANALYTICS FILTER] After rating filter:', filtered.length);
+    }
+
+    // Apply tasks filter
+    if (minTasks) {
+      const minTasksNum = parseInt(minTasks);
+      filtered = filtered.filter(item => item.taskCount >= minTasksNum);
+      console.log('🔍 [ANALYTICS FILTER] After tasks filter:', filtered.length);
+    }
+
+    // Apply date range filter
+    if (dateRangeStart || dateRangeEnd) {
+      filtered = filtered.filter(item => {
+        if (!item.lastTaskDate) return false;
+
+        const taskDate = new Date(item.lastTaskDate);
+        
+        if (dateRangeStart) {
+          const startDate = new Date(dateRangeStart);
+          startDate.setHours(0, 0, 0, 0);
+          if (taskDate < startDate) {
+            console.log('📅 [ANALYTICS FILTER] Task date before start:', taskDate, startDate);
+            return false;
+          }
+        }
+        
+        if (dateRangeEnd) {
+          const endDate = new Date(dateRangeEnd);
+          endDate.setHours(23, 59, 59, 999);
+          if (taskDate > endDate) {
+            console.log('📅 [ANALYTICS FILTER] Task date after end:', taskDate, endDate);
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      console.log('🔍 [ANALYTICS FILTER] After date range filter:', filtered.length);
+    }
+
+    // Apply status filter to transactions if provided
+    if (statusFilter && transactions.length > 0) {
+      const filteredTransactionIds = transactions
+        .filter(t => t.status === statusFilter)
+        .map(t => isTaskerTable ? t.tasker?.id : t.client?.id)
+        .filter(Boolean);
+
+      filtered = filtered.filter(item => 
+        filteredTransactionIds.includes(item.id)
+      );
+      console.log('🔍 [ANALYTICS FILTER] After status filter:', filtered.length);
+    }
+
+    console.log('✅ [ANALYTICS FILTER] Final filtered count:', filtered.length);
     return filtered;
   }, [data, nameFilter, minRating, minTasks, statusFilter, dateRangeStart, dateRangeEnd, transactions, isTaskerTable]);
 
   const totals = useMemo(() => {
-    return filteredData.reduce((acc, item) => ({
-      taskCount: acc.taskCount + item.taskCount,
-      totalAmount: acc.totalAmount + (isTaskerTable ? item.totalEarnings || 0 : item.totalSpent || 0),
-      totalCommission: acc.totalCommission + item.totalCommission,
-      averageRating: filteredData.length > 0 ? 
-        filteredData.reduce((sum, i) => sum + i.averageRating, 0) / filteredData.length : 0
-    }), {
-      taskCount: 0,
-      totalAmount: 0,
-      totalCommission: 0,
-      averageRating: 0
-    });
+    const taskCount = filteredData.reduce((sum, item) => sum + item.taskCount, 0);
+    const totalAmount = filteredData.reduce((sum, item) => 
+      sum + (isTaskerTable ? (item.totalEarnings || 0) : (item.totalSpent || 0)), 0
+    );
+    const totalCommission = filteredData.reduce((sum, item) => sum + item.totalCommission, 0);
+
+    return {
+      taskCount,
+      totalAmount,
+      totalCommission
+    };
   }, [filteredData, isTaskerTable]);
 
   const clearFilters = () => {
+    console.log('🧹 [ANALYTICS FILTER] Clearing all filters');
     setNameFilter("");
     setMinRating("");
     setMinTasks("");
-    setStatusFilter("all");
+    setStatusFilter("");
     setDateRangeStart("");
     setDateRangeEnd("");
   };
 
   return {
-    nameFilter, setNameFilter,
-    minRating, setMinRating,
-    minTasks, setMinTasks,
-    statusFilter, setStatusFilter,
-    dateRangeStart, setDateRangeStart,
-    dateRangeEnd, setDateRangeEnd,
+    nameFilter,
+    setNameFilter,
+    minRating,
+    setMinRating,
+    minTasks,
+    setMinTasks,
+    statusFilter,
+    setStatusFilter,
+    dateRangeStart,
+    setDateRangeStart,
+    dateRangeEnd,
+    setDateRangeEnd,
     filteredData,
     totals,
     clearFilters

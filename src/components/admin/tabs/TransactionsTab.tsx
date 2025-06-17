@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,60 @@ export const TransactionsTab = ({
 }: TransactionsTabProps) => {
   const [showFilters, setShowFilters] = useState(false);
 
+  // Filter transactions based on current filters
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...transactions];
+
+    console.log('🔍 [FILTER] Starting with transactions:', filtered.length);
+    console.log('🔍 [FILTER] Date filter:', dateFilter);
+    console.log('🔍 [FILTER] Selected tasker:', selectedTasker);
+    console.log('🔍 [FILTER] Selected client:', selectedClient);
+
+    // Apply date filter
+    if (dateFilter.start) {
+      const startDate = new Date(dateFilter.start);
+      startDate.setHours(0, 0, 0, 0); // Start of day
+      
+      filtered = filtered.filter(transaction => {
+        const transactionDate = new Date(transaction.created_at);
+        const isAfterStart = transactionDate >= startDate;
+        console.log('📅 [FILTER] Transaction date:', transactionDate, 'Start date:', startDate, 'After start:', isAfterStart);
+        return isAfterStart;
+      });
+      
+      console.log('🔍 [FILTER] After start date filter:', filtered.length);
+    }
+
+    if (dateFilter.end) {
+      const endDate = new Date(dateFilter.end);
+      endDate.setHours(23, 59, 59, 999); // End of day
+      
+      filtered = filtered.filter(transaction => {
+        const transactionDate = new Date(transaction.created_at);
+        const isBeforeEnd = transactionDate <= endDate;
+        console.log('📅 [FILTER] Transaction date:', transactionDate, 'End date:', endDate, 'Before end:', isBeforeEnd);
+        return isBeforeEnd;
+      });
+      
+      console.log('🔍 [FILTER] After end date filter:', filtered.length);
+    }
+
+    // Apply tasker filter
+    if (selectedTasker) {
+      filtered = filtered.filter(transaction => transaction.tasker_id === selectedTasker);
+      console.log('🔍 [FILTER] After tasker filter:', filtered.length);
+    }
+
+    // Apply client filter
+    if (selectedClient) {
+      filtered = filtered.filter(transaction => transaction.client_id === selectedClient);
+      console.log('🔍 [FILTER] After client filter:', filtered.length);
+    }
+
+    console.log('✅ [FILTER] Final filtered transactions:', filtered.length);
+    return filtered;
+  }, [transactions, dateFilter, selectedTasker, selectedClient]);
+
   return (
     <Card className="shadow-lg border-0">
       <CardHeader>
@@ -56,7 +110,7 @@ export const TransactionsTab = ({
           </Button>
         </CardTitle>
         <CardDescription>
-          Monitor and manage platform transactions
+          Monitor and manage platform transactions ({filteredTransactions.length} of {transactions.length} shown)
         </CardDescription>
         
         {showFilters && (
@@ -66,7 +120,10 @@ export const TransactionsTab = ({
               <Input
                 type="date"
                 value={dateFilter.start}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
+                onChange={(e) => {
+                  console.log('📅 [UI] Start date changed to:', e.target.value);
+                  setDateFilter(prev => ({ ...prev, start: e.target.value }));
+                }}
               />
             </div>
             <div>
@@ -74,7 +131,10 @@ export const TransactionsTab = ({
               <Input
                 type="date"
                 value={dateFilter.end}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+                onChange={(e) => {
+                  console.log('📅 [UI] End date changed to:', e.target.value);
+                  setDateFilter(prev => ({ ...prev, end: e.target.value }));
+                }}
               />
             </div>
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
@@ -121,11 +181,13 @@ export const TransactionsTab = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Loading transactions...</p>
           </div>
-        ) : transactions.length === 0 ? (
+        ) : filteredTransactions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-lg font-medium">No transactions found</p>
-            <p className="text-sm">No transactions match your current filters.</p>
+            <p className="text-sm">
+              {transactions.length === 0 ? 'No transactions available.' : 'No transactions match your current filters.'}
+            </p>
           </div>
         ) : (
           <Table>
@@ -141,7 +203,7 @@ export const TransactionsTab = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => (
+              {filteredTransactions.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell className="font-medium">
                     {transaction.task_requests?.title || 'Unknown Task'}
