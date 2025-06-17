@@ -41,6 +41,7 @@ export const useAnalyticsTableFilters = (
 
     console.log('🔍 [ANALYTICS FILTER] Starting with data:', filtered.length);
     console.log('🔍 [ANALYTICS FILTER] Date range:', { start: dateRangeStart, end: dateRangeEnd });
+    console.log('🔍 [ANALYTICS FILTER] Sample data dates:', filtered.slice(0, 3).map(item => ({ name: item.name, lastTaskDate: item.lastTaskDate })));
 
     // Apply name filter
     if (nameFilter.trim()) {
@@ -64,31 +65,68 @@ export const useAnalyticsTableFilters = (
       console.log('🔍 [ANALYTICS FILTER] After tasks filter:', filtered.length);
     }
 
-    // Apply date range filter
+    // Apply date range filter - IMPROVED LOGIC
     if (dateRangeStart || dateRangeEnd) {
       filtered = filtered.filter(item => {
-        if (!item.lastTaskDate) return false;
+        if (!item.lastTaskDate) {
+          console.log('📅 [ANALYTICS FILTER] No lastTaskDate for item:', item.name);
+          return false;
+        }
 
-        const taskDate = new Date(item.lastTaskDate);
+        // Parse the lastTaskDate - handle both ISO strings and date objects
+        let taskDate: Date;
+        try {
+          // Try parsing as ISO string first
+          taskDate = new Date(item.lastTaskDate);
+          
+          // Check if date is valid
+          if (isNaN(taskDate.getTime())) {
+            console.log('📅 [ANALYTICS FILTER] Invalid date for item:', item.name, item.lastTaskDate);
+            return false;
+          }
+        } catch (error) {
+          console.log('📅 [ANALYTICS FILTER] Error parsing date for item:', item.name, item.lastTaskDate, error);
+          return false;
+        }
+
+        // Normalize taskDate to start of day for comparison
+        const taskDateNormalized = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        
+        console.log('📅 [ANALYTICS FILTER] Processing item:', item.name, {
+          originalDate: item.lastTaskDate,
+          parsedDate: taskDate.toISOString(),
+          normalizedDate: taskDateNormalized.toISOString()
+        });
         
         if (dateRangeStart) {
           const startDate = new Date(dateRangeStart);
-          startDate.setHours(0, 0, 0, 0);
-          if (taskDate < startDate) {
-            console.log('📅 [ANALYTICS FILTER] Task date before start:', taskDate, startDate);
+          const startDateNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          
+          if (taskDateNormalized < startDateNormalized) {
+            console.log('📅 [ANALYTICS FILTER] Task date before start:', {
+              taskDate: taskDateNormalized.toISOString(),
+              startDate: startDateNormalized.toISOString(),
+              item: item.name
+            });
             return false;
           }
         }
         
         if (dateRangeEnd) {
           const endDate = new Date(dateRangeEnd);
-          endDate.setHours(23, 59, 59, 999);
-          if (taskDate > endDate) {
-            console.log('📅 [ANALYTICS FILTER] Task date after end:', taskDate, endDate);
+          const endDateNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          
+          if (taskDateNormalized > endDateNormalized) {
+            console.log('📅 [ANALYTICS FILTER] Task date after end:', {
+              taskDate: taskDateNormalized.toISOString(),
+              endDate: endDateNormalized.toISOString(),
+              item: item.name
+            });
             return false;
           }
         }
         
+        console.log('📅 [ANALYTICS FILTER] Date match for item:', item.name);
         return true;
       });
       console.log('🔍 [ANALYTICS FILTER] After date range filter:', filtered.length);

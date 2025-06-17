@@ -61,10 +61,18 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
         taskerData.totalEarnings += amount;
         taskerData.totalCommission += commission;
         
+        // Improved date handling for lastTaskDate
         if (transaction.task_requests?.completed_at) {
           const completedAt = new Date(transaction.task_requests.completed_at);
-          if (!taskerData.lastTaskDate || completedAt > new Date(taskerData.lastTaskDate)) {
-            taskerData.lastTaskDate = transaction.task_requests.completed_at;
+          
+          // Ensure we have a valid date
+          if (!isNaN(completedAt.getTime())) {
+            if (!taskerData.lastTaskDate || completedAt > new Date(taskerData.lastTaskDate)) {
+              // Store as ISO string for consistency
+              taskerData.lastTaskDate = completedAt.toISOString();
+            }
+          } else {
+            console.warn('❌ [ADMIN] Invalid completed_at date for tasker:', tasker.id, transaction.task_requests.completed_at);
           }
         }
       }
@@ -88,10 +96,18 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
         clientData.totalSpent += amount;
         clientData.totalCommission += commission;
         
+        // Improved date handling for lastTaskDate
         if (transaction.task_requests?.completed_at) {
           const completedAt = new Date(transaction.task_requests.completed_at);
-          if (!clientData.lastTaskDate || completedAt > new Date(clientData.lastTaskDate)) {
-            clientData.lastTaskDate = transaction.task_requests.completed_at;
+          
+          // Ensure we have a valid date
+          if (!isNaN(completedAt.getTime())) {
+            if (!clientData.lastTaskDate || completedAt > new Date(clientData.lastTaskDate)) {
+              // Store as ISO string for consistency
+              clientData.lastTaskDate = completedAt.toISOString();
+            }
+          } else {
+            console.warn('❌ [ADMIN] Invalid completed_at date for client:', client.id, transaction.task_requests.completed_at);
           }
         }
       }
@@ -108,6 +124,10 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData> => {
       clients: analytics.clientBreakdown.length,
       transactions: analytics.confirmedTransactions.length
     });
+
+    // Debug log the date formats
+    console.log('📅 [ADMIN] Sample tasker dates:', analytics.taskerBreakdown.slice(0, 3).map(t => ({ name: t.name, lastTaskDate: t.lastTaskDate })));
+    console.log('📅 [ADMIN] Sample client dates:', analytics.clientBreakdown.slice(0, 3).map(c => ({ name: c.name, lastTaskDate: c.lastTaskDate })));
 
     return analytics;
   } catch (error) {
