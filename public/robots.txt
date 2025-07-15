@@ -12,3 +12,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+https://popandron.github.io/fast-reliable-furniture-assembly/sitemap.xml
