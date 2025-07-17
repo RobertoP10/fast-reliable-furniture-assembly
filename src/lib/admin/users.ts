@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { User, PendingTasker } from "./types";
 
@@ -232,4 +231,23 @@ export const rejectTasker = async (taskerId: string) => {
     console.error('❌ [ADMIN] Exception during rejection:', error);
     throw error;
   }
+};
+
+export const updateUserEmailPreferences = async (userId: string, emailEnabled: boolean) => {
+  console.log('🔄 Updating email preferences for user:', userId, 'enabled:', emailEnabled);
+  
+  const { data, error } = await supabase
+    .from('users')
+    .update({ email_notifications_enabled: emailEnabled })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error updating email preferences:', error);
+    throw error;
+  }
+
+  console.log('✅ Email preferences updated successfully:', data);
+  return data;
 };

@@ -1,1 +1,8 @@
-project_id = "gwwtvyhefvuwfpipksrw"
+
+project_id = "yedytkprmsmwvqhxvmcz"
+
+[functions.send-task-notifications]
+verify_jwt = false
+
+[functions.task-notification-handler]
+verify_jwt = false

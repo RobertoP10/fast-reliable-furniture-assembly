@@ -1,138 +1,142 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import type { Task, TaskInsert, TaskUpdate, TaskStatus } from "./types";
+import { toast } from "sonner";
 
-export const createTask = async (
-  taskData: Omit<TaskInsert, "id" | "created_at">
-): Promise<Task> => {
+export const updateTaskStatus = async (taskId: string, status: string) => {
+  console.log(`🔄 Updating task ${taskId} to status: ${status}`);
+
   const { data, error } = await supabase
-    .from("task_requests")
-    .insert(taskData)
-    .select(`
-      id,
-      client_id,
-      title,
-      description,
-      category,
-      subcategory,
-      price_range_min,
-      price_range_max,
-      location,
-      payment_method,
-      status,
-      accepted_offer_id,
-      required_date,
-      required_time,
-      completion_proof_urls,
-      completed_at,
-      cancelled_at,
-      cancellation_reason,
-      created_at,
-      offers:offers_task_id_fkey (
-        id,
-        task_id,
-        tasker_id,
-        price,
-        message,
-        proposed_date,
-        proposed_time,
-        is_accepted,
-        created_at,
-        updated_at,
-        tasker:users!offers_tasker_id_fkey(full_name, approved)
-      ),
-      client:users!task_requests_client_id_fkey(full_name, location)
-    `)
+    .from('task_requests')
+    .update({ status })
+    .eq('id', taskId)
+    .select()
     .single();
 
-  if (error) throw new Error(`Failed to create task: ${error.message}`);
-  return data as Task;
+  if (error) {
+    console.error('❌ Error updating task status:', error);
+    throw error;
+  }
+
+  console.log('✅ Task status updated successfully:', data);
+  return data;
 };
 
-export const updateTaskStatus = async (
-  taskId: string,
-  status: TaskStatus,
-  updates?: Partial<TaskUpdate>
-): Promise<void> => {
-  const updateData: TaskUpdate = { status, ...updates };
+export const cancelTask = async (taskId: string, reason: string) => {
+  console.log(`🔄 Cancelling task ${taskId} with reason: ${reason}`);
 
-  const { error } = await supabase
-    .from("task_requests")
-    .update(updateData)
-    .eq("id", taskId)
-    .select();
+  const { data, error } = await supabase
+    .from('task_requests')
+    .update({ 
+      status: 'cancelled',
+      cancellation_reason: reason,
+      cancelled_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .select()
+    .single();
 
-  if (error) throw new Error(`Failed to update task status: ${error.message}`);
+  if (error) {
+    console.error('❌ Error cancelling task:', error);
+    throw error;
+  }
+
+  console.log('✅ Task cancelled successfully:', data);
+  return data;
 };
 
-export const acceptOffer = async (taskId: string, offerId: string): Promise<{ success: boolean; error?: string }> => {
+export const completeTask = async (taskId: string, completionProofUrls: string[]) => {
+  console.log(`🔄 Completing task ${taskId} with proof URLs:`, completionProofUrls);
+
+  const { data, error } = await supabase
+    .from('task_requests')
+    .update({ 
+      status: 'completed',
+      completion_proof_urls: completionProofUrls,
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error completing task:', error);
+    throw error;
+  }
+
+  console.log('✅ Task completed successfully:', data);
+  return data;
+};
+
+export const createTask = async (taskData: any) => {
+  console.log('🔄 Creating task with data:', taskData);
+  
+  const { data, error } = await supabase
+    .from('task_requests')
+    .insert([taskData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error creating task:', error);
+    throw error;
+  }
+
+  console.log('✅ Task created successfully:', data);
+
+  // Trigger email notifications in background
   try {
-    console.log("🔄 [TASKS] Accepting offer:", offerId, "for task:", taskId);
-    
-    const { data, error } = await supabase.rpc('accept_offer_and_reject_others', {
-      offer_id_param: offerId,
-      task_id_param: taskId
+    const notificationResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/task-notification-handler`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabase.supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ task: data })
     });
 
-    if (error) {
-      console.error("❌ [TASKS] Error accepting offer:", error);
-      return { success: false, error: error.message };
+    if (!notificationResponse.ok) {
+      console.warn('⚠️ Email notification failed, but task was created successfully');
+    } else {
+      console.log('📧 Email notifications triggered successfully');
     }
-
-    console.log("✅ [TASKS] Offer accepted successfully");
-    return { success: true };
-  } catch (error) {
-    console.error("❌ [TASKS] Unexpected error accepting offer:", error);
-    return { success: false, error: (error as Error).message };
+  } catch (emailError) {
+    console.warn('⚠️ Email notification error (task still created):', emailError);
   }
+
+  return data;
 };
 
-export const cancelTask = async (taskId: string, reason?: string): Promise<{ success: boolean; error?: string }> => {
-  try {
-    console.log("🔄 [TASKS] Cancelling task:", taskId, "with reason:", reason);
-    
-    const { data, error } = await supabase.rpc('cancel_task', {
-      task_id_param: taskId,
-      reason: reason
-    });
+export const updateTask = async (taskId: string, taskData: any) => {
+  console.log(`🔄 Updating task ${taskId} with data:`, taskData);
 
-    if (error) {
-      console.error("❌ [TASKS] Error cancelling task:", error);
-      return { success: false, error: error.message };
-    }
+  const { data, error } = await supabase
+    .from('task_requests')
+    .update(taskData)
+    .eq('id', taskId)
+    .select()
+    .single();
 
-    if (!data) {
-      console.log("⚠️ [TASKS] Cannot cancel task - offer already accepted");
-      return { success: false, error: "Cannot cancel task - offer already accepted" };
-    }
-
-    console.log("✅ [TASKS] Task cancelled successfully");
-    return { success: true };
-  } catch (error) {
-    console.error("❌ [TASKS] Unexpected error cancelling task:", error);
-    return { success: false, error: (error as Error).message };
+  if (error) {
+    console.error('❌ Error updating task:', error);
+    throw error;
   }
+
+  console.log('✅ Task updated successfully:', data);
+  return data;
 };
 
-export const completeTask = async (taskId: string, proofUrls?: string[]): Promise<{ success: boolean; error?: string }> => {
-  try {
-    const { data, error } = await supabase.rpc('complete_task', {
-      task_id_param: taskId,
-      proof_urls: proofUrls
-    });
+export const deleteTask = async (taskId: string) => {
+  console.log(`🗑️ Deleting task ${taskId}`);
 
-    if (error) {
-      console.error("❌ [TASKS] Error completing task:", error);
-      return { success: false, error: error.message };
-    }
+  const { data, error } = await supabase
+    .from('task_requests')
+    .delete()
+    .eq('id', taskId);
 
-    if (!data) {
-      return { success: false, error: "Cannot complete task - invalid state" };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error("❌ [TASKS] Unexpected error completing task:", error);
-    return { success: false, error: (error as Error).message };
+  if (error) {
+    console.error('❌ Error deleting task:', error);
+    throw error;
   }
+
+  console.log('✅ Task deleted successfully:', data);
+  return data;
 };

@@ -646,6 +646,7 @@ export type Database = {
           approved: boolean
           created_at: string
           email: string
+          email_notifications_enabled: boolean | null
           full_name: string
           id: string
           location: string | null
@@ -661,6 +662,7 @@ export type Database = {
           approved?: boolean
           created_at?: string
           email: string
+          email_notifications_enabled?: boolean | null
           full_name: string
           id: string
           location?: string | null
@@ -676,6 +678,7 @@ export type Database = {
           approved?: boolean
           created_at?: string
           email?: string
+          email_notifications_enabled?: boolean | null
           full_name?: string
           id?: string
           location?: string | null
