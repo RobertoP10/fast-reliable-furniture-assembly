@@ -93,27 +93,11 @@ export const createTask = async (taskData: any) => {
   }
 
   console.log('✅ Task created successfully:', data);
-
-  // Trigger email notifications in background
-  try {
-    const notificationResponse = await fetch(`https://yedytkprmsmwvqhxvmcz.supabase.co/functions/v1/task-notification-handler`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllZHl0a3BybXNtd3ZxaHh2bWN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4NTYwOTksImV4cCI6MjA2NDQzMjA5OX0.2lW_MduBsK7wO9br7goF7n1gd1IZfG6CSNsf7lQa1lY`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ task: data })
-    });
-
-    if (!notificationResponse.ok) {
-      console.warn('⚠️ Email notification failed, but task was created successfully');
-    } else {
-      console.log('📧 Email notifications triggered successfully');
-    }
-  } catch (emailError) {
-    console.warn('⚠️ Email notification error (task still created):', emailError);
-  }
-
+  
+  // Email notifications are now handled automatically by the database trigger
+  // The notify_new_task() trigger will call the edge function via HTTP using pg_net
+  console.log('📧 Email notifications will be triggered automatically by database trigger');
+  
   return data;
 };
 
