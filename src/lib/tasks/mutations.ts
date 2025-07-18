@@ -54,24 +54,54 @@ export const completeTask = async (taskId: string, completionProofUrls: string[]
   console.log(`🔄 Completing task ${taskId} with proof URLs:`, completionProofUrls);
 
   try {
-    const { data, error } = await supabase
+    // First verify the task exists and user has permission to complete it
+    const { data: task, error: taskError } = await supabase
       .from('task_requests')
-      .update({ 
-        status: 'completed' as TaskStatus,
-        completion_proof_urls: completionProofUrls,
-        completed_at: new Date().toISOString()
-      })
+      .select(`
+        id,
+        status,
+        client_id,
+        accepted_offer_id,
+        offers!inner(tasker_id, is_accepted)
+      `)
       .eq('id', taskId)
-      .select()
-      .single();
+      .eq('offers.is_accepted', true)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ Error completing task:', error);
-      return { success: false, error: error.message };
+    if (taskError) {
+      console.error('❌ Error fetching task:', taskError);
+      return { success: false, error: taskError.message };
     }
 
-    console.log('✅ Task completed successfully:', data);
-    return { success: true, data };
+    if (!task) {
+      console.error('❌ Task not found or user does not have permission to complete it');
+      return { success: false, error: 'Task not found or you do not have permission to complete it' };
+    }
+
+    if (task.status !== 'accepted') {
+      console.error('❌ Task is not in accepted status:', task.status);
+      return { success: false, error: `Task cannot be completed. Current status: ${task.status}` };
+    }
+
+    // Use the database function for task completion
+    const { data: completionResult, error: completionError } = await supabase
+      .rpc('complete_task', {
+        task_id_param: taskId,
+        proof_urls: completionProofUrls
+      });
+
+    if (completionError) {
+      console.error('❌ Error completing task via RPC:', completionError);
+      return { success: false, error: completionError.message };
+    }
+
+    if (!completionResult) {
+      console.error('❌ Task completion failed - no result returned');
+      return { success: false, error: 'Failed to complete task. You may not have permission or the task may not be in the correct status.' };
+    }
+
+    console.log('✅ Task completed successfully via RPC');
+    return { success: true, data: { id: taskId, status: 'completed' } };
   } catch (error) {
     console.error('❌ Exception in completeTask:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
