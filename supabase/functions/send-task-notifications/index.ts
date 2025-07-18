@@ -98,8 +98,8 @@ serve(async (req) => {
             }
           ],
           from: {
-            email: 'noreply@mgsdeal.com',
-            name: 'MGSDEAL'
+            email: 'noreply@hubdevnest.com',
+            name: 'MGSDEAL Notifications'
           },
           content: [
             {
