@@ -54,18 +54,11 @@ export const completeTask = async (taskId: string, completionProofUrls: string[]
   console.log(`🔄 Completing task ${taskId} with proof URLs:`, completionProofUrls);
 
   try {
-    // First verify the task exists and user has permission to complete it
+    // First query: Get task details without the problematic offers embedding
     const { data: task, error: taskError } = await supabase
       .from('task_requests')
-      .select(`
-        id,
-        status,
-        client_id,
-        accepted_offer_id,
-        offers!inner(tasker_id, is_accepted)
-      `)
+      .select('id, status, client_id, accepted_offer_id')
       .eq('id', taskId)
-      .eq('offers.is_accepted', true)
       .maybeSingle();
 
     if (taskError) {
@@ -74,13 +67,44 @@ export const completeTask = async (taskId: string, completionProofUrls: string[]
     }
 
     if (!task) {
-      console.error('❌ Task not found or user does not have permission to complete it');
-      return { success: false, error: 'Task not found or you do not have permission to complete it' };
+      console.error('❌ Task not found');
+      return { success: false, error: 'Task not found' };
     }
 
     if (task.status !== 'accepted') {
       console.error('❌ Task is not in accepted status:', task.status);
       return { success: false, error: `Task cannot be completed. Current status: ${task.status}` };
+    }
+
+    // Second query: Verify user has permission (is the tasker with accepted offer)
+    const { data: currentUser } = await supabase.auth.getUser();
+    const currentUserId = currentUser?.user?.id;
+
+    if (!currentUserId) {
+      console.error('❌ User not authenticated');
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Check if current user is client (can complete own task)
+    const isClient = task.client_id === currentUserId;
+
+    // Check if current user is the tasker with accepted offer
+    let isAcceptedTasker = false;
+    if (task.accepted_offer_id) {
+      const { data: acceptedOffer, error: offerError } = await supabase
+        .from('offers')
+        .select('tasker_id')
+        .eq('id', task.accepted_offer_id)
+        .maybeSingle();
+
+      if (!offerError && acceptedOffer) {
+        isAcceptedTasker = acceptedOffer.tasker_id === currentUserId;
+      }
+    }
+
+    if (!isClient && !isAcceptedTasker) {
+      console.error('❌ User does not have permission to complete this task');
+      return { success: false, error: 'You do not have permission to complete this task' };
     }
 
     // Use the database function for task completion
