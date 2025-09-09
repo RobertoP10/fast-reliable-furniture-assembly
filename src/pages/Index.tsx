@@ -18,6 +18,17 @@ const Index = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
+  // Check URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('showLogin') === 'true') {
+      setShowLogin(true);
+    }
+    if (urlParams.get('showRegister') === 'true') {
+      setShowRegister(true);
+    }
+  }, []);
+
   // Redirecționare după ce userul e încărcat complet
   useEffect(() => {
     console.log("🏠 [INDEX] Component mounted - Auth state:", {
