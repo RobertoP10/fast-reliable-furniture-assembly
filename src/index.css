@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -49,6 +49,11 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom funnel colors */
+    --funnel-bot-bg: 217.2 91.2% 59.8%;
+    --funnel-user-bg: 217.2 91.2% 59.8%;
+    --funnel-accent: 214.3 31.8% 91.4%;
   }
 
   .dark {
