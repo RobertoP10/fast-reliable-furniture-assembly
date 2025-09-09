@@ -9,7 +9,7 @@ interface ChatInputProps {
   onSubmit: (value: string) => void;
   onSkip?: () => void;
   showSkip?: boolean;
-  type?: 'text' | 'date';
+  type?: 'text' | 'date' | 'number';
   prefix?: string;
 }
 

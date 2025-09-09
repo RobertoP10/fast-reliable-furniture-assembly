@@ -1,13 +1,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface HeroSectionProps {
   onShowRegister: () => void;
-  onStartFunnel: () => void;
 }
 
-export const HeroSection = ({ onShowRegister, onStartFunnel }: HeroSectionProps) => {
+export const HeroSection = ({ onShowRegister }: HeroSectionProps) => {
+  const navigate = useNavigate();
   return (
     <section className="py-20 px-4 text-center">
       <div className="container mx-auto">
@@ -21,7 +22,7 @@ export const HeroSection = ({ onShowRegister, onStartFunnel }: HeroSectionProps)
           Connecting customers with furniture assembly experts. Simple, fast and professional.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" onClick={onStartFunnel} className="bg-blue-600 hover:bg-blue-700">
+          <Button size="lg" onClick={() => navigate('/funnel')} className="bg-blue-600 hover:bg-blue-700">
             Start Your Request
           </Button>
           <Button size="lg" variant="outline" onClick={onShowRegister} className="hover:bg-blue-50">

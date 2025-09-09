@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { X, ArrowLeft } from "lucide-react";
+import { X, ArrowLeft, Bot } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatOptions } from "./ChatOptions";
 import { ChatInput } from "./ChatInput";
@@ -21,14 +21,14 @@ import {
 interface ConversationalFunnelProps {
   onClose: () => void;
   onComplete: (data: FunnelData, onLogin: () => void, onRegister: () => void) => void;
+  isFullPage?: boolean;
 }
 
-export const ConversationalFunnel = ({ onClose, onComplete }: ConversationalFunnelProps) => {
+export const ConversationalFunnel = ({ onClose, onComplete, isFullPage = false }: ConversationalFunnelProps) => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [currentStep, setCurrentStep] = useState<FunnelStep>('furniture-type');
   const [funnelData, setFunnelData] = useState<Partial<FunnelData>>({});
   const [isTyping, setIsTyping] = useState(false);
-  const [awaitingResponse, setAwaitingResponse] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -37,240 +37,248 @@ export const ConversationalFunnel = ({ onClose, onComplete }: ConversationalFunn
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages]);
 
+  // Initialize with first message
   useEffect(() => {
-    // Initial welcome message
-    addBotMessage("Hi! I'm here to help you find the perfect assembly expert. What type of furniture do you need assembled?", {
-      options: FURNITURE_TYPES,
-      trustPoint: TRUST_POINTS.verified
-    });
+    addBotMessage(
+      "Hi! I'm your MGS Assistant. I'll help you find the perfect tasker for your furniture assembly. What type of furniture do you need assembled?",
+      FURNITURE_TYPES,
+      TRUST_POINTS.verified
+    );
   }, []);
 
-  const addBotMessage = (content: string, options?: { options?: string[], trustPoint?: string }) => {
-    setIsTyping(true);
-    setTimeout(() => {
-      const newMessage: ChatMessageType = {
-        id: Date.now().toString(),
-        type: 'bot',
-        content,
-        timestamp: new Date(),
-        options: options?.options,
-        trustPoint: options?.trustPoint
-      };
-      setMessages(prev => [...prev, newMessage]);
-      setIsTyping(false);
-      if (options?.options) {
-        setAwaitingResponse(true);
-      }
-    }, 1000);
+  const addBotMessage = (content: string, options?: string[], trustPoint?: string) => {
+    const message: ChatMessageType = {
+      id: Date.now().toString(),
+      type: 'bot',
+      content,
+      timestamp: new Date(),
+      options,
+      trustPoint
+    };
+    setMessages(prev => [...prev, message]);
   };
 
   const addUserMessage = (content: string) => {
-    const newMessage: ChatMessageType = {
+    const message: ChatMessageType = {
       id: Date.now().toString(),
       type: 'user',
       content,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, newMessage]);
-    setAwaitingResponse(false);
+    setMessages(prev => [...prev, message]);
   };
 
   const handleFurnitureTypeSelect = (type: string) => {
     addUserMessage(type);
     setFunnelData(prev => ({ ...prev, furnitureType: type }));
-    setCurrentStep('brand');
     
+    setIsTyping(true);
     setTimeout(() => {
-      addBotMessage(`Great choice! Which brand is your ${type.toLowerCase()} from?`, {
-        options: BRANDS,
-        trustPoint: TRUST_POINTS.reviews
-      });
+      setIsTyping(false);
+      addBotMessage(
+        "Great choice! Which brand is your furniture from? This helps me match you with taskers who have experience with that specific brand.",
+        BRANDS,
+        TRUST_POINTS.reviews
+      );
+      setCurrentStep('brand');
     }, 1500);
   };
 
   const handleBrandSelect = (brand: string) => {
     addUserMessage(brand);
     setFunnelData(prev => ({ ...prev, brand }));
-    setCurrentStep('timing');
     
+    setIsTyping(true);
     setTimeout(() => {
-      addBotMessage(`When would you like your ${brand} ${funnelData.furnitureType?.toLowerCase()} assembled?`, {
-        options: TIMING_OPTIONS,
-        trustPoint: TRUST_POINTS.payment
-      });
+      setIsTyping(false);
+      addBotMessage(
+        "Perfect! When would you like the assembly to be completed?",
+        TIMING_OPTIONS
+      );
+      setCurrentStep('timing');
     }, 1500);
   };
 
   const handleTimingSelect = (timing: string) => {
     addUserMessage(timing);
-    let finalTiming = timing;
+    setFunnelData(prev => ({ ...prev, timing }));
     
-    if (timing === 'Choose Custom Date') {
-      setFunnelData(prev => ({ ...prev, timing: 'custom' }));
-      setCurrentStep('timing');
+    if (timing === "Choose Custom Date") {
+      setIsTyping(true);
       setTimeout(() => {
-        addBotMessage("Please select your preferred date:");
+        setIsTyping(false);
+        addBotMessage("Please specify your preferred date (DD/MM/YYYY):");
+        setCurrentStep('timing');
       }, 1500);
-      return;
     } else {
-      setFunnelData(prev => ({ ...prev, timing: finalTiming }));
-      setCurrentStep('budget');
-      
+      setIsTyping(true);
       setTimeout(() => {
-        addBotMessage("What's your budget range? (This helps taskers provide better offers)");
+        setIsTyping(false);
+        addBotMessage(
+          "Great! What's your budget for this assembly task? You can skip this if you prefer to see offers first.",
+          undefined,
+          TRUST_POINTS.payment
+        );
+        setCurrentStep('budget');
       }, 1500);
     }
   };
 
   const handleCustomDateSelect = (date: string) => {
-    addUserMessage(new Date(date).toLocaleDateString());
-    setFunnelData(prev => ({ ...prev, timing: 'custom', customDate: date }));
-    setCurrentStep('budget');
+    addUserMessage(date);
+    setFunnelData(prev => ({ ...prev, customDate: date }));
     
+    setIsTyping(true);
     setTimeout(() => {
-      addBotMessage("What's your budget range? (This helps taskers provide better offers)");
+      setIsTyping(false);
+      addBotMessage(
+        "Perfect! What's your budget for this assembly task? You can skip this if you prefer to see offers first.",
+        undefined,
+        TRUST_POINTS.payment
+      );
+      setCurrentStep('budget');
     }, 1500);
   };
 
   const handleBudgetSubmit = (budget: string) => {
-    addUserMessage(budget);
+    addUserMessage(`£${budget}`);
     setFunnelData(prev => ({ ...prev, budget }));
-    setCurrentStep('summary');
-    
-    setTimeout(() => {
-      showSummary();
-    }, 1500);
+    showSummary();
   };
 
   const handleBudgetSkip = () => {
-    addUserMessage("I'll discuss budget with taskers directly");
-    setFunnelData(prev => ({ ...prev, budget: undefined }));
-    setCurrentStep('summary');
-    
-    setTimeout(() => {
-      showSummary();
-    }, 1500);
+    addUserMessage("I'll see the offers first");
+    showSummary();
   };
 
   const showSummary = () => {
-    const timingText = funnelData.timing === 'custom' && funnelData.customDate 
-      ? new Date(funnelData.customDate).toLocaleDateString()
-      : funnelData.timing;
-    
-    const summary = `Perfect! Here's your request summary:
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      const currentData = { ...funnelData };
+      const summaryText = `Here's your request summary:
+• Furniture: ${currentData.furnitureType}
+• Brand: ${currentData.brand}  
+• Timing: ${currentData.timing}${currentData.customDate ? ` (${currentData.customDate})` : ''}
+${currentData.budget ? `• Budget: £${currentData.budget}` : '• Budget: Open to offers'}
 
-📦 ${funnelData.brand} ${funnelData.furnitureType}
-📅 ${timingText}
-💷 ${funnelData.budget || 'Open to offers'}
-
-Ready to send this to verified taskers?`;
-
-    addBotMessage(summary, {
-      options: ['Yes, let\'s find taskers!', 'Let me change something']
-    });
+Ready to find your perfect tasker?`;
+      
+      addBotMessage(summaryText, ['Yes, find my tasker!', 'Let me edit something']);
+      setCurrentStep('summary');
+    }, 2000);
   };
 
-  const handleSummaryConfirm = (response: string) => {
-    addUserMessage(response);
+  const handleSummaryConfirm = () => {
+    addUserMessage("Yes, find my tasker!");
     
-    if (response === 'Yes, let\'s find taskers!') {
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      addBotMessage("Excellent! To connect you with verified taskers, please create your account or log in.");
       setCurrentStep('login-redirect');
+      
       setTimeout(() => {
-        addBotMessage("Excellent! To send your request to verified taskers, please log in or create an account.");
-        setTimeout(() => {
-          const finalData: FunnelData = {
-            furnitureType: funnelData.furnitureType!,
-            brand: funnelData.brand!,
-            timing: funnelData.timing!,
-            customDate: funnelData.customDate,
-            budget: funnelData.budget,
-            completed: true
-          };
-          onComplete(finalData, () => {}, () => {});
-        }, 2000);
-      }, 1500);
-    } else {
-      // Reset to furniture type selection
-      setCurrentStep('furniture-type');
-      setFunnelData({});
-      setTimeout(() => {
-        addBotMessage("No problem! Let's start over. What type of furniture do you need assembled?", {
-          options: FURNITURE_TYPES,
-          trustPoint: TRUST_POINTS.verified
-        });
-      }, 1500);
+        const finalData: FunnelData = {
+          ...funnelData as FunnelData,
+          completed: true
+        };
+        onComplete(finalData, () => {}, () => {});
+      }, 2000);
+    }, 1500);
+  };
+
+  const getStepNumber = (): number => {
+    switch (currentStep) {
+      case 'furniture-type': return 1;
+      case 'brand': return 2;
+      case 'timing': return 3;
+      case 'budget': return 4;
+      case 'summary': return 5;
+      case 'login-redirect': return 6;
+      default: return 1;
     }
   };
 
-  const getStepNumber = () => {
-    const stepMap = {
-      'furniture-type': 1,
-      'brand': 2,
-      'timing': 3,
-      'budget': 4,
-      'summary': 5,
-      'login-redirect': 6
-    };
-    return stepMap[currentStep];
-  };
-
-  const canGoBack = () => {
-    return messages.length > 1 && currentStep !== 'login-redirect';
+  const canGoBack = (): boolean => {
+    return currentStep !== 'furniture-type' && currentStep !== 'login-redirect';
   };
 
   const renderCurrentInput = () => {
-    if (awaitingResponse) return null;
-
     switch (currentStep) {
       case 'furniture-type':
         return (
-          <ChatOptions
+          <ChatOptions 
             options={FURNITURE_TYPES}
             onSelect={handleFurnitureTypeSelect}
+            disabled={isTyping}
           />
         );
+      
       case 'brand':
         return (
-          <ChatOptions
+          <ChatOptions 
             options={BRANDS}
             onSelect={handleBrandSelect}
+            disabled={isTyping}
           />
         );
+      
       case 'timing':
-        if (funnelData.timing === 'custom' && !funnelData.customDate) {
+        if (funnelData.timing === "Choose Custom Date" && !funnelData.customDate) {
           return (
             <ChatInput
-              type="date"
-              placeholder="Select date"
+              placeholder="Enter date (DD/MM/YYYY)"
               onSubmit={handleCustomDateSelect}
+              type="date"
             />
           );
         }
         return (
-          <ChatOptions
+          <ChatOptions 
             options={TIMING_OPTIONS}
             onSelect={handleTimingSelect}
+            disabled={isTyping}
           />
         );
+      
       case 'budget':
         return (
           <ChatInput
-            placeholder="Enter your budget range"
-            prefix="£"
+            placeholder="Enter your budget"
             onSubmit={handleBudgetSubmit}
             onSkip={handleBudgetSkip}
             showSkip={true}
+            type="number"
+            prefix="£"
           />
         );
+      
       case 'summary':
         return (
-          <ChatOptions
-            options={['Yes, let\'s find taskers!', 'Let me change something']}
-            onSelect={handleSummaryConfirm}
+          <ChatOptions 
+            options={['Yes, find my tasker!', 'Let me edit something']}
+            onSelect={(option) => {
+              if (option === 'Yes, find my tasker!') {
+                handleSummaryConfirm();
+              } else {
+                // Reset to furniture type for editing
+                setCurrentStep('furniture-type');
+                setFunnelData({});
+                setMessages([]);
+                addBotMessage(
+                  "Let's start over. What type of furniture do you need assembled?",
+                  FURNITURE_TYPES,
+                  TRUST_POINTS.verified
+                );
+              }
+            }}
+            disabled={isTyping}
           />
         );
+      
       default:
         return null;
     }
@@ -278,60 +286,107 @@ Ready to send this to verified taskers?`;
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
-      >
+      {isFullPage ? (
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="w-full max-w-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="w-full max-w-4xl mx-auto h-full flex flex-col"
         >
-          <Card className="h-[600px] flex flex-col">
+          <div className="bg-background border rounded-lg shadow-lg flex-1 flex flex-col min-h-0">
             {/* Header */}
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {canGoBack() && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.history.back()}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                <h2 className="font-semibold">Find Your Assembly Expert</h2>
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-lg">MGS Assistant</h2>
+                  <p className="text-sm text-muted-foreground">Let's find you the perfect tasker</p>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
             </div>
 
             {/* Progress */}
-            <div className="p-4 pb-0">
+            <div className="px-6 pt-4">
               <FunnelProgress currentStep={getStepNumber()} totalSteps={6} />
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 p-6 overflow-y-auto min-h-0">
               {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+                <ChatMessage 
+                  key={message.id} 
+                  message={message}
+                  isLast={message.id === messages[messages.length - 1]?.id}
+                />
               ))}
               {isTyping && <TypingIndicator />}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 border-t bg-muted/20">
+            {/* Input */}
+            <div className="p-6 border-t">
               {renderCurrentInput()}
             </div>
-          </Card>
+          </div>
         </motion.div>
-      </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-md"
+          >
+            <Card className="h-[600px] flex flex-col">
+              {/* Header */}
+              <div className="p-4 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {canGoBack() && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.history.back()}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <h2 className="font-semibold">Find Your Assembly Expert</h2>
+                </div>
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Progress */}
+              <div className="p-4 pb-0">
+                <FunnelProgress currentStep={getStepNumber()} totalSteps={6} />
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {messages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
+                ))}
+                {isTyping && <TypingIndicator />}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Area */}
+              <div className="p-4 border-t bg-muted/20">
+                {renderCurrentInput()}
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

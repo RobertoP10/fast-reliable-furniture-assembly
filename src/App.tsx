@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 import Index from "./pages/Index";
+import FunnelPage from "./pages/FunnelPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import TaskerDashboard from "./pages/TaskerDashboard";
 import TaskerPending from "./pages/TaskerPending";
@@ -59,6 +60,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/funnel" element={<FunnelPage />} />
       <Route path="/client-dashboard" element={<ClientDashboard />} />
       <Route path="/tasker-dashboard" element={<TaskerDashboard />} />
       <Route path="/tasker-pending" element={<TaskerPending />} />

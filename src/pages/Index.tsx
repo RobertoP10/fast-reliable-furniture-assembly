@@ -11,16 +11,12 @@ import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { CTASection } from "@/components/landing/CTASection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-import { ConversationalFunnel } from "@/components/funnel/ConversationalFunnel";
-import { FunnelData } from "@/types/funnel";
 
 const Index = () => {
   const { user, userData, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [showFunnel, setShowFunnel] = useState(false);
-  const [funnelData, setFunnelData] = useState<FunnelData | null>(null);
 
   // Redirecționare după ce userul e încărcat complet
   useEffect(() => {
@@ -73,13 +69,6 @@ const Index = () => {
     );
   }
 
-  const handleFunnelComplete = (data: FunnelData, onLogin: () => void, onRegister: () => void) => {
-    setFunnelData(data);
-    setShowFunnel(false);
-    // Store funnel data in session storage for after login
-    sessionStorage.setItem('funnelData', JSON.stringify(data));
-    setShowLogin(true);
-  };
 
   // Formulare Login / Register
   if (showLogin) {
@@ -115,7 +104,6 @@ const Index = () => {
       
       <HeroSection 
         onShowRegister={() => setShowRegister(true)}
-        onStartFunnel={() => setShowFunnel(true)}
       />
       
       <FeaturesSection />
@@ -124,17 +112,10 @@ const Index = () => {
       
       <CTASection 
         onShowRegister={() => setShowRegister(true)}
-        onStartFunnel={() => setShowFunnel(true)}
       />
       
       <LandingFooter />
 
-      {showFunnel && (
-        <ConversationalFunnel
-          onClose={() => setShowFunnel(false)}
-          onComplete={handleFunnelComplete}
-        />
-      )}
     </div>
   );
 };
