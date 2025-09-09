@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { createTask } from "@/lib/api";
 import { initialFormData } from "./taskFormConstants";
+import { useFunnelData } from "@/hooks/useFunnelData";
 import type { Database } from '@/integrations/supabase/types';
 
 type PaymentMethod = Database['public']['Enums']['payment_method'];
@@ -13,6 +14,17 @@ export const useTaskForm = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { funnelFormData, hasFunnelData } = useFunnelData();
+
+  // Prefill form with funnel data if available
+  useEffect(() => {
+    if (hasFunnelData && funnelFormData) {
+      setFormData(prev => ({
+        ...prev,
+        ...funnelFormData
+      }));
+    }
+  }, [hasFunnelData, funnelFormData]);
 
   const validateForm = () => {
     if (!user) {
