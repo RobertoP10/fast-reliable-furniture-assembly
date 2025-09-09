@@ -164,6 +164,10 @@ export const ConversationalFunnel = ({ onClose, onComplete, isFullPage = false }
 • Timing: ${currentData.timing}${currentData.customDate ? ` (${currentData.customDate})` : ''}
 ${currentData.budget ? `• Budget: £${currentData.budget}` : '• Budget: Open to offers'}
 
+🛡️ All taskers are manually verified
+⭐ Check reviews before choosing your tasker
+💰 You only pay after the task is completed
+
 Ready to find your perfect tasker?`;
       
       addBotMessage(summaryText, ['Yes, find my tasker!', 'Let me edit something']);
@@ -177,7 +181,7 @@ Ready to find your perfect tasker?`;
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      addBotMessage("Excellent! To connect you with verified taskers, please create your account or log in.");
+      addBotMessage("Perfect! Create your free account to connect with verified taskers.");
       setCurrentStep('login-redirect');
       
       setTimeout(() => {

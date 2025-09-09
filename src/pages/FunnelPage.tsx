@@ -9,9 +9,9 @@ const FunnelPage = () => {
   };
 
   const handleComplete = (data: any, onLogin: () => void, onRegister: () => void) => {
-    // Store the funnel data and redirect to login
+    // Store the funnel data and redirect to register
     sessionStorage.setItem('funnelData', JSON.stringify(data));
-    navigate("/?showLogin=true");
+    navigate("/?showRegister=true");
   };
 
   return (
