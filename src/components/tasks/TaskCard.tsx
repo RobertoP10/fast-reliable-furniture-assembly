@@ -67,7 +67,12 @@ export const TaskCard = ({
           />
         )}
 
-        <TaskCompletionProof proofUrls={task.completion_proof_urls} />
+        <TaskCompletionProof 
+          proofUrls={task.completion_proof_urls} 
+          task={task}
+          user={user}
+          userRole={userRole}
+        />
       </CardContent>
     </Card>
   );
